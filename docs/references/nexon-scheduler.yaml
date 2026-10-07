@@ -1,0 +1,189 @@
+openapi: 3.0.3
+info:
+  title: 메이플스토리 API
+  version: 1.0.0
+  contact:
+    name: help_openapi@nexon.co.kr
+servers:
+- url: https://open.api.nexon.com
+tags:
+- name: scheduler
+  description: 스케줄러 정보
+paths:
+  /maplestory/v1/scheduler/character-state:
+    get:
+      tags:
+      - scheduler
+      summary: 캐릭터의 스케줄러 정보 조회
+      description: 캐릭터에 대한 스케줄러의 수행 현황 정보를 조회하는 API입니다.<br>
+        - 스케줄러 정보는 실시간 조회 및 이전 일자 조회가 가능하며, 조회 요청일 기준 최대 14일 전까지의 데이터만 조회 가능합니다.<br>
+        - 스케줄러 정보 중 길드 콘텐츠, 에픽던전, 무릉도장, 보스 콘텐츠 관련 정보는 각 콘텐츠의 완료 시에 갱신되며, 그 외 콘텐츠 및 퀘스트 관련 정보는 캐릭터가 접속 중 및 접속 종료 시 갱신됩니다.
+      parameters:
+      - name: x-nxopen-api-key
+        in: header
+        description: API KEY
+        required: true
+        schema:
+          type: string
+      - name: ocid
+        in: query
+        description: 캐릭터 식별자<br>
+          자신의 계정에 속한 캐릭터만 조회가 가능합니다.
+        required: true
+        schema:
+          type: string
+      - name: date
+        in: query
+        description: 조회 기준일 (YYYY-MM-DD), 미입력 시 오늘 날짜<br>캐릭터가 해당 기준일에 접속하지 않은 경우, 응답 결과가 없을 수 있음
+        schema:
+          type: string
+      responses:
+        '200':
+          description: SUCCESS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterStateResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '429':
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+components:
+  schemas:
+    CharacterStateResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          description: 조회 기준일 (YYYY-MM-DD)
+        character_name:
+          type: string
+          description: 캐릭터 명
+        world_name:
+          type: string
+          description: 월드 명
+        character_level:
+          type: number
+          format: int64
+          description: 캐릭터 레벨
+        character_class:
+          type: string
+          description: 캐릭터 직업
+        daily_contents:
+          type: array
+          description: 일일 콘텐츠 정보
+          items:
+            type: object
+            properties:
+              content_name:
+                type: string
+                description: 콘텐츠/퀘스트 명
+              type:
+                type: string
+                description: 타입 ('contents', 'quest')
+              registration_flag:
+                type: string
+                description: 인게임 스케줄러 등록 여부 (true/false)
+              now_count:
+                type: number
+                format: int64
+                description: 현재 완료 횟수/점수
+              max_count:
+                type: number
+                format: int64
+                description: 최대 완료 가능 횟수/점수
+              quest_state:
+                type: string
+                description: 퀘스트인 경우 진행 상태 ("0":기타, "1":진행 중, "2":완료)
+        weekly_contents:
+          type: array
+          description: 주간 콘텐츠 정보
+          items:
+            type: object
+            properties:
+              content_name:
+                type: string
+                description: 콘텐츠 명
+              type:
+                type: string
+                description: 콘텐츠 종류 ('contents', 'quest')
+              registration_flag:
+                type: string
+                description: 인게임 스케줄러 등록 여부 (true/false)
+              now_count:
+                type: number
+                format: int64
+                description: 현재 완료 횟수/점수
+              max_count:
+                type: number
+                format: int64
+                description: 최대 완료 가능 횟수/점수
+              quest_state:
+                type: string
+                description: 퀘스트인 경우 진행 상태 ("0":기타, "1":진행 중, "2":완료)
+        boss_contents:
+          type: array
+          description: 보스 콘텐츠 정보
+          items:
+            type: object
+            properties:
+              content_name:
+                type: string
+                description: 보스 명
+              difficulty:
+                type: string
+                description: 보스 난이도
+              cycle:
+                type: string
+                description: 보스 초기화 주기
+              list_order_no:
+                type: number
+                format: int64
+                description: 리스트 순서
+              registration_flag:
+                type: string
+                description: 인게임 스케줄러 등록 여부 (true/false)
+              complete_flag:
+                type: string
+                description: 완료 여부 (true/false)
+        weekly_boss_clear_count:
+          type: number
+          format: int64
+          description: 주간 보스 처치 완료 횟수
+        weekly_boss_clear_limit_count:
+          type: number
+          format: int64
+          description: 주간 보스 처치 제한 횟수
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            name:
+              type: string
+              description: 에러 명
+            message:
+              type: string
+              description: 에러 설명
+
