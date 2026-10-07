@@ -1,0 +1,11 @@
+@theme {
+  --font-sans: 'Segoe UI', 'Malgun Gothic', sans-serif;
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-ink: #202a32;
+  --color-muted: #687681;
+  --color-line: #e6ebed;
+  --color-brand: #25765e;
+  --color-brand-soft: #edf6f1;
+  --color-expense: #b65b47;
+}

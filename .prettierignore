@@ -1,0 +1,9 @@
+node_modules
+out
+dist
+release
+coverage
+package-lock.json
+docs/references
+docs/planning.md
+docs/architecture.md

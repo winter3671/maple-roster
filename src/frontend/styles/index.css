@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+@import './theme.css';
+
+body {
+  margin: 0;
+  min-width: 900px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 4px;
+}
+::selection {
+  background: #dcf2e9;
+}
