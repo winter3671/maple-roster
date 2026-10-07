@@ -38,3 +38,17 @@ export function readId(value: unknown): string {
   }
   return id
 }
+
+export function readInteger(
+  value: unknown,
+  label: string,
+  maximum = Number.MAX_SAFE_INTEGER
+): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > maximum) {
+    throw new AppError(
+      'VALIDATION_ERROR',
+      `${label}은(는) 0 이상 ${maximum.toLocaleString('ko-KR')} 이하의 정수로 입력해 주세요.`
+    )
+  }
+  return value
+}

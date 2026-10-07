@@ -5,6 +5,8 @@ export type ErrorCode =
   | 'CHARACTER_IN_USE'
   | 'DATABASE_ERROR'
   | 'PERMISSION_DENIED'
+  | 'SESSION_NOT_FOUND'
+  | 'REQUEST_CONFLICT'
 
 export class AppError extends Error {
   constructor(

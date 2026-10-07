@@ -3,14 +3,8 @@ import type {
   CharacterUpdate,
   CharacterVisibility
 } from '../../../shared/contracts/character.contract'
-import { AppError, type ApiResult } from '../../../shared/errors'
+import { unwrap } from '../../lib/api'
 import { getBridge } from '../../lib/bridge'
-
-async function unwrap<T>(request: Promise<ApiResult<T>>): Promise<T> {
-  const result = await request
-  if (!result.ok) throw new AppError(result.error.code, result.error.message)
-  return result.data
-}
 
 export const charactersApi = {
   list: () => unwrap(getBridge().characters.list()),

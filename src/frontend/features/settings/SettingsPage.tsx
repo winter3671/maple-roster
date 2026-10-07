@@ -40,7 +40,7 @@ export function SettingsPage() {
               {error
                 ? '앱 정보를 불러오지 못했습니다'
                 : info
-                  ? '캐릭터 로컬 저장 사용 가능'
+                  ? '캐릭터·사냥 장부 사용 가능'
                   : '확인 중'}
             </dd>
           </div>

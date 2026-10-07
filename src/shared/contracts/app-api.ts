@@ -5,11 +5,13 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type { HuntingCreate, HuntingUpdate, HuntingSession, HuntingList } from './hunting.contract'
+import type { LedgerList, RecordQuery } from './ledger.contract'
 
 export interface AppInfo {
   name: string
   version: string
-  stage: 'local-characters'
+  stage: 'hunting-ledger'
 }
 
 export interface AppApi {
@@ -23,4 +25,11 @@ export interface AppApi {
     setHidden: (input: CharacterVisibility) => Promise<ApiResult<Character>>
     remove: (id: string) => Promise<ApiResult<null>>
   }
+  hunting: {
+    list: (query: RecordQuery) => Promise<ApiResult<HuntingList>>
+    create: (input: HuntingCreate) => Promise<ApiResult<HuntingSession>>
+    update: (input: HuntingUpdate) => Promise<ApiResult<HuntingSession>>
+    remove: (id: string) => Promise<ApiResult<null>>
+  }
+  ledger: { list: (query: RecordQuery) => Promise<ApiResult<LedgerList>> }
 }

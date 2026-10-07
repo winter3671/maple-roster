@@ -39,7 +39,7 @@ describe('캐릭터 로컬 저장', () => {
     database = openDatabase(path)
     service = new CharacterService(new CharacterRepository(database))
     expect(service.list()).toEqual([created])
-    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(1)
+    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(2)
   })
 
   it('앞뒤 공백과 Unicode 표현을 정규화한다', () => {
@@ -133,7 +133,7 @@ describe('캐릭터 로컬 저장', () => {
   it('더 새로운 DB를 구버전 코드로 열지 않는다', () => {
     database
       .prepare('INSERT INTO schema_migrations VALUES (?, ?, ?)')
-      .run(2, 'future', new Date().toISOString())
+      .run(3, 'future', new Date().toISOString())
     database.close()
     expect(() => openDatabase(path)).toThrow('최신 버전')
   })

@@ -1,12 +1,11 @@
 import type { PageId } from '../../app/navigation'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Icon, type IconName } from '../../components/ui/Icon'
-
-const summaries = [
-  { label: '이번 달 실제 수입', detail: '판매·수령이 확정된 메소', color: 'text-brand' },
-  { label: '이번 달 지출', detail: '구매 및 사용한 메소', color: 'text-expense' },
-  { label: '이번 달 순수익', detail: '실제 수입에서 지출을 뺀 금액', color: 'text-ink' }
-]
+import { useState } from 'react'
+import { FinancialSummary } from '../../components/FinancialSummary'
+import { Button } from '../../components/ui/Button'
+import { formatMeso, thisMonthQuery } from '../../lib/format'
+import { useLedger } from '../ledger/useLedger'
 
 const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }[] = [
   {
@@ -20,42 +19,71 @@ const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }
 ]
 
 export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => void }) {
+  const [query] = useState(thisMonthQuery)
+  const state = useLedger(query)
   return (
     <div className="space-y-6">
+      {state.error && (
+        <div
+          role="alert"
+          className="flex items-center justify-between rounded-xl border border-expense/20 p-4 text-xs text-expense"
+        >
+          <span>{state.error}</span>
+          <Button variant="secondary" disabled={state.loading} onClick={state.reload}>
+            다시 시도
+          </Button>
+        </div>
+      )}
       <section className="flex items-center justify-between gap-6 rounded-2xl border border-brand/10 bg-brand-soft px-6 py-5">
         <div>
           <p className="text-sm font-semibold text-brand">나의 기록장을 시작해 볼까요?</p>
           <p className="mt-1.5 text-xs leading-5 text-muted">
-            캐릭터 관리에서 이름과 월드를 등록해 보세요. 장부 기능은 차례로 준비하고 있습니다.
+            캐릭터를 등록한 뒤 사냥 장부에 첫 회차를 기록해 보세요. 수입과 지출이 자동으로 모입니다.
           </p>
         </div>
         <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">
-          기본 화면 준비 완료
+          사냥 장부 사용 가능
         </span>
       </section>
-      <section aria-label="이번 달 수익 요약" className="grid grid-cols-3 gap-4">
-        {summaries.map((summary) => (
-          <article key={summary.label} className="rounded-2xl border border-line bg-surface p-6">
-            <p className="text-xs font-medium text-muted">{summary.label}</p>
-            <p className={`my-5 text-3xl font-semibold tabular-nums ${summary.color}`}>
-              <span aria-label="기록 없음">—</span>
-              <span className="ml-2 text-xs font-normal text-muted">메소</span>
-            </p>
-            <p className="text-[11px] text-muted">{summary.detail}</p>
-          </article>
-        ))}
-      </section>
+      <FinancialSummary summary={state.data?.summary} loading={state.loading} prefix="이번 달" />
       <div className="grid grid-cols-[1.4fr_1fr] gap-5">
         <section className="rounded-2xl border border-line bg-surface">
           <div className="flex items-center justify-between border-b border-line px-6 py-5">
-            <h2 className="text-sm font-semibold">수익 흐름</h2>
-            <span className="text-[11px] text-muted">기록이 쌓이면 표시됩니다</span>
+            <h2 className="text-sm font-semibold">최근 사냥 거래</h2>
+            <span className="text-[11px] text-muted">
+              {query.from} ~ {query.to}
+            </span>
           </div>
-          <EmptyState
-            icon="ledger"
-            title="아직 수익 기록이 없어요"
-            description="보스·사냥 수입과 지출을 기록하면 이곳에서 기간별 흐름을 확인할 수 있습니다."
-          />
+          {state.loading ? (
+            <p role="status" className="p-10 text-center text-sm text-muted">
+              수익을 불러오는 중…
+            </p>
+          ) : state.data?.entries.length ? (
+            <div className="divide-y divide-line px-6">
+              {state.data.entries.slice(0, 5).map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between gap-4 py-5">
+                  <div>
+                    <p className="break-all text-xs font-semibold">{entry.characterName}</p>
+                    <p className="mt-2 text-[11px] text-muted">
+                      {entry.date} · {entry.direction === 'income' ? '사냥 획득' : '사냥 소모 비용'}
+                    </p>
+                  </div>
+                  <p
+                    className={`shrink-0 text-xs font-semibold tabular-nums ${entry.direction === 'income' ? 'text-brand' : 'text-expense'}`}
+                  >
+                    {entry.direction === 'income' ? '+' : '−'}
+                    {formatMeso(entry.amount)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon="ledger"
+              title="아직 이번 달 거래가 없어요"
+              description="사냥 장부에 획득 메소와 비용을 기록하면 이곳에 실제 수입과 지출이 표시됩니다."
+            />
+          )}
         </section>
         <section className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-sm font-semibold">기록 바로가기</h2>

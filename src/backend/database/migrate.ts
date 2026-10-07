@@ -1,7 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite'
 import charactersSql from './migrations/001_characters.sql?raw'
+import huntingSql from './migrations/002_hunting_ledger.sql?raw'
 
-const migrations = [{ version: 1, name: 'characters', sql: charactersSql }]
+const migrations = [
+  { version: 1, name: 'characters', sql: charactersSql },
+  { version: 2, name: 'hunting_ledger', sql: huntingSql }
+]
 
 export function migrate(database: DatabaseSync): void {
   database.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (

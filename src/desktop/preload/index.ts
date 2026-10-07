@@ -10,6 +10,15 @@ const api: AppApi = {
     update: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersUpdate, input),
     setHidden: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersSetHidden, input),
     remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.charactersRemove, id)
+  },
+  hunting: {
+    list: (query) => ipcRenderer.invoke(IPC_CHANNELS.huntingList, query),
+    create: (input) => ipcRenderer.invoke(IPC_CHANNELS.huntingCreate, input),
+    update: (input) => ipcRenderer.invoke(IPC_CHANNELS.huntingUpdate, input),
+    remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.huntingRemove, id)
+  },
+  ledger: {
+    list: (query) => ipcRenderer.invoke(IPC_CHANNELS.ledgerList, query)
   }
 }
 
