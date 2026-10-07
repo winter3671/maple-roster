@@ -1,6 +1,6 @@
 # Maple Roster 파일 구조 및 아키텍처 기획
 
-작성일: 2026-10-07 (KST). 개인 연습용 앱을 위한 설계안. 현재 frontend·backend·desktop·shared 기본 골격, 화면 이동, 앱 정보 IPC를 구현했다. 아래 전체 파일 구조는 목표 구조이며 DB·장부·API 파일은 기능 개발 단계에서 추가한다.
+작성일: 2026-10-07 (KST). 개인 연습용 앱을 위한 설계안. 현재 기본 골격과 캐릭터 수동 등록·수정·숨김·삭제, SQLite 저장을 구현했다. 아래 전체 파일 구조는 목표 구조이며 장부·API 파일은 기능 개발 단계에서 추가한다.
 
 ## 개발 방향
 
@@ -18,11 +18,11 @@
 | UI | React + TypeScript | 화면과 입력 컴포넌트 |
 | 스타일 | Tailwind CSS v4 | 공통 색상·간격과 화면 스타일 |
 | 개발 빌드 | electron-vite | main·preload·renderer 빌드 구성 |
-| DB | SQLite + better-sqlite3 | SQL과 트랜잭션을 직접 연습 |
+| DB | SQLite + Node.js 내장 node:sqlite | SQL과 트랜잭션을 직접 연습 |
 | 검증 | 공유 계약의 런타임 검증 함수 | IPC 입력값과 백업 데이터 검증 |
 | 테스트 | Vitest | 정산 규칙과 DB 통합 테스트 |
 
-라이브러리 버전은 실제 프로젝트 초기화 시 서로의 호환성을 확인하고 lockfile로 고정한다. SQLite 네이티브 모듈은 Electron 런타임에 맞춰 재빌드·패키징 확인이 필요하다. ORM과 전역 상태 라이브러리는 초기 필수 항목으로 두지 않는다.
+라이브러리 버전은 호환성을 확인하고 lockfile로 고정한다. better-sqlite3 대신 내장 node:sqlite를 사용하여 네이티브 모듈 재빌드 없이 개발한다. Electron에 포함된 Node.js의 SQLite 지원을 실행 검증했다. ORM과 전역 상태 라이브러리는 초기 필수 항목으로 두지 않는다.
 
 ## 의존 관계
 
@@ -287,5 +287,5 @@ Button·Input·Dialog 같은 공통 컴포넌트는 Tailwind 클래스로 작성
 - Electron IPC: https://www.electronjs.org/docs/latest/tutorial/ipc
 - Tailwind Vite 설정: https://tailwindcss.com/docs/installation/using-vite
 - electron-vite: https://electron-vite.org/guide/
-- better-sqlite3: https://github.com/WiseLibs/better-sqlite3
+- Node.js 내장 SQLite: https://nodejs.org/api/sqlite.html
 - Vitest: https://vitest.dev/guide/

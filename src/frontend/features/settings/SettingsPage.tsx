@@ -37,7 +37,11 @@ export function SettingsPage() {
           <div className="flex justify-between">
             <dt className="text-muted">현재 상태</dt>
             <dd className={error ? 'text-expense' : 'text-brand'} role="status">
-              {error ? '앱 정보를 불러오지 못했습니다' : info ? '기본 화면 준비 완료' : '확인 중'}
+              {error
+                ? '앱 정보를 불러오지 못했습니다'
+                : info
+                  ? '캐릭터 로컬 저장 사용 가능'
+                  : '확인 중'}
             </dd>
           </div>
         </dl>
@@ -58,7 +62,8 @@ export function SettingsPage() {
           <span className="text-xs text-muted">준비 중</span>
         </div>
         <p className="mt-3 text-sm leading-6 text-muted">
-          로컬 저장을 연결한 뒤 장부를 JSON으로 백업하고 복원할 수 있도록 준비합니다.
+          현재 캐릭터 정보는 이 PC에 저장됩니다. 장부 기능을 추가한 뒤 JSON 백업·복원을 연결할
+          예정입니다.
         </p>
       </section>
     </div>

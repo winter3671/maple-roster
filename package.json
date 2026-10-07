@@ -9,12 +9,13 @@
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
     "typecheck": "tsc -b --pretty",
+    "test": "vitest run",
     "build": "npm run typecheck && electron-vite build",
-    "format": "prettier --write src electron.vite.config.ts tsconfig*.json package.json .prettierrc.json README.md",
-    "format:check": "prettier --check src electron.vite.config.ts tsconfig*.json package.json .prettierrc.json README.md"
+    "format": "prettier --write src electron.vite.config.ts vitest.config.ts tsconfig*.json package.json .prettierrc.json README.md",
+    "format:check": "prettier --check src electron.vite.config.ts vitest.config.ts tsconfig*.json package.json .prettierrc.json README.md"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24.0.0"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -31,6 +32,7 @@
     "prettier": "^3.9.9",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^7.3.7"
+    "vite": "^7.3.7",
+    "vitest": "^5.0.3"
   }
 }

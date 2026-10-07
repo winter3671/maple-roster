@@ -26,7 +26,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         <div>
           <p className="text-sm font-semibold text-brand">나의 기록장을 시작해 볼까요?</p>
           <p className="mt-1.5 text-xs leading-5 text-muted">
-            캐릭터와 장부 화면을 준비하고 있어요. 현재는 메뉴를 둘러볼 수 있습니다.
+            캐릭터 관리에서 이름과 월드를 등록해 보세요. 장부 기능은 차례로 준비하고 있습니다.
           </p>
         </div>
         <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">

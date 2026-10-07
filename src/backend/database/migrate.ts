@@ -1,0 +1,31 @@
+import type { DatabaseSync } from 'node:sqlite'
+import charactersSql from './migrations/001_characters.sql?raw'
+
+const migrations = [{ version: 1, name: 'characters', sql: charactersSql }]
+
+export function migrate(database: DatabaseSync): void {
+  database.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    applied_at TEXT NOT NULL
+  ) STRICT`)
+  const rows = database.prepare('SELECT version FROM schema_migrations ORDER BY version').all()
+  const applied = new Set(rows.map((row) => Number(row.version)))
+  if ([...applied].some((version) => version > migrations.length)) {
+    throw new Error('현재 앱보다 새로운 데이터베이스입니다. 최신 버전의 앱을 사용해 주세요.')
+  }
+  for (const migration of migrations) {
+    if (applied.has(migration.version)) continue
+    database.exec('BEGIN IMMEDIATE')
+    try {
+      database.exec(migration.sql)
+      database
+        .prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)')
+        .run(migration.version, migration.name, new Date().toISOString())
+      database.exec('COMMIT')
+    } catch (error) {
+      database.exec('ROLLBACK')
+      throw error
+    }
+  }
+}
