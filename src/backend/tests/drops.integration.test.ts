@@ -406,7 +406,7 @@ describe('획득 묶음과 드랍 부분 판매', () => {
         upgraded
           .prepare('SELECT * FROM ledger_entries ORDER BY id')
           .all()
-          .map(({ drop_sale_id: _drop, ...row }) => row)
+          .map(({ drop_sale_id: _drop, manual_expense_id: _expense, ...row }) => row)
       ).toEqual(entries)
       expect(
         new DropRepository(upgraded)

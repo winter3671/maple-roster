@@ -49,7 +49,7 @@ describe('대시보드 수익 집계', () => {
       { period: '2026-10-09', income: 0, expense: 0, net: 0, count: 0 },
       { period: '2026-10-10', income: 350, expense: 0, net: 350, count: 2 }
     ])
-    expect(stats.sources.map((row) => row.net)).toEqual([-100, 300, 50])
+    expect(stats.sources.map((row) => row.net)).toEqual([-100, 300, 50, 0])
   })
   it('캐릭터 ID로 합치되 과거 서버는 함께 표시하고 순수익순으로 비교한다', () => {
     const stats = dashboardStats(

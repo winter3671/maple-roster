@@ -23,6 +23,8 @@ import { saveRecoveryBackup } from '../../backend/modules/backup/backup.files'
 import { AutomaticBackupService } from '../../backend/modules/backup/automatic-backup.service'
 import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.service'
 
+import { ExpenseService } from '../../backend/modules/ledger/expense.service'
+
 export function createServices(
   version: string,
   databasePath: string,
@@ -81,6 +83,7 @@ export function createServices(
     ),
     hunting: new HuntingService(hunting, characters, ledger, transactions, drops),
     drops: new DropService(drops, hunting, bosses, ledger, transactions),
+    expenses: new ExpenseService(database, characters, ledger, transactions),
     ledger: new LedgerService(ledger),
     close: () => database.close()
   }

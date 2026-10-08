@@ -59,6 +59,8 @@ import type {
   NexonSyncResult
 } from './nexon.contract'
 
+import type { Expense, ExpenseCreate, ExpenseUpdate } from './expense.contract'
+
 export interface AppInfo {
   name: string
   version: string
@@ -149,6 +151,9 @@ export interface AppApi {
     remove: (id: string) => Promise<ApiResult<null>>
   }
   ledger: {
+    createExpense: (input: ExpenseCreate) => Promise<ApiResult<Expense>>
+    updateExpense: (input: ExpenseUpdate) => Promise<ApiResult<Expense>>
+    removeExpense: (id: string) => Promise<ApiResult<null>>
     list: (query: RecordQuery) => Promise<ApiResult<LedgerList>>
     exportCsv: (query: RecordQuery) => Promise<ApiResult<CsvSaved | null>>
   }

@@ -27,6 +27,7 @@ const TABLES = [
   'hunting_sessions',
   'drop_lots',
   'drop_sales',
+  'manual_expenses',
   'ledger_entries'
 ] as const
 type Table = (typeof TABLES)[number]
@@ -49,6 +50,7 @@ function invalid(): never {
 const digest = (tables: Tables) => createHash('sha256').update(JSON.stringify(tables)).digest('hex')
 function counts(tables: Tables): BackupCounts {
   return {
+    manualExpenses: tables.manual_expenses.length,
     customPrices: tables.crystal_price_history.length,
     characters: tables.characters.length,
     bossRuns: tables.boss_runs.length,
@@ -203,13 +205,18 @@ function validateRelations(database: DatabaseSync, tables: Tables): void {
     if (row.net_share !== share) invalid()
     add(`drop:${row.id}:income`, lot, row.sold_on, row.net_share)
   }
+  for (const row of tables.manual_expenses) {
+    add(`manual:${row.id}:expense`, row, row.occurred_on, row.amount)
+  }
   for (const row of tables.ledger_entries) {
     const key =
-      row.hunting_session_id !== null
-        ? `hunting:${row.hunting_session_id}:${row.direction}`
-        : row.crystal_settlement_id !== null
-          ? `crystal:${row.crystal_settlement_id}:income`
-          : `drop:${row.drop_sale_id}:income`
+      row.manual_expense_id !== null
+        ? `manual:${row.manual_expense_id}:${row.direction}`
+        : row.hunting_session_id !== null
+          ? `hunting:${row.hunting_session_id}:${row.direction}`
+          : row.crystal_settlement_id !== null
+            ? `crystal:${row.crystal_settlement_id}:income`
+            : `drop:${row.drop_sale_id}:income`
     const entry = expected.get(key)
     if (
       !entry ||
@@ -257,7 +264,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, schemaVersion(this.database)].includes(raw.schemaVersion as number)
+        ![7, 8, 9, schemaVersion(this.database)].includes(raw.schemaVersion as number)
       )
         throw new AppError(
           'VALIDATION_ERROR',
@@ -270,11 +277,15 @@ export class BackupService {
         invalid()
       const tables = readObject(raw.tables)
       const older = raw.schemaVersion === 7 || raw.schemaVersion === 8
-      const expectedTables = older
-        ? TABLES.filter((table) => table !== 'crystal_price_history')
-        : TABLES
+      const legacyExpense = Number(raw.schemaVersion) < 10
+      const expectedTables = TABLES.filter(
+        (table) =>
+          !(older && table === 'crystal_price_history') &&
+          !(legacyExpense && table === 'manual_expenses')
+      )
       if (Object.keys(tables).sort().join(',') !== [...expectedTables].sort().join(',')) invalid()
       if (older) tables.crystal_price_history = []
+      if (legacyExpense) tables.manual_expenses = []
       staging = openDatabase(':memory:')
       let total = 0
       for (const table of TABLES) {
@@ -292,9 +303,12 @@ export class BackupService {
           const expectedNames =
             raw.schemaVersion === 7 && table === 'boss_runs'
               ? names.filter((name) => name !== 'party_size_needs_review')
-              : names
+              : legacyExpense && table === 'ledger_entries'
+                ? names.filter((name) => name !== 'manual_expense_id')
+                : names
           if (Object.keys(row).sort().join(',') !== [...expectedNames].sort().join(',')) invalid()
           if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
+          if (legacyExpense && table === 'ledger_entries') row.manual_expense_id = null
           for (const [name, value] of Object.entries(row)) {
             if (value === null) continue
             if (types.get(name) === 'INTEGER' && typeof value !== 'number') invalid()

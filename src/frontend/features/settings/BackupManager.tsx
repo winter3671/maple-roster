@@ -7,6 +7,7 @@ import { Dialog } from '../../components/ui/Dialog'
 import { useCrystalPrices } from '../prices/CrystalPriceProvider'
 
 const labels: { key: keyof BackupCounts; label: string }[] = [
+  { key: 'manualExpenses', label: '직접 지출' },
   { key: 'customPrices', label: '수동 결정석 가격표' },
   { key: 'characters', label: '캐릭터' },
   { key: 'templates', label: '보스 묶음 프리셋' },

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { DashboardStats } from '../../../shared/contracts/dashboard.contract'
 import { formatMeso } from '../../lib/format'
 
-const sourceNames = { hunting: '사냥', crystal: '결정석', drop: '드랍 판매' }
+const sourceNames = { hunting: '사냥', crystal: '결정석', drop: '드랍 판매', manual: '직접 지출' }
 export function DashboardBreakdown({
   data,
   onCharacter
@@ -65,7 +65,7 @@ export function DashboardBreakdown({
           </p>
         )}
       </section>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {data.sources.map((row) => (
           <article key={row.source} className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="text-xs font-semibold">{sourceNames[row.source]}</h2>

@@ -1,4 +1,7 @@
 export const IPC_CHANNELS = {
+  ledgerCreateExpense: 'ledger:create-expense',
+  ledgerUpdateExpense: 'ledger:update-expense',
+  ledgerRemoveExpense: 'ledger:remove-expense',
   backupAutomaticStatus: 'backup:automatic-status',
   backupAutomaticNow: 'backup:automatic-now',
   bossesUpdateIncomeDate: 'bosses:update-income-date',

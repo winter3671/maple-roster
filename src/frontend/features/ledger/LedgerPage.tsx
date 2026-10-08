@@ -9,7 +9,17 @@ import { useLedger } from './useLedger'
 import { ledgerApi } from './ledger.api'
 import { groupLedgerIncome } from '../../../shared/ledger-income'
 
+import type { LedgerEntry } from '../../../shared/contracts/ledger.contract'
+import type { ExpenseInput } from '../../../shared/contracts/expense.contract'
+import { ExpenseForm } from './ExpenseForm'
+
 export function LedgerPage() {
+  const [editor, setEditor] = useState<LedgerEntry | 'new' | null>(null)
+  const [deleting, setDeleting] = useState<LedgerEntry | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [notice, setNotice] = useState('')
+  const mutationLock = useRef(false)
   const [query, setQuery] = useState(thisMonthQuery)
   const state = useLedger(query)
   const incomeGroups = groupLedgerIncome(state.data?.entries ?? [])
@@ -26,6 +36,50 @@ export function LedgerPage() {
       mounted.current = false
     }
   }, [])
+  async function saveExpense(input: ExpenseInput, requestId: string): Promise<boolean> {
+    if (mutationLock.current) return false
+    mutationLock.current = true
+    setSaving(true)
+    setSaveError('')
+    try {
+      if (editor && editor !== 'new')
+        await ledgerApi.updateExpense({ ...input, id: editor.manualExpenseId! })
+      else await ledgerApi.createExpense({ ...input, requestId })
+      setEditor(null)
+      setNotice(
+        input.date < query.from ||
+          input.date > query.to ||
+          (query.characterId && query.characterId !== input.characterId)
+          ? '지출을 저장했습니다. 현재 조회 조건 밖의 기록이므로 기간·캐릭터를 변경해 확인하세요.'
+          : '지출을 저장했습니다.'
+      )
+      state.reload()
+      return true
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : '지출을 저장하지 못했습니다.')
+      return false
+    } finally {
+      mutationLock.current = false
+      setSaving(false)
+    }
+  }
+  async function removeExpense() {
+    if (mutationLock.current || !deleting?.manualExpenseId) return
+    mutationLock.current = true
+    setSaving(true)
+    setSaveError('')
+    try {
+      await ledgerApi.removeExpense(deleting.manualExpenseId)
+      setDeleting(null)
+      setNotice('지출을 삭제했습니다.')
+      state.reload()
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : '지출을 삭제하지 못했습니다.')
+    } finally {
+      mutationLock.current = false
+      setSaving(false)
+    }
+  }
   async function exportCsv() {
     if (exportLock.current) return
     exportLock.current = true
@@ -51,8 +105,9 @@ export function LedgerPage() {
       <RecordFilters
         initial={query}
         characters={characters.characters}
-        busy={state.loading || characters.loading || exporting}
+        busy={state.loading || characters.loading || exporting || saving}
         onApply={(next) => {
+          setNotice('')
           setExportNotice('')
           setExportError('')
           setQuery(next)
@@ -75,6 +130,53 @@ export function LedgerPage() {
         <p role="alert" className="text-xs text-expense">
           {state.error || characters.error}
         </p>
+      )}
+      {saveError && (
+        <p role="alert" className="text-xs text-expense">
+          {saveError}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="rounded-xl bg-brand-soft p-4 text-xs text-brand">
+          {notice}
+        </p>
+      )}
+      {editor && (
+        <ExpenseForm
+          key={editor === 'new' ? 'new' : editor.id}
+          characters={characters.characters}
+          initial={editor === 'new' ? undefined : editor}
+          preferredCharacterId={query.characterId}
+          busy={saving || exporting}
+          onSave={saveExpense}
+          onCancel={() => {
+            setEditor(null)
+            setSaveError('')
+          }}
+        />
+      )}
+      {deleting && (
+        <section aria-label="지출 삭제 확인" className="rounded-xl border border-expense p-4">
+          <p className="text-xs">
+            {deleting.date} · {deleting.characterName} · {ledgerLabel(deleting)} ·{' '}
+            {formatMeso(deleting.amount)} 메소 지출을 삭제할까요?
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button variant="danger" disabled={saving} onClick={() => void removeExpense()}>
+              삭제 확인
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={saving}
+              onClick={() => {
+                setDeleting(null)
+                setSaveError('')
+              }}
+            >
+              취소
+            </Button>
+          </div>
+        </section>
       )}
       <FinancialSummary summary={state.data?.summary} loading={state.loading} />
       <section aria-label="묶음 수익" className="rounded-2xl border border-line bg-surface p-6">
@@ -105,23 +207,41 @@ export function LedgerPage() {
           <div>
             <h2 className="text-sm font-semibold">지출 내역</h2>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              지출은 개별 거래로 표시합니다. 수정·취소는 원본 활동의 장부에서 진행하세요.
+              장비 구매·강화 등 사용한 메소를 직접 기록하세요. 이전 사냥 비용은 사냥 장부에서
+              관리합니다.
             </p>
             <p className="mt-2 text-[11px] leading-5 text-muted">
               CSV는 조회 조건에 맞는 수입·지출 원본 거래 전체를 저장합니다. 엑셀에서 15자리 초과
               금액을 다룰 때는 금액 열을 텍스트로 가져오세요.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
-              disabled={state.loading || characters.loading || exporting || !state.data}
+              disabled={
+                state.loading ||
+                characters.loading ||
+                exporting ||
+                saving ||
+                !characters.characters.some((row) => !row.isHidden)
+              }
+              onClick={() => {
+                setEditor('new')
+                setDeleting(null)
+                setSaveError('')
+                setNotice('')
+              }}
+            >
+              지출 추가
+            </Button>
+            <Button
+              disabled={state.loading || characters.loading || exporting || saving || !state.data}
               onClick={() => void exportCsv()}
             >
               {exporting ? 'CSV 저장 중…' : 'CSV 내보내기'}
             </Button>
             <Button
               variant="secondary"
-              disabled={state.loading || exporting}
+              disabled={state.loading || exporting || saving}
               onClick={state.reload}
             >
               새로고침
@@ -137,7 +257,7 @@ export function LedgerPage() {
             <table className="w-full min-w-[600px] text-left text-xs">
               <thead className="border-b border-line bg-canvas/60 text-muted">
                 <tr>
-                  {['날짜', '캐릭터', '분류', '금액'].map((label) => (
+                  {['날짜', '캐릭터', '분류 · 메모', '금액', '관리'].map((label) => (
                     <th key={label} scope="col" className="px-6 py-4 font-medium">
                       {label}
                     </th>
@@ -154,12 +274,51 @@ export function LedgerPage() {
                         {entry.characterWorld}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{ledgerLabel(entry)}</td>
+                    <td className="px-6 py-4">
+                      <span>{ledgerLabel(entry)}</span>
+                      {entry.notes && (
+                        <p className="mt-1 max-w-xs whitespace-pre-wrap break-words text-[11px] text-muted">
+                          {entry.notes}
+                        </p>
+                      )}
+                    </td>
                     <td
                       className={`px-6 py-4 font-semibold tabular-nums ${entry.direction === 'income' ? 'text-brand' : 'text-expense'}`}
                     >
                       {entry.direction === 'income' ? '+' : '−'}
                       {formatMeso(entry.amount)} 메소
+                    </td>
+                    <td className="px-6 py-4">
+                      {entry.source === 'manual' ? (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            disabled={saving || exporting || state.loading}
+                            onClick={() => {
+                              setEditor(entry)
+                              setDeleting(null)
+                              setSaveError('')
+                              setNotice('')
+                            }}
+                          >
+                            수정
+                          </Button>
+                          <Button
+                            variant="danger"
+                            disabled={saving || exporting || state.loading}
+                            onClick={() => {
+                              setDeleting(entry)
+                              setEditor(null)
+                              setSaveError('')
+                              setNotice('')
+                            }}
+                          >
+                            삭제
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-muted">사냥 장부에서 관리</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -170,7 +329,7 @@ export function LedgerPage() {
           <EmptyState
             icon="ledger"
             title="조회 기간에 지출 내역이 없어요"
-            description="수입은 위의 보스 수익·사냥 수익 요약에서 확인할 수 있습니다."
+            description="지출 추가 버튼으로 사용한 메소를 기록하세요. 캐릭터가 없다면 먼저 등록해 주세요."
           />
         )}
       </section>

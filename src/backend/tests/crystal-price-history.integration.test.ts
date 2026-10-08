@@ -160,6 +160,8 @@ describe('결정석 가격 이력 관리', () => {
     const file = JSON.parse(content)
     file.schemaVersion = 8
     delete file.tables.crystal_price_history
+    delete file.tables.manual_expenses
+    for (const row of file.tables.ledger_entries) delete row.manual_expense_id
     backup.restore({ previewId: backup.prepare(JSON.stringify(file), '이전버전.json').id })
     expect(prices.custom()).toEqual([])
     expect(bosses.list(query).runs[0].crystalPrice).toBe(10000000)

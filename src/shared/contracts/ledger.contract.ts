@@ -12,8 +12,11 @@ export interface LedgerEntry {
   huntingSessionId: string | null
   crystalSettlementId: string | null
   dropSaleId: string | null
-  source: 'hunting' | 'crystal' | 'drop'
-  activity: 'boss' | 'hunting'
+  manualExpenseId?: string | null
+  expenseCategory?: string
+  notes?: string
+  source: 'hunting' | 'crystal' | 'drop' | 'manual'
+  activity: 'boss' | 'hunting' | 'expense'
   characterId: string
   characterName: string
   characterWorld: string

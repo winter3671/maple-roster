@@ -4,6 +4,7 @@ import type { RecordQuery, LedgerEntry } from '../../shared/contracts/ledger.con
 export const formatMeso = (value: number) => value.toLocaleString('ko-KR')
 export { formatKoreanMeso } from '../../shared/meso-format'
 export function ledgerLabel(entry: LedgerEntry): string {
+  if (entry.source === 'manual') return entry.expenseCategory ?? '직접 지출'
   if (entry.source === 'drop') return '드랍 판매'
   return entry.source === 'crystal'
     ? '결정석 수익'
