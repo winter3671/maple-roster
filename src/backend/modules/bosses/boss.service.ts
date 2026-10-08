@@ -106,6 +106,10 @@ export class BossService {
       throw new AppError('VALIDATION_ERROR', '미래 주차는 생성할 수 없습니다.')
     return this.transaction.run(() => {
       const timestamp = this.now().toISOString()
+      const counts = new Map<string, number>()
+      for (const run of this.repository.list(week, query.characterId)) {
+        counts.set(run.characterId, (counts.get(run.characterId) ?? 0) + 1)
+      }
       const existing = new Set(
         this.repository
           .list(week, query.characterId)
@@ -115,6 +119,13 @@ export class BossService {
         const character = this.characters.find(preset.characterId)!
         if (character.isHidden) continue
         if (existing.has(`${preset.characterId}:${preset.bossKey}`)) continue
+        const count = counts.get(preset.characterId) ?? 0
+        if (count >= 12)
+          throw new AppError(
+            'VALIDATION_ERROR',
+            `${character.name}의 주차 보스가 12개를 초과합니다. 현재 기록을 정리한 뒤 생성해 주세요.`
+          )
+        counts.set(preset.characterId, count + 1)
         this.repository.insertRun({
           ...preset,
           crystalPrice: this.priceForRun(
@@ -152,6 +163,47 @@ export class BossService {
       return this.findRun(run.id)
     })
   }
+  createRun(value: unknown): BossRun {
+    const raw = readObject(value)
+    const input = parseBossPreset(raw)
+    const week = bossWeek(parseBossQuery(raw).date)
+    if (week > bossWeek(getKstDate(this.now())))
+      throw new AppError('VALIDATION_ERROR', '미래 주차는 추가할 수 없습니다.')
+    validateBossSelection(input.bossName, input.difficulty)
+    validateBossParty(input.bossName, input.difficulty, input.partySize)
+    return this.transaction.run(() => {
+      const character = this.characters.find(input.characterId)
+      if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
+      if (character.isHidden)
+        throw new AppError('VALIDATION_ERROR', '숨김을 해제한 뒤 보스를 추가해 주세요.')
+      const existing = this.repository.list(week, character.id)
+      if (existing.some((run) => run.bossName === input.bossName))
+        throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 주차에 같은 보스가 이미 있습니다.')
+      if (existing.length >= 12)
+        throw new AppError(
+          'VALIDATION_ERROR',
+          '한 캐릭터의 주차에는 최대 12개 보스를 추가할 수 있습니다.'
+        )
+      const timestamp = this.now().toISOString()
+      const run: BossRun = {
+        ...input,
+        crystalPrice: requireCrystalPrice(input.bossName, input.difficulty, week),
+        id: randomUUID(),
+        bossKey: input.bossName.toLowerCase(),
+        characterName: character.name,
+        characterWorld: character.world,
+        week,
+        isCleared: false,
+        notes: readText(raw.notes ?? '', '메모', 500, false, true),
+        expectedShare: 0,
+        settlement: null,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      }
+      this.repository.insertRun(run)
+      return this.findRun(run.id)
+    })
+  }
   updateRun(value: unknown): BossRun {
     const raw = readObject(value)
     return this.transaction.run(() => {
@@ -159,15 +211,34 @@ export class BossService {
       const run = {
         ...current,
         ...parseBossDetails(raw),
+        bossName:
+          raw.bossName === undefined ? current.bossName : readText(raw.bossName, '보스 이름', 60),
         notes: readText(raw.notes ?? '', '메모', 500, false, true),
         updatedAt: this.now().toISOString()
       }
-      validateBossDifficultyChange(current.bossName, run.difficulty, current.difficulty)
-      validateBossParty(current.bossName, run.difficulty, run.partySize, current)
+      const bossChanged = run.bossName !== current.bossName
+      if (bossChanged) {
+        if (this.drops.hasLots({ kind: 'boss', id: current.id }))
+          throw new AppError('DROP_IN_USE', '드랍 묶음을 정리한 뒤 보스를 변경해 주세요.')
+        validateBossSelection(run.bossName, run.difficulty)
+        if (
+          this.repository
+            .list(current.week, current.characterId)
+            .some((other) => other.id !== run.id && other.bossName === run.bossName)
+        )
+          throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 주차에 같은 보스가 이미 있습니다.')
+      } else validateBossDifficultyChange(current.bossName, run.difficulty, current.difficulty)
+      validateBossParty(
+        run.bossName,
+        run.difficulty,
+        run.partySize,
+        bossChanged ? undefined : current
+      )
+      run.bossKey = run.bossName.toLowerCase()
       run.crystalPrice =
-        run.difficulty === current.difficulty
+        !bossChanged && run.difficulty === current.difficulty
           ? current.crystalPrice
-          : this.priceForRun(current.bossName, run.difficulty, current.week, current.crystalPrice)
+          : this.priceForRun(run.bossName, run.difficulty, current.week, current.crystalPrice)
       this.repository.updateRun(run)
       if (run.isCleared) {
         const date =
@@ -178,7 +249,10 @@ export class BossService {
           throw new AppError('VALIDATION_ERROR', '수익 반영일은 주차 시작일보다 빠를 수 없습니다.')
         if (date > getKstDate(this.now()))
           throw new AppError('VALIDATION_ERROR', '오늘 이후의 수익은 기록할 수 없습니다.')
-        const changed = run.difficulty !== current.difficulty || run.partySize !== current.partySize
+        const changed =
+          bossChanged ||
+          run.difficulty !== current.difficulty ||
+          run.partySize !== current.partySize
         const preserve = current.settlement && !changed && !this.repository.isAutomatic(run.id)
         if (preserve) {
           this.repository.settle(

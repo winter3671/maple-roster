@@ -19,6 +19,7 @@ import type { BossPresetInput } from '../../shared/contracts/boss.contract'
 import { bossWeek } from '../../shared/boss-period'
 import { getKstDate } from '../../shared/dates'
 import { crystalShare } from '../domain/boss-profit'
+import { WEEKLY_BOSSES } from '../../shared/boss-catalog'
 import charactersSql from '../database/migrations/001_characters.sql?raw'
 import huntingSql from '../database/migrations/002_hunting_ledger.sql?raw'
 
@@ -76,6 +77,84 @@ describe('주간 보스와 결정석 장부', () => {
     const record = cleared()
     return bosses.settle({ runId: record.id, date: '2026-10-13', amount: 60 })
   }
+
+  it('프리셋 없이 주차 보스를 추가하고 중복과 미래 주차를 막는다', () => {
+    const input = {
+      characterId: character.id,
+      date: query.date,
+      bossName: '스우',
+      difficulty: '노멀',
+      partySize: 3
+    }
+    const record = bosses.createRun(input)
+    expect(record).toMatchObject({
+      isCleared: false,
+      settlement: null,
+      expectedShare: 2783333,
+      characterWorld: '스카니아'
+    })
+    expect(bosses.presets()).toEqual([])
+    expect(ledger.list(month).entries).toEqual([])
+    expect(() => bosses.createRun({ ...input, difficulty: '하드' })).toThrow('같은 보스')
+    expect(() => bosses.createRun({ ...input, date: '2026-10-22' })).toThrow('미래 주차')
+    characters.setHidden({ id: character.id, isHidden: true })
+    expect(() => bosses.createRun({ ...input, bossName: '데미안' })).toThrow('숨김')
+  })
+
+  it('캐릭터별 주차 추가는 12개까지만 허용한다', () => {
+    for (const boss of WEEKLY_BOSSES.slice(0, 12)) {
+      bosses.createRun({
+        characterId: character.id,
+        date: query.date,
+        bossName: boss.name,
+        difficulty: boss.difficulties[0],
+        partySize: 1
+      })
+    }
+    expect(() =>
+      bosses.createRun({
+        characterId: character.id,
+        date: query.date,
+        bossName: '더스크',
+        difficulty: '노멀',
+        partySize: 1
+      })
+    ).toThrow('최대 12개')
+    expect(bosses.list(query).runs).toHaveLength(12)
+    preset({ bossName: '더스크' })
+    expect(() => bosses.generate(query)).toThrow('12개를 초과')
+    expect(bosses.list(query).runs).toHaveLength(12)
+  })
+
+  it('클리어한 보스를 교체하면 수익을 재계산하고 날짜와 거래 ID를 보존한다', () => {
+    const record = cleared()
+    const originalEntry = ledger.list(month).entries[0]
+    const updated = bosses.updateRun({ ...record, bossName: '데미안' })
+    expect(updated).toMatchObject({
+      id: record.id,
+      bossName: '데미안',
+      isCleared: true,
+      expectedShare: 2916666
+    })
+    expect(updated.settlement).toMatchObject({
+      id: record.settlement!.id,
+      date: record.settlement!.date,
+      amount: 2916666
+    })
+    expect(ledger.list(month).entries).toHaveLength(1)
+    expect(ledger.list(month).entries[0]).toMatchObject({ id: originalEntry.id, amount: 2916666 })
+    expect(bosses.presets()[0].bossName).toBe('스우')
+    bosses.createRun({
+      characterId: character.id,
+      date: query.date,
+      bossName: '루시드',
+      difficulty: '노멀',
+      partySize: 1
+    })
+    expect(() => bosses.updateRun({ ...updated, bossName: '루시드' })).toThrow('같은 보스')
+    expect(bosses.list(query).runs.find((row) => row.id === record.id)?.bossName).toBe('데미안')
+    expect(ledger.list(month).entries[0].amount).toBe(2916666)
+  })
 
   it.each([
     ['스우', '익스트림', 2],

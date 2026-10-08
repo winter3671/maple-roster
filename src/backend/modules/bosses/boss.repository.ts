@@ -112,9 +112,11 @@ export class BossRepository {
   updateRun(r: BossRun): void {
     this.database
       .prepare(
-        'UPDATE boss_runs SET difficulty = ?, party_size = ?, crystal_price = ?, is_cleared = ?, notes = ?, updated_at = ? WHERE id = ?'
+        'UPDATE boss_runs SET boss_name = ?, boss_key = ?, difficulty = ?, party_size = ?, crystal_price = ?, is_cleared = ?, notes = ?, updated_at = ? WHERE id = ?'
       )
       .run(
+        r.bossName,
+        r.bossKey,
         r.difficulty,
         r.partySize,
         r.crystalPrice,

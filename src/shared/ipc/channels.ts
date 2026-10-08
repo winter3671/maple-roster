@@ -19,6 +19,7 @@ export const IPC_CHANNELS = {
   bossesGenerate: 'bosses:generate',
   bossesSetClear: 'bosses:set-clear',
   bossesUpdateRun: 'bosses:update-run',
+  bossesCreateRun: 'bosses:create-run',
   bossesSettle: 'bosses:settle',
   bossesCancelSale: 'bosses:cancel-sale',
   bossesRemoveRun: 'bosses:remove-run',

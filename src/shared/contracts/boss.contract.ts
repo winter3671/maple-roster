@@ -52,11 +52,16 @@ export interface BossRun extends BossPresetInput {
 }
 export interface BossRunUpdate {
   id: string
+  bossName?: string
   difficulty: string
   partySize: number
   crystalPrice?: number
   notes: string
   incomeDate?: string
+}
+export interface BossRunCreate extends BossPresetInput {
+  date: string
+  notes?: string
 }
 export interface BossList {
   week: string

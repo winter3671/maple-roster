@@ -263,6 +263,8 @@ describe('획득 묶음과 드랍 부분 판매', () => {
     bosses.setClear({ id: run.id, isCleared: true })
     const custom = drops.createLot(input)
     expect(custom.partySize).toBe(3)
+    expect(() => bosses.updateRun({ ...run, bossName: '데미안' })).toThrow('드랍 묶음')
+    expect(bosses.list({ date: '2026-10-08' }).runs[0].bossName).toBe('스우')
     const created = sale({ lotId: custom.id, quantity: 1 })
     expect(() => bosses.setClear({ id: run.id, isCleared: false })).toThrow()
     expect(() => bosses.removeRun(run.id)).toThrow('판매를 모두 취소')

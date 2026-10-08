@@ -11,6 +11,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { formatMeso } from '../../lib/format'
 import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm } from './BossRunForm'
+import { BossRunGroups } from './BossRunGroups'
+import type { Character } from '../../../shared/contracts/character.contract'
 import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
 import { DropManager } from '../drops/DropManager'
@@ -28,12 +30,13 @@ export function BossesPage() {
   const state = useBosses(query)
   const [periodError, setPeriodError] = useState('')
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
+  const [addingCharacter, setAddingCharacter] = useState<Character | null>(null)
   const [drops, setDrops] = useState<BossRun | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const disabled = state.loading || state.busy
   const week = bossWeek(query.date)
   const summary = state.data?.summary
-  const modal = Boolean(editingRun || confirmation)
+  const modal = Boolean(editingRun || addingCharacter || confirmation)
   function confirm(value: Confirmation) {
     state.clearFeedback()
     setConfirmation(value)
@@ -181,117 +184,44 @@ export function BossesPage() {
           <p role="status" className="p-10 text-center text-xs text-muted">
             보스 기록을 불러오는 중…
           </p>
-        ) : state.data?.runs.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-left text-xs">
-              <thead className="border-b border-line bg-canvas text-muted">
-                <tr>
-                  {['캐릭터 / 보스', '결정석 내 몫', '클리어', '반영 수익', '관리'].map((title) => (
-                    <th key={title} scope="col" className="px-5 py-4 font-medium">
-                      {title}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {state.data.runs.map((run) => (
-                  <tr key={run.id} className="border-b border-line last:border-0">
-                    <td className="px-5 py-4">
-                      <p className="font-semibold">
-                        {run.characterName}{' '}
-                        <span className="font-normal text-muted">· {run.characterWorld}</span>
-                      </p>
-                      <p className="mt-2">
-                        {run.bossName} · {run.difficulty}
-                      </p>
-                      {run.notes && (
-                        <p className="mt-2 max-w-48 whitespace-pre-wrap break-words text-muted">
-                          {run.notes}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 tabular-nums">
-                      <p>{formatMeso(run.expectedShare)} 메소</p>
-                      <p className="mt-2 text-muted">
-                        {run.partySize}인 · 전체 {formatMeso(run.crystalPrice)}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          aria-label={`${run.characterName} ${run.bossName} 클리어`}
-                          checked={run.isCleared}
-                          disabled={disabled}
-                          onChange={(event) =>
-                            void state.mutate(
-                              () => bossesApi.setClear(run.id, event.target.checked),
-                              event.target.checked
-                                ? '클리어와 결정석 수익을 반영했습니다.'
-                                : '클리어와 결정석 수익을 취소했습니다.'
-                            )
-                          }
-                          className="accent-brand"
-                        />
-                        {run.isCleared ? '완료' : '미완료'}
-                      </label>
-                    </td>
-                    <td className="px-5 py-4">
-                      <p className="font-semibold text-brand">
-                        {formatMeso(
-                          run.isCleared ? (run.settlement?.amount ?? run.expectedShare) : 0
-                        )}{' '}
-                        메소
-                      </p>
-                      {run.settlement && (
-                        <p className="mt-2 text-muted">반영일 {run.settlement.date}</p>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="secondary"
-                          disabled={disabled || !run.isCleared}
-                          onClick={() => setDrops(run)}
-                        >
-                          드랍 관리
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          disabled={disabled}
-                          onClick={() => {
-                            state.clearFeedback()
-                            setEditingRun(run)
-                          }}
-                        >
-                          기록 수정
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          disabled={disabled}
-                          onClick={() =>
-                            confirm({
-                              title: '보스 기록 삭제',
-                              description: `${run.characterName}의 ${run.bossName} 기록을 이 주차에서 삭제합니다. 결정석 수익도 취소됩니다. 프리셋은 유지됩니다. 다시 주차를 생성하면 이 기록이 추가됩니다.`,
-                              action: () => bossesApi.removeRun(run.id),
-                              message: '주차 보스 기록을 삭제했습니다.'
-                            })
-                          }
-                        >
-                          기록 삭제
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        ) : state.characters.length ? (
+          <BossRunGroups
+            runs={state.data?.runs ?? []}
+            characters={state.characters}
+            characterId={query.characterId}
+            busy={disabled}
+            canAdd={week <= currentBossWeek()}
+            onAdd={(character) => {
+              state.clearFeedback()
+              setAddingCharacter(character)
+            }}
+            onEdit={(run) => {
+              state.clearFeedback()
+              setEditingRun(run)
+            }}
+            onDrops={setDrops}
+            onClear={(run, value) =>
+              void state.mutate(
+                () => bossesApi.setClear(run.id, value),
+                value
+                  ? '클리어와 결정석 수익을 반영했습니다.'
+                  : '클리어와 결정석 수익을 취소했습니다.'
+              )
+            }
+            onDelete={(run) =>
+              confirm({
+                title: '보스 기록 삭제',
+                description: `${run.characterName}의 ${run.bossName} 기록과 결정석 수익을 이 주차에서 삭제합니다. 프리셋과 다른 주차는 유지됩니다.`,
+                action: () => bossesApi.removeRun(run.id),
+                message: '주차 보스 기록을 삭제했습니다.'
+              })
+            }
+          />
         ) : (
           <EmptyState
             icon="boss"
-            title="이 주차에 보스 기록이 없어요"
-            description="아래에서 프리셋을 추가하고 프리셋으로 주차 생성을 눌러 주세요. 과거 주차의 기록도 그대로 보존됩니다."
+            title="등록된 캐릭터가 없어요"
+            description="캐릭터를 먼저 등록한 뒤 보스를 추가하거나 묶음 프리셋을 할당하세요."
           />
         )}
       </section>
@@ -320,6 +250,11 @@ export function BossesPage() {
           )}
           <BossRunForm
             run={editingRun}
+            unavailable={state.data?.runs
+              .filter(
+                (row) => row.characterId === editingRun.characterId && row.id !== editingRun.id
+              )
+              .map((row) => row.bossName)}
             busy={state.busy}
             onCancel={() => setEditingRun(null)}
             onSave={async (input) => {
@@ -328,6 +263,58 @@ export function BossesPage() {
                 '이 주차의 보스 기록을 수정했습니다.'
               )
               if (saved) setEditingRun(null)
+              return saved
+            }}
+          />
+        </Dialog>
+      )}
+      {addingCharacter && (
+        <Dialog
+          title={`${addingCharacter.name} 보스 추가`}
+          busy={state.busy}
+          onClose={() => setAddingCharacter(null)}
+        >
+          {state.error && (
+            <p role="alert" className="mb-4 text-xs text-expense">
+              {state.error}
+            </p>
+          )}
+          <BossRunForm
+            run={{
+              id: '',
+              characterId: addingCharacter.id,
+              characterName: addingCharacter.name,
+              characterWorld: addingCharacter.world,
+              bossName: '',
+              bossKey: '',
+              difficulty: '',
+              partySize: 1,
+              crystalPrice: 0,
+              expectedShare: 0,
+              week,
+              isCleared: false,
+              notes: '',
+              settlement: null,
+              createdAt: '',
+              updatedAt: ''
+            }}
+            unavailable={state.data?.runs
+              .filter((row) => row.characterId === addingCharacter.id)
+              .map((row) => row.bossName)}
+            busy={state.busy}
+            onCancel={() => setAddingCharacter(null)}
+            onSave={async (input) => {
+              const saved = await state.mutate(
+                () =>
+                  bossesApi.createRun({
+                    ...input,
+                    bossName: input.bossName ?? '',
+                    characterId: addingCharacter.id,
+                    date: week
+                  }),
+                '이 주차에 보스를 추가했습니다.'
+              )
+              if (saved) setAddingCharacter(null)
               return saved
             }}
           />

@@ -26,6 +26,7 @@ const api: AppApi = {
     generate: (query) => ipcRenderer.invoke(IPC_CHANNELS.bossesGenerate, query),
     setClear: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSetClear, input),
     updateRun: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesUpdateRun, input),
+    createRun: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesCreateRun, input),
     settle: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSettle, input),
     cancelSale: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesCancelSale, id),
     removeRun: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesRemoveRun, id)
