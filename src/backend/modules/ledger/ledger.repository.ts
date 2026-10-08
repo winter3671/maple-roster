@@ -42,12 +42,17 @@ export class LedgerRepository {
   list(query: RecordQuery): LedgerEntry[] {
     return this.database
       .prepare(
-        `SELECT e.*, c.name AS character_name FROM ledger_entries e JOIN characters c ON c.id = e.character_id
-      WHERE occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''} ORDER BY occurred_on DESC, e.created_at DESC, e.id`
+        `SELECT e.*, c.name AS character_name, dl.boss_run_id AS drop_boss_run_id
+      FROM ledger_entries e JOIN characters c ON c.id = e.character_id
+      LEFT JOIN drop_sales ds ON ds.id = e.drop_sale_id
+      LEFT JOIN drop_lots dl ON dl.id = ds.drop_lot_id
+      WHERE e.occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''} ORDER BY e.occurred_on DESC, e.created_at DESC, e.id`
       )
       .all(query.from, query.to, ...(query.characterId ? [query.characterId] : []))
       .map((row) => ({
         id: String(row.id),
+        activity:
+          row.crystal_settlement_id !== null || row.drop_boss_run_id != null ? 'boss' : 'hunting',
         huntingSessionId: row.hunting_session_id === null ? null : String(row.hunting_session_id),
         crystalSettlementId:
           row.crystal_settlement_id === null ? null : String(row.crystal_settlement_id),

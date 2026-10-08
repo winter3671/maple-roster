@@ -8,6 +8,7 @@ const row: LedgerEntry = {
   crystalSettlementId: null,
   dropSaleId: null,
   source: 'hunting',
+  activity: 'hunting',
   characterId: 'character-id',
   characterName: '캐릭터',
   characterWorld: '루나',

@@ -11,6 +11,7 @@ const entry = (overrides: Partial<LedgerEntry> = {}): LedgerEntry => ({
   crystalSettlementId: null,
   dropSaleId: null,
   source: 'hunting',
+  activity: 'hunting',
   direction: 'income',
   amount: 100,
   date: '2026-10-08',

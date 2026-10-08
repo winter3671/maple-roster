@@ -18,6 +18,7 @@ import { LedgerRepository } from '../modules/ledger/ledger.repository'
 import { LedgerService } from '../modules/ledger/ledger.service'
 import type { DropLot, DropSaleInput } from '../../shared/contracts/drop.contract'
 import type { HuntingSession } from '../../shared/contracts/hunting.contract'
+import { groupLedgerIncome } from '../../shared/ledger-income'
 import charactersSql from '../database/migrations/001_characters.sql?raw'
 import huntingSql from '../database/migrations/002_hunting_ledger.sql?raw'
 import bossesSql from '../database/migrations/003_bosses.sql?raw'
@@ -32,6 +33,60 @@ describe('획득 묶음과 드랍 부분 판매', () => {
   let characterId: string, session: HuntingSession, lot: DropLot
   const clock = () => new Date('2026-10-15T00:00:00Z')
   const month = { from: '2026-10-01', to: '2026-10-15' }
+  it('결정석·보스 드랍은 보스 수익, 획득 메소·사냥 드랍은 사냥 수익으로 묶고 지출은 제외한다', () => {
+    const huntingSale = sale()
+    const run = bosses.createRun({
+      characterId,
+      date: '2026-10-08',
+      bossName: '스우',
+      difficulty: '노멀',
+      partySize: 1
+    })
+    const cleared = bosses.setClear({ id: run.id, isCleared: true })
+    const bossLot = drops.createLot({
+      requestId: randomUUID(),
+      source: { kind: 'boss', id: run.id },
+      itemName: '보스 드랍',
+      quantity: 1,
+      estimatedUnitPrice: 0,
+      notes: ''
+    })
+    const bossSale = drops.createSale({
+      requestId: randomUUID(),
+      lotId: bossLot.id,
+      date: '2026-10-15',
+      quantity: 1,
+      grossAmount: 500,
+      feeAmount: 0,
+      partySize: 1,
+      shareMode: 'equal',
+      manualShare: null
+    })
+    const list = ledger.list(month)
+    expect(list.entries.find((entry) => entry.dropSaleId === bossSale.id)?.activity).toBe('boss')
+    expect(list.entries.find((entry) => entry.dropSaleId === huntingSale.id)?.activity).toBe(
+      'hunting'
+    )
+    const groups = groupLedgerIncome(list.entries)
+    expect(groups).toEqual([
+      { activity: 'boss', amount: cleared.settlement!.amount + 500, count: 2 },
+      { activity: 'hunting', amount: 1000 + huntingSale.netShare, count: 2 }
+    ])
+    expect(groups.reduce((sum, group) => sum + group.amount, 0)).toBe(list.summary.income)
+    expect(list.summary.expense).toBe(100)
+    expect(
+      groupLedgerIncome(ledger.list({ from: '2026-10-13', to: '2026-10-13' }).entries)
+    ).toEqual([
+      { activity: 'boss', amount: 0, count: 0 },
+      { activity: 'hunting', amount: huntingSale.netShare, count: 1 }
+    ])
+    drops.cancelSale(bossSale.id)
+    expect(groupLedgerIncome(ledger.list(month).entries)[0]).toEqual({
+      activity: 'boss',
+      amount: cleared.settlement!.amount,
+      count: 1
+    })
+  })
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'maple-drop-test-'))
     database = openDatabase(join(directory, 'data.sqlite'))

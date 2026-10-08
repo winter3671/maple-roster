@@ -7,10 +7,13 @@ import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
 import { useCharacters } from '../characters/useCharacters'
 import { useLedger } from './useLedger'
 import { ledgerApi } from './ledger.api'
+import { groupLedgerIncome } from '../../../shared/ledger-income'
 
 export function LedgerPage() {
   const [query, setQuery] = useState(thisMonthQuery)
   const state = useLedger(query)
+  const incomeGroups = groupLedgerIncome(state.data?.entries ?? [])
+  const expenses = state.data?.entries.filter((entry) => entry.direction === 'expense') ?? []
   const characters = useCharacters()
   const [exporting, setExporting] = useState(false),
     [exportError, setExportError] = useState(''),
@@ -74,17 +77,39 @@ export function LedgerPage() {
         </p>
       )}
       <FinancialSummary summary={state.data?.summary} loading={state.loading} />
+      <section aria-label="묶음 수익" className="rounded-2xl border border-line bg-surface p-6">
+        <h2 className="text-sm font-semibold">수익 요약</h2>
+        <p className="mt-2 text-[11px] leading-5 text-muted">
+          조회 기간·캐릭터의 수입을 두 묶음으로 표시합니다. 보스 수익은 결정석과 보스 드랍 판매,
+          사냥 수익은 획득 메소와 사냥 드랍 판매를 포함합니다.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {incomeGroups.map((group) => (
+            <article key={group.activity} className="rounded-xl bg-brand-soft p-4">
+              <h3 className="text-xs font-semibold">
+                {group.activity === 'boss' ? '보스 수익' : '사냥 수익'}
+              </h3>
+              <p className="mt-3 text-lg font-semibold tabular-nums text-brand">
+                {state.loading ? '—' : formatMeso(group.amount)}{' '}
+                <span className="text-xs font-normal">메소</span>
+              </p>
+              <p className="mt-2 text-[11px] text-muted">
+                {state.loading ? '조회 중…' : `원본 수입 ${group.count}건 합산`}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
       <section className="rounded-2xl border border-line bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-5">
           <div>
-            <h2 className="text-sm font-semibold">수입과 지출</h2>
+            <h2 className="text-sm font-semibold">지출 내역</h2>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              사냥·결정석·드랍 판매에서 생성된 거래입니다. 수정·취소는 원본 활동의 장부에서
-              진행하세요.
+              지출은 개별 거래로 표시합니다. 수정·취소는 원본 활동의 장부에서 진행하세요.
             </p>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              CSV는 마지막으로 조회한 기간·캐릭터 조건으로 저장합니다. 엑셀에서 15자리 초과 금액을
-              다룰 때는 금액 열을 텍스트로 가져오세요.
+              CSV는 조회 조건에 맞는 수입·지출 원본 거래 전체를 저장합니다. 엑셀에서 15자리 초과
+              금액을 다룰 때는 금액 열을 텍스트로 가져오세요.
             </p>
           </div>
           <div className="flex gap-2">
@@ -107,7 +132,7 @@ export function LedgerPage() {
           <p role="status" className="p-10 text-center text-sm text-muted">
             거래 내역을 불러오는 중…
           </p>
-        ) : state.data?.entries.length ? (
+        ) : expenses.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] text-left text-xs">
               <thead className="border-b border-line bg-canvas/60 text-muted">
@@ -120,7 +145,7 @@ export function LedgerPage() {
                 </tr>
               </thead>
               <tbody>
-                {state.data.entries.map((entry) => (
+                {expenses.map((entry) => (
                   <tr key={entry.id} className="border-b border-line last:border-0">
                     <td className="px-6 py-4">{entry.date}</td>
                     <td className="px-6 py-4">
@@ -144,8 +169,8 @@ export function LedgerPage() {
         ) : (
           <EmptyState
             icon="ledger"
-            title="조회 기간에 거래 내역이 없어요"
-            description="사냥 기록이나 보스 클리어·드랍 판매를 저장하면 거래가 표시됩니다. 미판매 아이템의 예상 가치는 실제 수입에 포함하지 않습니다."
+            title="조회 기간에 지출 내역이 없어요"
+            description="수입은 위의 보스 수익·사냥 수익 요약에서 확인할 수 있습니다."
           />
         )}
       </section>

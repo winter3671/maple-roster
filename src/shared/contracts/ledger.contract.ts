@@ -13,6 +13,7 @@ export interface LedgerEntry {
   crystalSettlementId: string | null
   dropSaleId: string | null
   source: 'hunting' | 'crystal' | 'drop'
+  activity: 'boss' | 'hunting'
   characterId: string
   characterName: string
   characterWorld: string
