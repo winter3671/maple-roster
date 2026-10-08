@@ -302,6 +302,13 @@ export function BossesPage() {
             preview={apiPreview}
             busy={state.busy}
             onCancel={() => setApiPreview(null)}
+            onReplace={async (members, date) => {
+              const saved = await state.mutate(
+                () => bossesApi.replaceClears(apiPreview.id, members, date),
+                '이 주차를 API 완료 보스 목록으로 맞추고 결정석 수익을 반영했습니다.'
+              )
+              if (saved) setApiPreview(null)
+            }}
             onApply={async (ids, date) => {
               const saved = await state.mutate(
                 () => bossesApi.applyClears(apiPreview.id, ids, date),

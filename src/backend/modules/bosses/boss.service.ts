@@ -238,6 +238,138 @@ export class BossService {
       return { applied, alreadyCleared }
     })
   }
+  apiReplacementConflicts(
+    runs: BossRun[],
+    members: { bossName: string; difficulty: string }[]
+  ): string[] {
+    const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
+    return runs.flatMap((run) => {
+      const target = members.find((member) => key(member.bossName) === key(run.bossName))
+      if (target?.difficulty === run.difficulty) return []
+      if (run.isCleared || run.settlement || this.drops.hasLots({ kind: 'boss', id: run.id }))
+        return [
+          `${run.bossName} · ${run.difficulty}: 기존 클리어 수익 또는 드랍 기록이 있어 자동 제외·난이도 변경할 수 없습니다.`
+        ]
+      return []
+    })
+  }
+  replaceApiClears(
+    snapshots: BossRun[],
+    characterId: string,
+    week: string,
+    members: { bossName: string; difficulty: string; partySize: number }[],
+    date: string
+  ): { applied: number; alreadyCleared: number; added: number; removed: number } {
+    const incomeDate = readDate(date)
+    if (incomeDate < week || incomeDate > getKstDate(this.now()))
+      throw new AppError('VALIDATION_ERROR', '수익 반영일은 주차 시작일부터 오늘 사이여야 합니다.')
+    if (members.length < 1 || members.length > 12)
+      throw new AppError('VALIDATION_ERROR', '보스 구성은 1~12개여야 합니다.')
+    const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
+    return this.transaction.run(() => {
+      const character = this.characters.find(characterId)
+      if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
+      const current = this.repository.list(week, characterId)
+      if (
+        current.length !== snapshots.length ||
+        current.some(
+          (run) =>
+            !snapshots.some(
+              (snapshot) =>
+                [
+                  'id',
+                  'characterId',
+                  'week',
+                  'bossName',
+                  'difficulty',
+                  'partySize',
+                  'crystalPrice',
+                  'isCleared',
+                  'notes',
+                  'updatedAt'
+                ].every((key) => run[key as keyof BossRun] === snapshot[key as keyof BossRun]) &&
+                JSON.stringify(run.settlement) === JSON.stringify(snapshot.settlement)
+            )
+        )
+      )
+        throw new AppError(
+          'REQUEST_CONFLICT',
+          '조회 이후 주차 기록이 변경되었습니다. 다시 조회해 주세요.'
+        )
+      const conflicts = this.apiReplacementConflicts(current, members)
+      if (conflicts.length) throw new AppError('REQUEST_CONFLICT', conflicts.join('\n'))
+      const timestamp = this.now().toISOString()
+      const targets = members.map((member) => {
+        const details = parseBossDetails(member)
+        validateBossSelection(member.bossName, member.difficulty)
+        const existing = current.find((run) => key(run.bossName) === key(member.bossName))
+        validateBossParty(
+          member.bossName,
+          member.difficulty,
+          details.partySize,
+          existing?.isCleared ? existing : undefined
+        )
+        if (existing?.isCleared && existing.partySize !== details.partySize)
+          throw new AppError(
+            'REQUEST_CONFLICT',
+            '기존 클리어 보스의 인원은 기록 수정에서 변경해 주세요.'
+          )
+        const price =
+          existing?.difficulty === member.difficulty
+            ? existing.crystalPrice
+            : requireCrystalPrice(member.bossName, member.difficulty, week)
+        return { existing, member: { ...member, partySize: details.partySize }, price }
+      })
+      if (new Set(members.map((row) => key(row.bossName))).size !== members.length)
+        throw new AppError('DUPLICATE_BOSS', '중복 보스는 반영할 수 없습니다.')
+      const removed = current.filter(
+        (run) => !targets.some((target) => target.existing?.id === run.id)
+      )
+      for (const run of removed) this.repository.removeRun(run.id)
+      let applied = 0,
+        alreadyCleared = 0,
+        added = 0
+      for (const { existing, member, price } of targets) {
+        if (existing?.isCleared) {
+          alreadyCleared++
+          continue
+        }
+        const run: BossRun = existing
+          ? {
+              ...existing,
+              difficulty: member.difficulty,
+              partySize: member.partySize,
+              crystalPrice: price,
+              isCleared: true,
+              updatedAt: timestamp
+            }
+          : {
+              ...member,
+              id: randomUUID(),
+              bossKey: member.bossName.toLowerCase(),
+              characterId,
+              characterName: character.name,
+              characterWorld: character.world,
+              week,
+              crystalPrice: price,
+              expectedShare: 0,
+              isCleared: true,
+              notes: '',
+              settlement: null,
+              createdAt: timestamp,
+              updatedAt: timestamp
+            }
+        if (existing) this.repository.updateRun(run)
+        else {
+          this.repository.insertRun(run)
+          added++
+        }
+        this.syncClearIncome(run, incomeDate)
+        applied++
+      }
+      return { applied, alreadyCleared, added, removed: removed.length }
+    })
+  }
   updateRun(value: unknown): BossRun {
     const raw = readObject(value)
     return this.transaction.run(() => {

@@ -10,6 +10,8 @@ import { AppError } from '../../../shared/errors'
 import { NexonClient } from '../../integrations/nexon/nexon.client'
 import { CharacterRepository } from '../characters/character.repository'
 import { BossService } from './boss.service'
+import { WEEKLY_BOSSES, bossPartyLimit, validateBossSelection } from '../../../shared/boss-catalog'
+import { crystalShare, findCrystalPrice } from '../../../shared/crystal-prices'
 
 export class BossSyncService {
   private readonly previews = new Map<
@@ -40,6 +42,54 @@ export class BossSyncService {
       throw new AppError('VALIDATION_ERROR', '이 캐릭터의 주차 보스 기록을 먼저 생성해 주세요.')
     const state = await this.client.scheduler(character.nexon.ocid, queriedDate, today)
     const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
+    const completed = state.bosses.filter((boss) => boss.isCleared)
+    const blockedReasons: string[] = []
+    const presets = this.bosses.presets(characterId)
+    const members = completed
+      .map((boss) => {
+        const catalog = WEEKLY_BOSSES.find(
+          (candidate) => key(candidate.name) === key(boss.bossName)
+        )
+        const bossName = catalog?.name ?? boss.bossName
+        try {
+          validateBossSelection(bossName, boss.difficulty)
+        } catch {
+          blockedReasons.push(`${bossName} · ${boss.difficulty}: 지원하지 않는 보스·난이도입니다.`)
+        }
+        const existing = snapshots.find((run) => key(run.bossName) === key(bossName))
+        const preset = presets.find((run) => key(run.bossName) === key(bossName))
+        const partySize =
+          existing?.isCleared && existing.difficulty === boss.difficulty
+            ? existing.partySize
+            : Math.min(
+                existing?.partySize ?? preset?.partySize ?? 1,
+                bossPartyLimit(bossName, boss.difficulty)
+              )
+        const crystalPrice =
+          existing?.difficulty === boss.difficulty
+            ? existing.crystalPrice
+            : findCrystalPrice(bossName, boss.difficulty, week)?.amount
+        if (crystalPrice === undefined)
+          blockedReasons.push(`${bossName} · ${boss.difficulty}: 해당 주차의 가격표가 없습니다.`)
+        return {
+          bossName,
+          difficulty: boss.difficulty,
+          partySize,
+          crystalPrice: crystalPrice ?? 0,
+          expectedShare: crystalShare(crystalPrice ?? 0, partySize),
+          isCleared: existing?.isCleared === true
+        }
+      })
+      .sort(compareBossProgression)
+    if (!members.length) blockedReasons.push('API 완료 보스가 없습니다. 기존 구성을 유지합니다.')
+    if (members.length > 12)
+      blockedReasons.push('API 완료 보스가 12개를 초과해 주차 구성으로 반영할 수 없습니다.')
+    if (new Set(members.map((boss) => key(boss.bossName))).size !== members.length)
+      blockedReasons.push('같은 보스의 여러 완료 난이도가 있어 확인이 필요합니다.')
+    const removed = snapshots.filter(
+      (run) => !members.some((boss) => key(boss.bossName) === key(run.bossName))
+    )
+    blockedReasons.push(...this.bosses.apiReplacementConflicts(snapshots, members))
     const preview: BossSyncPreview = {
       id: randomUUID(),
       characterName: character.name,
@@ -84,7 +134,12 @@ export class BossSyncService {
                 key(run.bossName) === key(boss.bossName) && run.difficulty === boss.difficulty
             )
         )
-        .map(({ bossName, difficulty }) => ({ bossName, difficulty }))
+        .map(({ bossName, difficulty }) => ({ bossName, difficulty })),
+      replacement: {
+        members,
+        removed: removed.map(({ bossName, difficulty }) => ({ bossName, difficulty })),
+        blockedReasons
+      }
     }
     for (const [id, entry] of this.previews)
       if (entry.preview.expiresAt <= this.now().toISOString()) this.previews.delete(id)
@@ -92,7 +147,12 @@ export class BossSyncService {
     this.previews.set(preview.id, { preview, snapshots, characterId, ocid: character.nexon.ocid })
     return preview
   }
-  apply(value: unknown): { applied: number; alreadyCleared: number } {
+  apply(value: unknown): {
+    applied: number
+    alreadyCleared: number
+    added?: number
+    removed?: number
+  } {
     const input = readObject(value),
       id = readId(input.previewId)
     const entry = this.previews.get(id)
@@ -108,6 +168,41 @@ export class BossSyncService {
         'REQUEST_CONFLICT',
         'API 연결이 변경되었습니다. 다시 연결하고 조회해 주세요.'
       )
+    if (input.mode === 'replace') {
+      if (entry.preview.replacement.blockedReasons.length)
+        throw new AppError('REQUEST_CONFLICT', entry.preview.replacement.blockedReasons.join('\n'))
+      if (
+        !Array.isArray(input.members) ||
+        input.members.length !== entry.preview.replacement.members.length
+      )
+        throw new AppError('VALIDATION_ERROR', 'API 완료 목록 전체를 반영해 주세요.')
+      const members = input.members.map((value) => {
+        const member = readObject(value)
+        const expected = entry.preview.replacement.members.find(
+          (row) => row.bossName === member.bossName && row.difficulty === member.difficulty
+        )
+        if (!expected)
+          throw new AppError('VALIDATION_ERROR', 'API에서 완료를 확인한 보스만 반영할 수 있습니다.')
+        return {
+          bossName: expected.bossName,
+          difficulty: expected.difficulty,
+          partySize: member.partySize as number
+        }
+      })
+      if (new Set(members.map((row) => row.bossName)).size !== members.length)
+        throw new AppError('VALIDATION_ERROR', '중복 보스는 반영할 수 없습니다.')
+      const result = this.bosses.replaceApiClears(
+        entry.snapshots,
+        entry.characterId,
+        entry.preview.week,
+        members,
+        readDate(input.incomeDate ?? entry.preview.incomeDate)
+      )
+      this.previews.delete(id)
+      return result
+    }
+    if (input.mode !== undefined && input.mode !== 'selected')
+      throw new AppError('VALIDATION_ERROR', '반영 방식을 확인해 주세요.')
     if (!Array.isArray(input.runIds) || input.runIds.length < 1 || input.runIds.length > 12)
       throw new AppError('VALIDATION_ERROR', '반영할 보스를 1~12개 선택해 주세요.')
     const ids = [...new Set(input.runIds.map(readId))]

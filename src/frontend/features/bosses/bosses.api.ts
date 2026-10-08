@@ -11,6 +11,11 @@ import type {
 } from '../../../shared/contracts/boss.contract'
 
 export const bossesApi = {
+  replaceClears: (
+    previewId: string,
+    members: { bossName: string; difficulty: string; partySize: number }[],
+    incomeDate: string
+  ) => unwrap(getBridge().bosses.applyClears({ previewId, mode: 'replace', members, incomeDate })),
   previewClears: (date: string, characterId: string) =>
     unwrap(getBridge().bosses.previewClears({ date, characterId })),
   applyClears: (previewId: string, runIds: string[], incomeDate: string) =>

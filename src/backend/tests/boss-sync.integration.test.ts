@@ -11,6 +11,7 @@ import { DropRepository } from '../modules/drops/drop.repository'
 import { LedgerRepository } from '../modules/ledger/ledger.repository'
 import { LedgerService } from '../modules/ledger/ledger.service'
 import { NexonClient } from '../integrations/nexon/nexon.client'
+import { WEEKLY_BOSSES } from '../../shared/boss-catalog'
 
 describe('API 보스 클리어 미리보기와 반영', () => {
   let database: DatabaseSync,
@@ -74,6 +75,169 @@ describe('API 보스 클리어 미리보기와 반영', () => {
   const run = (bossName = '스우', difficulty = '노멀', date = query.date) =>
     bosses.createRun({ characterId, date, bossName, difficulty, partySize: 3 })
   const preview = (date = query.date) => sync.preview({ date, characterId })
+  const replace = (result: Awaited<ReturnType<typeof preview>>) =>
+    sync.apply({
+      previewId: result.id,
+      mode: 'replace',
+      members: result.replacement.members.map(({ bossName, difficulty, partySize }) => ({
+        bossName,
+        difficulty,
+        partySize
+      })),
+      incomeDate: result.incomeDate
+    })
+  it('루시드가 빠진 12개 구성을 실제 완료한 12개로 맞추고 기존 11개 기록과 수익을 유지한다', async () => {
+    const initial = WEEKLY_BOSSES.filter((boss) => boss.name !== '루시드')
+      .slice(0, 12)
+      .map((boss) => run(boss.name, boss.difficulties[0]))
+    const removed = initial[0],
+      retained = initial.slice(1)
+    bosses.createPreset({
+      characterId,
+      bossName: removed.bossName,
+      difficulty: removed.difficulty,
+      partySize: 1
+    })
+    for (const row of retained) bosses.setClear({ id: row.id, isCleared: true })
+    bosses.settle({ runId: retained[0].id, date: query.date, amount: 60 })
+    const originalEntries = ledger.list(month).entries
+    contents = [
+      ...retained.map((row) => ({
+        content_name: row.bossName,
+        difficulty: row.difficulty,
+        cycle: 'bossWeekly',
+        complete_flag: 'true'
+      })),
+      { content_name: '루시드', difficulty: 'normal', cycle: 'bossWeekly', complete_flag: 'true' }
+    ]
+    const result = await preview()
+    expect(result.replacement.blockedReasons).toEqual([])
+    expect(result.replacement.removed).toEqual([
+      { bossName: removed.bossName, difficulty: removed.difficulty }
+    ])
+    expect(result.replacement.members.find((row) => row.bossName === '루시드')?.partySize).toBe(1)
+    const members = result.replacement.members.map(({ bossName, difficulty, partySize }) => ({
+      bossName,
+      difficulty,
+      partySize: bossName === '루시드' ? 2 : partySize
+    }))
+    expect(sync.apply({ previewId: result.id, mode: 'replace', members })).toEqual({
+      applied: 1,
+      alreadyCleared: 11,
+      added: 1,
+      removed: 1
+    })
+    const final = bosses.list(query).runs
+    expect(final).toHaveLength(12)
+    expect(final.every((row) => row.isCleared)).toBe(true)
+    expect(final.some((row) => row.id === removed.id)).toBe(false)
+    expect(final.find((row) => row.bossName === '루시드')).toMatchObject({
+      difficulty: '노멀',
+      partySize: 2,
+      expectedShare: 8900000
+    })
+    for (const row of retained) expect(final.some((record) => record.id === row.id)).toBe(true)
+    for (const entry of originalEntries) expect(ledger.list(month).entries).toContainEqual(entry)
+    expect(bosses.presets()[0].bossName).toBe(removed.bossName)
+  })
+  it('미클리어 보스의 난이도를 API 완료 난이도로 맞추고 인원을 반영한다', async () => {
+    const sw = run()
+    bosses.updateRun({ ...sw, notes: '유지할 메모' })
+    contents[0].difficulty = 'extreme'
+    const result = await preview()
+    expect(result.replacement.members[0].partySize).toBe(2)
+    expect(replace(result)).toEqual({ applied: 1, alreadyCleared: 0, added: 0, removed: 0 })
+    expect(bosses.list(query).runs[0]).toMatchObject({
+      id: sw.id,
+      difficulty: '익스트림',
+      partySize: 2,
+      notes: '유지할 메모',
+      isCleared: true,
+      expectedShare: 272500000
+    })
+  })
+  it('기존 수동 수익이 있는 제외 보스는 교체를 차단한다', async () => {
+    const sw = run(),
+      damien = run('데미안')
+    bosses.setClear({ id: damien.id, isCleared: true })
+    const original = ledger.list(month).entries
+    const result = await preview()
+    expect(result.replacement.blockedReasons.join('')).toContain('데미안')
+    expect(() => replace(result)).toThrow('기존 클리어 수익')
+    expect(bosses.list(query).runs).toHaveLength(2)
+    expect(bosses.list(query).runs.find((row) => row.id === sw.id)?.isCleared).toBe(false)
+    expect(ledger.list(month).entries).toEqual(original)
+  })
+  it('교체 중 수익 저장 실패는 제외·추가·난이도 변경을 모두 롤백한다', async () => {
+    const sw = run(),
+      damien = run('데미안')
+    contents = [
+      { content_name: '루시드', difficulty: 'normal', cycle: 'bossWeekly', complete_flag: 'true' }
+    ]
+    const result = await preview()
+    database.exec(
+      "CREATE TRIGGER reject_replacement BEFORE INSERT ON ledger_entries BEGIN SELECT RAISE(ABORT,'replacement failure'); END"
+    )
+    expect(() => replace(result)).toThrow('replacement failure')
+    expect(
+      bosses
+        .list(query)
+        .runs.map((row) => row.id)
+        .sort()
+    ).toEqual([sw.id, damien.id].sort())
+    expect(ledger.list(month).entries).toEqual([])
+  })
+  it('조회 후 다른 기록을 추가하거나 인원을 바꾸면 교체를 차단한다', async () => {
+    const sw = run(),
+      result = await preview()
+    bosses.updateRun({ ...sw, partySize: 2 })
+    expect(() => replace(result)).toThrow('주차 기록이 변경')
+    const next = await preview()
+    run('데미안')
+    expect(() => replace(next)).toThrow('주차 기록이 변경')
+  })
+  it('완료 목록이 없거나 12개를 초과하거나 지원하지 않는 보스이면 교체를 막는다', async () => {
+    run()
+    contents = []
+    expect((await preview()).replacement.blockedReasons.join('')).toContain(
+      'API 완료 보스가 없습니다'
+    )
+    contents = WEEKLY_BOSSES.slice(0, 13).map((boss) => ({
+      content_name: boss.name,
+      difficulty: boss.difficulties[0],
+      cycle: 'bossWeekly',
+      complete_flag: 'true'
+    }))
+    expect((await preview()).replacement.blockedReasons.join('')).toContain('12개를 초과')
+    contents = [
+      {
+        content_name: '미지원 보스',
+        difficulty: 'hard',
+        cycle: 'bossWeekly',
+        complete_flag: 'true'
+      }
+    ]
+    expect((await preview()).replacement.blockedReasons.join('')).toContain('지원하지 않는')
+  })
+  it('교체 요청으로 API에 없는 보스와 초과 인원을 주입할 수 없다', async () => {
+    run()
+    const result = await preview()
+    expect(() =>
+      sync.apply({
+        previewId: result.id,
+        mode: 'replace',
+        members: [{ bossName: '루시드', difficulty: '노멀', partySize: 1 }]
+      })
+    ).toThrow('완료를 확인한')
+    expect(() =>
+      sync.apply({
+        previewId: result.id,
+        mode: 'replace',
+        members: [{ bossName: '스우', difficulty: '노멀', partySize: 7 }]
+      })
+    ).toThrow('파티 인원')
+    expect(ledger.list(month).entries).toEqual([])
+  })
   it('미리보기는 장부를 바꾸지 않고 완료와 난이도가 일치한 보스만 선택 가능하다', async () => {
     const sw = run(),
       damien = run('데미안'),
