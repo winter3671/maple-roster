@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { createServices, type Services } from './bootstrap'
 import { registerHandlers } from './ipc/register-handlers'
 import { createWindow, loadWindow } from './window'
+import { readNexonKey } from '../../backend/config/nexon-key'
 
 let services: Services | undefined
 
@@ -31,7 +32,8 @@ app
     if (!singleInstance) return
     services = createServices(
       app.getVersion(),
-      join(app.getPath('userData'), 'data', 'maple-roster.sqlite')
+      join(app.getPath('userData'), 'data', 'maple-roster.sqlite'),
+      app.isPackaged ? { configured: false, issue: 'missing' } : readNexonKey(app.getAppPath())
     )
     await openApp()
     app.on('activate', () => {

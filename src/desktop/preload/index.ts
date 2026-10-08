@@ -3,6 +3,12 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  nexon: {
+    status: () => ipcRenderer.invoke(IPC_CHANNELS.nexonStatus),
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.nexonList),
+    basic: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonBasic, ocid),
+    register: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonRegister, ocid)
+  },
   system: { getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.systemGetInfo) },
   characters: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.charactersList),

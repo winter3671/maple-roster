@@ -6,6 +6,7 @@ import { Dialog } from '../../components/ui/Dialog'
 import { CharacterCard } from './CharacterCard'
 import { CharacterForm } from './CharacterForm'
 import { useCharacters } from './useCharacters'
+import { NexonCharacterImport } from '../nexon/NexonCharacterImport'
 
 export function CharactersPage() {
   const state = useCharacters()
@@ -17,6 +18,11 @@ export function CharactersPage() {
 
   return (
     <div className="space-y-5">
+      <NexonCharacterImport
+        characters={state.characters}
+        busy={state.busy || state.loading}
+        onRegistered={state.reload}
+      />
       {state.notice && (
         <p
           role="status"

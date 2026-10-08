@@ -7,6 +7,13 @@ export type ErrorCode =
   | 'PERMISSION_DENIED'
   | 'SESSION_NOT_FOUND'
   | 'REQUEST_CONFLICT'
+  | 'API_KEY_MISSING'
+  | 'API_KEY_INVALID'
+  | 'API_PERMISSION_DENIED'
+  | 'API_RATE_LIMITED'
+  | 'API_UNAVAILABLE'
+  | 'API_NETWORK_ERROR'
+  | 'API_RESPONSE_INVALID'
 
 export class AppError extends Error {
   constructor(

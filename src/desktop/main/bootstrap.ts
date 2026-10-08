@@ -7,14 +7,28 @@ import { HuntingService } from '../../backend/modules/hunting/hunting.service'
 import { LedgerRepository } from '../../backend/modules/ledger/ledger.repository'
 import { LedgerService } from '../../backend/modules/ledger/ledger.service'
 import { UnitOfWork } from '../../backend/database/unit-of-work'
+import type { NexonKeyConfig } from '../../backend/config/nexon-key'
+import { NexonClient } from '../../backend/integrations/nexon/nexon.client'
+import { NexonService } from '../../backend/modules/nexon/nexon.service'
 
-export function createServices(version: string, databasePath: string) {
+export function createServices(
+  version: string,
+  databasePath: string,
+  nexonKey: NexonKeyConfig = { configured: false, issue: 'missing' }
+) {
   const database = openDatabase(databasePath)
   const characters = new CharacterRepository(database)
   const ledger = new LedgerRepository(database)
+  const characterService = new CharacterService(characters)
   return {
     system: { getInfo: () => getAppInfo(version) },
-    characters: new CharacterService(characters),
+    characters: characterService,
+    nexon: new NexonService(
+      new NexonClient(() => nexonKey.key),
+      nexonKey,
+      characters,
+      characterService
+    ),
     hunting: new HuntingService(
       new HuntingRepository(database),
       characters,

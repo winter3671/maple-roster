@@ -1,4 +1,8 @@
 export const IPC_CHANNELS = {
+  nexonStatus: 'nexon:status',
+  nexonList: 'nexon:list',
+  nexonBasic: 'nexon:basic',
+  nexonRegister: 'nexon:register',
   systemGetInfo: 'system:get-info',
   charactersList: 'characters:list',
   charactersCreate: 'characters:create',

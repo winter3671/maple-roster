@@ -7,6 +7,7 @@ import type {
 import type { ApiResult } from '../errors'
 import type { HuntingCreate, HuntingUpdate, HuntingSession, HuntingList } from './hunting.contract'
 import type { LedgerList, RecordQuery } from './ledger.contract'
+import type { NexonStatus, NexonCharacter, NexonProfile, NexonRegistration } from './nexon.contract'
 
 export interface AppInfo {
   name: string
@@ -15,6 +16,12 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  nexon: {
+    status: () => Promise<ApiResult<NexonStatus>>
+    list: () => Promise<ApiResult<NexonCharacter[]>>
+    basic: (ocid: string) => Promise<ApiResult<NexonProfile>>
+    register: (ocid: string) => Promise<ApiResult<NexonRegistration>>
+  }
   system: {
     getInfo: () => Promise<AppInfo>
   }
