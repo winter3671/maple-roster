@@ -1,5 +1,6 @@
 import type { BossRun } from '../../../shared/contracts/boss.contract'
 import type { Character } from '../../../shared/contracts/character.contract'
+import { compareBossProgression } from '../../../shared/boss-order'
 import { formatMeso } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 
@@ -48,6 +49,7 @@ export function BossRunGroups({
   const servers = [...new Set([...groups.values()].map((group) => group.world))].sort((a, b) =>
     a.localeCompare(b, 'ko')
   )
+  for (const group of groups.values()) group.runs.sort(compareBossProgression)
   return (
     <div className="space-y-6 p-5">
       {servers.map((world) => (
