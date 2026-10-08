@@ -2,6 +2,7 @@ import { getKstDate } from '../../shared/dates'
 import type { RecordQuery, LedgerEntry } from '../../shared/contracts/ledger.contract'
 
 export const formatMeso = (value: number) => value.toLocaleString('ko-KR')
+export { formatKoreanMeso } from '../../shared/meso-format'
 export function ledgerLabel(entry: LedgerEntry): string {
   if (entry.source === 'drop') return '드랍 판매'
   return entry.source === 'crystal'

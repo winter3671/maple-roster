@@ -3,6 +3,7 @@ import type { DropLot, DropSale } from '../../../shared/contracts/drop.contract'
 import { getKstDate } from '../../../shared/dates'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 
 export function FragmentSaleForm({
   lot,
@@ -101,6 +102,7 @@ export function FragmentSaleForm({
           className={field}
         />
       </label>
+      <MesoAmountHint value={unitPrice} />
       <label className="block text-xs">
         총 판매 금액 (메소)
         <input
@@ -116,6 +118,7 @@ export function FragmentSaleForm({
           className={field}
         />
       </label>
+      <MesoAmountHint value={amount} />
       <p className="text-[11px] leading-5 text-muted">
         개당 금액과 수량으로 합계를 계산합니다. 수수료가 있었다면 총 판매 금액을 실제 받은 금액으로
         조정하세요. 이 금액 전체가 수익으로 반영됩니다.

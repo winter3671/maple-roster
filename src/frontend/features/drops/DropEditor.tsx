@@ -4,6 +4,7 @@ import { getKstDate } from '../../../shared/dates'
 import { Button } from '../../components/ui/Button'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { FragmentSaleForm } from './FragmentSaleForm'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 
 const field =
   'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
@@ -60,6 +61,9 @@ export function DropEditor({
           maxLength={numeric ? 25 : 80}
           onChange={(event) => change(key, event.target.value)}
         />
+        {['estimatedUnitPrice', 'grossAmount', 'feeAmount', 'manualShare'].includes(key) && (
+          <MesoAmountHint value={draft[key]} />
+        )}
       </label>
     )
   }
