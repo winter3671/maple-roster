@@ -4,11 +4,13 @@ import { formatMeso } from '../lib/format'
 export function FinancialSummary({
   summary,
   loading = false,
-  prefix = '조회 기간'
+  prefix = '조회 기간',
+  hideExpense = false
 }: {
   summary?: LedgerSummary
   loading?: boolean
   prefix?: string
+  hideExpense?: boolean
 }) {
   const cards = [
     {
@@ -31,17 +33,25 @@ export function FinancialSummary({
     }
   ]
   return (
-    <section aria-label="수익 요약" className="grid grid-cols-3 gap-4">
-      {cards.map((card) => (
-        <article key={card.label} className="min-w-0 rounded-2xl border border-line bg-surface p-5">
-          <p className="text-xs text-muted">{card.label}</p>
-          <p className={`my-4 break-all text-xl font-semibold tabular-nums ${card.color}`}>
-            {loading || card.value === undefined ? '—' : formatMeso(card.value)}
-            <span className="ml-2 text-[11px] font-normal text-muted">메소</span>
-          </p>
-          <p className="text-[11px] text-muted">{card.detail}</p>
-        </article>
-      ))}
+    <section
+      aria-label="수익 요약"
+      className={`grid gap-4 ${hideExpense ? 'grid-cols-2' : 'grid-cols-3'}`}
+    >
+      {cards
+        .filter((_, index) => !hideExpense || index !== 1)
+        .map((card) => (
+          <article
+            key={card.label}
+            className="min-w-0 rounded-2xl border border-line bg-surface p-5"
+          >
+            <p className="text-xs text-muted">{card.label}</p>
+            <p className={`my-4 break-all text-xl font-semibold tabular-nums ${card.color}`}>
+              {loading || card.value === undefined ? '—' : formatMeso(card.value)}
+              <span className="ml-2 text-[11px] font-normal text-muted">메소</span>
+            </p>
+            <p className="text-[11px] text-muted">{card.detail}</p>
+          </article>
+        ))}
     </section>
   )
 }

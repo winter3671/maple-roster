@@ -42,7 +42,7 @@ export function HuntingPage() {
         busy={state.loading || state.busy}
         onApply={setQuery}
       />
-      <FinancialSummary summary={summary} loading={state.loading} />
+      <FinancialSummary summary={summary} loading={state.loading} hideExpense={!summary?.expense} />
       <p className="text-[11px] leading-5 text-muted">
         사냥 수익은 사냥 날짜 기준으로 연결된 드랍 판매 내 몫을 포함합니다. 거래 장부와 대시보드는
         실제 판매일 기준입니다. 미판매 예상 금액은 순수익에서 제외됩니다.
@@ -51,7 +51,7 @@ export function HuntingPage() {
         <section className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-sm font-semibold">사냥 회차 추가</h2>
           <p className="mb-5 mt-2 text-xs leading-5 text-muted">
-            획득 메소와 소모 비용은 거래 내역에 자동 반영됩니다.
+            30분을 기본으로 기록합니다. 획득 메소는 거래 내역에 자동 반영됩니다.
           </p>
           {!state.loading && state.characters.every((character) => character.isHidden) && (
             <p className="mb-4 rounded-lg bg-brand-soft p-3 text-xs leading-5 text-brand">

@@ -55,9 +55,8 @@ export function HuntingSessionList({
           <dl className="mt-4 grid grid-cols-2 gap-4 text-xs xl:grid-cols-4">
             {[
               { label: '획득 메소', value: formatMeso(session.mesos), color: 'text-brand' },
-              { label: '소모 비용', value: formatMeso(session.cost), color: 'text-expense' },
               {
-                label: '드랍 판매 내 몫',
+                label: '드랍 판매 수익',
                 value: formatMeso(session.saleIncome),
                 color: 'text-brand'
               },
@@ -84,9 +83,15 @@ export function HuntingSessionList({
             ))}
           </dl>
           <p className="mt-4 text-[11px] text-muted">
-            조각 {formatMeso(session.solFragments)}개 · 젬스톤 {formatMeso(session.nodestones)}개
+            조각 {formatMeso(session.solFragments)}개
+            {session.nodestones > 0 && <> · 젬스톤 {formatMeso(session.nodestones)}개</>}
             <span className="ml-2">획득 수량</span>
           </p>
+          {session.cost > 0 && (
+            <p className="mt-2 text-[11px] text-muted">
+              이전 기록의 비용 {formatMeso(session.cost)} 메소가 순수익에 포함되어 있습니다.
+            </p>
+          )}
           {session.notes && (
             <p className="mt-3 whitespace-pre-wrap break-words border-t border-line pt-3 text-xs leading-5 text-muted">
               {session.notes}

@@ -21,7 +21,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
   const [draft, setDraft] = useState<Draft>(() => ({
     characterId: initial?.characterId ?? '',
     date: initial?.date ?? getKstDate(),
-    minutes: String(initial?.minutes ?? 60),
+    minutes: String(initial?.minutes ?? 30),
     mesos: String(initial?.mesos ?? 0),
     cost: String(initial?.cost ?? 0),
     solFragments: String(initial?.solFragments ?? 0),
@@ -29,6 +29,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
     notes: initial?.notes ?? ''
   }))
   const [error, setError] = useState<string | null>(null)
+  const [recordNodestones, setRecordNodestones] = useState((initial?.nodestones ?? 0) > 0)
   const id = useId()
   const options = characters.filter(
     (character) => !character.isHidden || character.id === initial?.characterId
@@ -59,7 +60,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
         mesos: parseDigits(draft.mesos),
         cost: parseDigits(draft.cost),
         solFragments: parseDigits(draft.solFragments),
-        nodestones: parseDigits(draft.nodestones)
+        nodestones: recordNodestones ? parseDigits(draft.nodestones) : 0
       })
       if ((await onSave(input)) && !initial)
         setDraft((current) => ({
@@ -157,26 +158,12 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
         />
         <p className="mt-1 text-[11px] text-muted">사냥으로 직접 얻은 메소만 입력하세요.</p>
       </div>
-      <div>
-        <label htmlFor={`${id}-cost`} className="text-xs font-semibold">
-          소모 비용 (메소)
-        </label>
-        <input
-          id={`${id}-cost`}
-          inputMode="numeric"
-          value={draft.cost}
-          onChange={(event) => change('cost', event.target.value)}
-          onBlur={() => {
-            const value = parseDigits(draft.cost)
-            if (Number.isSafeInteger(value)) change('cost', value.toLocaleString('ko-KR'))
-          }}
-          required
-          disabled={busy}
-          className={fieldClass}
-        />
-        <p className="mt-1 text-[11px] text-muted">도핑 등 이번 회차에 사용한 비용입니다.</p>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      {initial && initial.cost > 0 && (
+        <p className="text-[11px] leading-5 text-muted">
+          이전 기록의 소모 비용은 기존 장부와 함께 유지됩니다.
+        </p>
+      )}
+      <div className="space-y-3">
         <div>
           <label htmlFor={`${id}-fragments`} className="text-xs font-semibold">
             솔 에르다 조각 (개)
@@ -194,23 +181,34 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
             className={fieldClass}
           />
         </div>
-        <div>
-          <label htmlFor={`${id}-nodestones`} className="text-xs font-semibold">
-            코어 젬스톤 (개)
-          </label>
+        <label className="flex items-center gap-2 text-xs">
           <input
-            id={`${id}-nodestones`}
-            type="number"
-            min={0}
-            max={1000000}
-            step={1}
-            value={draft.nodestones}
-            onChange={(event) => change('nodestones', event.target.value)}
-            required
+            type="checkbox"
+            checked={recordNodestones}
             disabled={busy}
-            className={fieldClass}
+            onChange={(event) => setRecordNodestones(event.target.checked)}
           />
-        </div>
+          추가 기록: 코어 젬스톤
+        </label>
+        {recordNodestones && (
+          <div>
+            <label htmlFor={`${id}-nodestones`} className="text-xs font-semibold">
+              코어 젬스톤 (개)
+            </label>
+            <input
+              id={`${id}-nodestones`}
+              type="number"
+              min={0}
+              max={1000000}
+              step={1}
+              value={draft.nodestones}
+              onChange={(event) => change('nodestones', event.target.value)}
+              required
+              disabled={busy}
+              className={fieldClass}
+            />
+          </div>
+        )}
       </div>
       <p className="text-[11px] leading-5 text-muted">
         획득 수량을 입력한 뒤 회차의 드랍 관리에서 판매를 기록하세요. 판매된 수량보다 획득 수량을

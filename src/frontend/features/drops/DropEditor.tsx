@@ -3,6 +3,7 @@ import type { DropLot, DropSale } from '../../../shared/contracts/drop.contract'
 import { getKstDate } from '../../../shared/dates'
 import { Button } from '../../components/ui/Button'
 import { formatMeso, parseDigits } from '../../lib/format'
+import { FragmentSaleForm } from './FragmentSaleForm'
 
 const field =
   'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
@@ -22,6 +23,10 @@ export function DropEditor({
 }) {
   const lot = editor.lot
   const sale = editor.kind === 'sale' ? editor.sale : undefined
+  const simpleFragment =
+    editor.kind === 'sale' &&
+    lot?.managedKind === 'sol_fragment' &&
+    (!sale || (sale.feeAmount === 0 && sale.partySize === 1 && sale.shareMode === 'equal'))
   const [draft, setDraft] = useState<Record<string, string>>({
     itemName: lot?.itemName ?? '',
     quantity: String(
@@ -87,6 +92,10 @@ export function DropEditor({
     party <= 6
       ? Number((BigInt(gross) - BigInt(fee)) / BigInt(party))
       : null
+  if (simpleFragment)
+    return (
+      <FragmentSaleForm lot={lot!} sale={sale} busy={busy} onCancel={onCancel} onSave={onSave} />
+    )
   return (
     <form
       className="space-y-3 rounded-xl border border-brand/20 bg-brand-soft/20 p-4"
@@ -118,6 +127,12 @@ export function DropEditor({
         </>
       ) : (
         <>
+          {lot?.managedKind === 'sol_fragment' && (
+            <p className="text-[11px] leading-5 text-muted">
+              이전 판매의 수수료·분배 설정과 수익을 보존하기 위해 이 기록은 기존 수정 화면을
+              사용합니다. 새 조각 판매는 단가와 총액으로 기록합니다.
+            </p>
+          )}
           <label className="block text-xs">
             판매 날짜
             <input

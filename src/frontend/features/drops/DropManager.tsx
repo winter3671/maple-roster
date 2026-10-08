@@ -106,8 +106,9 @@ export function DropManager({
     <Dialog title={`드랍 관리 · ${title}`} busy={busy} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-xs leading-5 text-muted">
-          예상 금액은 미판매 재고의 참고값입니다. 판매를 기록하면 수수료와 분배를 반영한 내 몫만
-          거래 장부에 수입으로 등록됩니다.
+          {source.kind === 'hunting'
+            ? '솔 에르다 조각은 실제 받은 총 판매 금액을 수익으로 기록합니다. 예상 금액은 미판매 재고의 참고값입니다.'
+            : '예상 금액은 미판매 재고의 참고값입니다. 판매를 기록하면 수수료와 분배를 반영한 내 몫만 거래 장부에 수입으로 등록됩니다.'}
         </p>
         {source.kind === 'boss' && (
           <p className="text-[11px] text-muted">
@@ -129,7 +130,7 @@ export function DropManager({
             미판매 {formatMeso(data.summary.remainingQuantity)}개 · 예상{' '}
             {formatMeso(data.summary.estimatedValue)} 메소
             <br />
-            누적 판매 내 몫 {formatMeso(data.summary.saleIncome)} 메소
+            누적 판매 수익 {formatMeso(data.summary.saleIncome)} 메소
           </div>
         )}
         {confirmation ? (
@@ -257,12 +258,30 @@ export function DropManager({
                     {sale.date} · {formatMeso(sale.quantity)}개 판매
                   </p>
                   <p className="mt-2 leading-5 text-muted">
-                    전체 {formatMeso(sale.grossAmount)} · 수수료 {formatMeso(sale.feeAmount)} ·{' '}
-                    {sale.partySize}인 {sale.shareMode === 'equal' ? '균등 분배' : '직접 분배'}
-                    <br />내 몫{' '}
-                    <span className="font-semibold text-brand">
-                      {formatMeso(sale.netShare)} 메소
-                    </span>
+                    {lot.managedKind === 'sol_fragment' &&
+                    sale.partySize === 1 &&
+                    sale.feeAmount === 0 &&
+                    sale.shareMode === 'equal' ? (
+                      <>
+                        개당{' '}
+                        {sale.grossAmount % sale.quantity === 0
+                          ? `${formatMeso(sale.grossAmount / sale.quantity)} 메소`
+                          : '총액 직접 입력'}{' '}
+                        · 총 판매 금액{' '}
+                        <span className="font-semibold text-brand">
+                          {formatMeso(sale.netShare)} 메소
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        전체 {formatMeso(sale.grossAmount)} · 수수료 {formatMeso(sale.feeAmount)} ·{' '}
+                        {sale.partySize}인 {sale.shareMode === 'equal' ? '균등 분배' : '직접 분배'}
+                        <br />내 몫{' '}
+                        <span className="font-semibold text-brand">
+                          {formatMeso(sale.netShare)} 메소
+                        </span>
+                      </>
+                    )}
                   </p>
                   <div className="mt-2 flex gap-2">
                     <Button
