@@ -1,3 +1,4 @@
+import { DropRepository } from '../modules/drops/drop.repository'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DatabaseSync } from 'node:sqlite'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -13,7 +14,6 @@ import { CharacterService } from '../modules/characters/character.service'
 import { LedgerRepository } from '../modules/ledger/ledger.repository'
 import { LedgerService } from '../modules/ledger/ledger.service'
 import { HuntingRepository } from '../modules/hunting/hunting.repository'
-import { HuntingService } from '../modules/hunting/hunting.service'
 import type { Character } from '../../shared/contracts/character.contract'
 import type { BossPresetInput } from '../../shared/contracts/boss.contract'
 import { bossWeek } from '../../shared/boss-period'
@@ -45,6 +45,7 @@ describe('주간 보스와 결정석 장부', () => {
       repository,
       ledgerRepository,
       new UnitOfWork(database),
+      new DropRepository(database),
       clock
     )
   })
@@ -270,15 +271,8 @@ describe('주간 보스와 결정석 장부', () => {
     )
     const oldCharacters = new CharacterService(new CharacterRepository(old))
     const oldCharacter = oldCharacters.create({ name: '기존캐릭터', world: '루나', notes: '' })
-    const hunting = new HuntingService(
-      new HuntingRepository(old),
-      new CharacterRepository(old),
-      new LedgerRepository(old),
-      new UnitOfWork(old),
-      clock
-    )
-    const session = hunting.create({
-      requestId: randomUUID(),
+    const session = {
+      id: randomUUID(),
       characterId: oldCharacter.id,
       date: '2026-10-08',
       minutes: 60,
@@ -286,8 +280,17 @@ describe('주간 보스와 결정석 장부', () => {
       cost: 100,
       solFragments: 1,
       nodestones: 0,
-      notes: ''
-    })
+      notes: '',
+      characterName: oldCharacter.name,
+      characterWorld: oldCharacter.world,
+      net: 900,
+      hourlyNet: 900,
+      saleIncome: 0,
+      createdAt: clock().toISOString(),
+      updatedAt: clock().toISOString()
+    }
+    new HuntingRepository(old).insert(session)
+    new LedgerRepository(old).syncHunting(session)
     const entryIds = old
       .prepare('SELECT id FROM ledger_entries ORDER BY id')
       .all()
@@ -295,7 +298,7 @@ describe('주간 보스와 결정석 장부', () => {
     old.close()
     const upgraded = openDatabase(file)
     try {
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(3)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(4)
       expect(
         upgraded
           .prepare('SELECT id FROM ledger_entries ORDER BY id')

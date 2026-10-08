@@ -38,7 +38,8 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         <div>
           <p className="text-sm font-semibold text-brand">나의 기록장을 시작해 볼까요?</p>
           <p className="mt-1.5 text-xs leading-5 text-muted">
-            사냥 회차와 결정석 판매를 기록해 보세요. 수입과 지출이 자동으로 모입니다.
+            사냥 회차와 결정석·드랍 판매를 기록해 보세요. 수입과 지출이 실제 판매일 기준으로
+            모입니다.
           </p>
         </div>
         <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">

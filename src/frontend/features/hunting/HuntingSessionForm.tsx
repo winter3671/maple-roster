@@ -213,7 +213,8 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
         </div>
       </div>
       <p className="text-[11px] leading-5 text-muted">
-        아이템은 획득 수량만 기록합니다. 판매 정산은 준비 중입니다.
+        획득 수량을 입력한 뒤 회차의 드랍 관리에서 판매를 기록하세요. 판매된 수량보다 획득 수량을
+        줄일 수 없습니다.
       </p>
       <div>
         <label htmlFor={`${id}-notes`} className="text-xs font-semibold">

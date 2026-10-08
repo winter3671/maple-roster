@@ -12,6 +12,7 @@ import { UnitOfWork } from '../../database/unit-of-work'
 import { CharacterRepository } from '../characters/character.repository'
 import { LedgerRepository } from '../ledger/ledger.repository'
 import { HuntingRepository } from './hunting.repository'
+import { DropRepository } from '../drops/drop.repository'
 
 export class HuntingService {
   constructor(
@@ -19,11 +20,15 @@ export class HuntingService {
     private readonly characters: CharacterRepository,
     private readonly ledger: LedgerRepository,
     private readonly transactions: UnitOfWork,
+    private readonly drops: DropRepository,
     private readonly now = () => new Date()
   ) {}
 
   list(value: unknown): HuntingList {
-    const sessions = this.repository.list(parseRecordQuery(value))
+    const income = this.drops.huntingIncome()
+    const sessions = this.repository
+      .list(parseRecordQuery(value))
+      .map((session) => this.withSales(session, income))
     return { sessions, summary: summarizeHunting(sessions) }
   }
 
@@ -39,7 +44,7 @@ export class HuntingService {
             ([key, field]) => existing[key as keyof typeof input] === field
           )
         )
-          return existing
+          return this.withSales(existing)
         throw new AppError(
           'REQUEST_CONFLICT',
           '같은 저장 요청의 내용이 변경되었습니다. 입력을 확인한 뒤 다시 저장해 주세요.'
@@ -60,10 +65,12 @@ export class HuntingService {
         characterWorld: character.world,
         createdAt: timestamp,
         updatedAt: timestamp,
+        saleIncome: 0,
         ...huntingProfit(input)
       }
       this.repository.insert(session)
       this.ledger.syncHunting(session)
+      this.drops.syncHunting(session)
       return session
     })
   }
@@ -74,6 +81,14 @@ export class HuntingService {
     const id = readId(raw.id)
     return this.transactions.run(() => {
       const current = this.find(id)
+      if (
+        this.drops.hasSales({ kind: 'hunting', id }) &&
+        (current.characterId !== input.characterId || current.date !== input.date)
+      )
+        throw new AppError(
+          'DROP_IN_USE',
+          '드랍 판매를 취소한 뒤 캐릭터나 사냥 날짜를 변경해 주세요.'
+        )
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
       if (character.isHidden && input.characterId !== current.characterId)
@@ -89,7 +104,8 @@ export class HuntingService {
       }
       this.repository.update(session)
       this.ledger.syncHunting(session)
-      return session
+      this.drops.syncHunting(session)
+      return this.withSales(session)
     })
   }
 
@@ -97,6 +113,8 @@ export class HuntingService {
     const id = readId(value)
     return this.transactions.run(() => {
       this.find(id)
+      if (this.drops.hasSales({ kind: 'hunting', id }))
+        throw new AppError('DROP_IN_USE', '드랍 판매를 모두 취소한 뒤 사냥 기록을 삭제해 주세요.')
       this.repository.remove(id)
       return null
     })
@@ -110,5 +128,9 @@ export class HuntingService {
         '사냥 기록을 찾을 수 없습니다. 목록을 새로고침해 주세요.'
       )
     return session
+  }
+  private withSales(session: HuntingSession, income = this.drops.huntingIncome()): HuntingSession {
+    const saleIncome = income.get(session.id) ?? 0
+    return { ...session, saleIncome, ...huntingProfit(session, saleIncome) }
   }
 }

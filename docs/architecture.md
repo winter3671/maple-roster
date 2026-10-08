@@ -233,6 +233,8 @@ window.maple은 characters.list/create/syncProfile, bosses.listPeriod/savePreset
 
 IPC 요청의 반환값은 성공 데이터 또는 정해진 오류 코드·메시지로 통일한다. 예: VALIDATION_ERROR, API_UNAVAILABLE, PERMISSION_DENIED, INSUFFICIENT_DROP_QUANTITY, DATABASE_ERROR. 원본 스택과 키를 화면에 반환하지 않는다. 등록·판매 요청에는 요청 ID를 사용해 재시도와 중복 클릭으로 같은 거래가 생기지 않게 한다.
 
+현재 드랍 구현은 `drops.list/createLot/updateLot/removeLot/createSale/updateSale/cancelSale`을 preload에 제공한다. 화면은 `frontend/features/drops`, 업무 규칙·SQL은 `backend/modules/drops`, 입력 계약은 `shared/contracts/drop.contract.ts`에 둔다. 초기 버전은 한 판매를 한 획득 묶음에 연결하고 판매 수량을 `drop_sales`에 저장한다. 아래의 `drop_sale_allocations`는 여러 묶음을 한 판매로 정산할 때 확장할 계획이다. 현재 테이블 구조는 [데이터베이스](database.md), 계산·보호 규칙은 [드랍 판매](drop-sales.md)를 참고한다.
+
 ## DB 모델의 기본 관계
 
 | 테이블 | 저장할 핵심 데이터 |

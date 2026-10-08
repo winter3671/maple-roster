@@ -1,3 +1,4 @@
+import { DropRepository } from '../modules/drops/drop.repository'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -196,6 +197,7 @@ describe('API character registration', () => {
       new CharacterRepository(database),
       new LedgerRepository(database),
       new UnitOfWork(database),
+      new DropRepository(database),
       () => new Date('2026-10-08T00:00:00Z')
     )
     const session = hunting.create({

@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
 import type { LedgerEntry, RecordQuery } from '../../../shared/contracts/ledger.contract'
 import type { BossRun } from '../../../shared/contracts/boss.contract'
+import type { DropLot, DropSale } from '../../../shared/contracts/drop.contract'
 
 export class LedgerRepository {
   constructor(private readonly database: DatabaseSync) {}
@@ -50,7 +51,13 @@ export class LedgerRepository {
         huntingSessionId: row.hunting_session_id === null ? null : String(row.hunting_session_id),
         crystalSettlementId:
           row.crystal_settlement_id === null ? null : String(row.crystal_settlement_id),
-        source: row.crystal_settlement_id === null ? 'hunting' : 'crystal',
+        dropSaleId: row.drop_sale_id == null ? null : String(row.drop_sale_id),
+        source:
+          row.drop_sale_id != null
+            ? 'drop'
+            : row.crystal_settlement_id === null
+              ? 'hunting'
+              : 'crystal',
         characterId: String(row.character_id),
         characterName: String(row.character_name),
         characterWorld: String(row.world_snapshot),
@@ -80,6 +87,26 @@ export class LedgerRepository {
         settlement.amount,
         timestamp,
         timestamp
+      )
+  }
+  syncDrop(lot: DropLot, sale: DropSale): void {
+    if (sale.netShare === 0) {
+      this.database.prepare('DELETE FROM ledger_entries WHERE drop_sale_id = ?').run(sale.id)
+      return
+    }
+    this.database
+      .prepare(
+        `INSERT INTO ledger_entries (id, drop_sale_id, character_id, world_snapshot, occurred_on, direction, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'income', ?, ?, ?) ON CONFLICT(drop_sale_id) DO UPDATE SET occurred_on = excluded.occurred_on, amount = excluded.amount, updated_at = excluded.updated_at`
+      )
+      .run(
+        randomUUID(),
+        sale.id,
+        lot.characterId,
+        lot.characterWorld,
+        sale.date,
+        sale.netShare,
+        sale.createdAt,
+        sale.updatedAt
       )
   }
 }

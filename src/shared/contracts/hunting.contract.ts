@@ -26,6 +26,7 @@ export interface HuntingSession extends HuntingInput {
   updatedAt: string
   net: number
   hourlyNet: number | null
+  saleIncome: number
 }
 export interface HuntingSummary {
   income: number

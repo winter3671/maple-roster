@@ -6,7 +6,7 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## 적용된 마이그레이션
 
-`001_characters.sql`, `002_hunting_ledger.sql`, `003_bosses.sql`을 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 1·2번 버전 DB는 캐릭터·사냥·거래 정보를 유지하면서 3번 버전으로 갱신한다.
+`001_characters.sql`, `002_hunting_ledger.sql`, `003_bosses.sql`, `004_drops.sql`을 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 1~3번 버전 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 4번 버전으로 갱신한다.
 
 ## characters
 
@@ -48,14 +48,22 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 | id | TEXT, PK | 거래 UUID |
 | hunting_session_id | TEXT, FK, NULL 가능 | 사냥 회차 ID, ON DELETE CASCADE |
 | crystal_settlement_id | TEXT, UNIQUE, FK, NULL 가능 | 결정석 정산 ID, ON DELETE CASCADE |
+| drop_sale_id | TEXT, UNIQUE, FK, NULL 가능 | 드랍 판매 ID, ON DELETE CASCADE |
 | character_id | TEXT, FK | 캐릭터 ID, ON DELETE RESTRICT |
 | world_snapshot | TEXT | 기록 당시 월드 |
-| occurred_on | TEXT | 회차 사냥 날짜 |
+| occurred_on | TEXT | 사냥 거래는 활동일, 결정석·드랍은 판매일 |
 | direction | TEXT | income 또는 expense |
 | amount | INTEGER | 1 이상 정수 메소 |
 | created_at / updated_at | TEXT | UTC 생성 / 수정 시각 |
 
-회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 결정석 정산은 정산당 수입 하나만 생성하고 `crystal_settlement_id`를 UNIQUE로 보호한다. 두 원본 외래 키 중 정확히 하나만 값이 있어야 하며 결정석 거래는 income만 허용한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 수동 거래와 드랍 판매 정산은 후속 단계다.
+회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 결정석·드랍 판매는 판매당 수입 하나만 생성하고 각 원본 FK를 UNIQUE로 보호한다. 세 원본 FK 중 정확히 하나만 값이 있어야 하며 결정석·드랍 거래는 income만 허용한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 수동 거래는 후속 단계다.
+
+## drop_lots / drop_sales
+
+- `drop_lots`: 사냥·보스 중 하나의 활동 FK(CASCADE), 캐릭터 FK(RESTRICT), 월드·획득 기준일·파티 인원 스냅샷, 이름, 획득 수량(1~1,000,000), 예상 단가, 메모. 사냥의 조각·젬스톤은 `managed_kind`로 구분하며 `(hunting_session_id, managed_kind)`를 UNIQUE로 보호한다.
+- `drop_sales`: 획득 묶음 FK(RESTRICT), 판매일, 판매 수량, 전체 판매대금·수수료, 분배 인원·방식·수동 분배금, 내 실제 몫, 판매 당시 예상 단가 스냅샷과 시각. 서비스 트랜잭션 안에서 판매 수량 합계가 획득 수량을 넘지 않도록 검증한다.
+
+남은 수량·예상 가치·판매 수입은 저장된 판매에서 계산한다. 판매가 있으면 원본 활동 삭제를 막고 판매 취소를 안내한다. 4번 마이그레이션은 기존 조각·젬스톤 수량을 재고로 생성하고 장부를 확장하면서 기존 거래를 그대로 복사한다. 자세한 규칙은 [드랍 판매](drop-sales.md)를 참고한다.
 
 ## boss_presets / boss_runs / crystal_settlements
 

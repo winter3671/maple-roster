@@ -3,6 +3,7 @@ import type { RecordQuery, LedgerEntry } from '../../shared/contracts/ledger.con
 
 export const formatMeso = (value: number) => value.toLocaleString('ko-KR')
 export function ledgerLabel(entry: LedgerEntry): string {
+  if (entry.source === 'drop') return '드랍 판매'
   return entry.source === 'crystal'
     ? '결정석 판매'
     : entry.direction === 'income'

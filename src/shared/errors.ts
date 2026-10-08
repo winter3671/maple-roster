@@ -17,6 +17,9 @@ export type ErrorCode =
   | 'BOSS_NOT_FOUND'
   | 'DUPLICATE_BOSS'
   | 'BOSS_ALREADY_SETTLED'
+  | 'DROP_NOT_FOUND'
+  | 'DROP_IN_USE'
+  | 'INSUFFICIENT_DROP_QUANTITY'
 
 export class AppError extends Error {
   constructor(

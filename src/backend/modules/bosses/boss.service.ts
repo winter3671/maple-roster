@@ -17,6 +17,7 @@ import { UnitOfWork } from '../../database/unit-of-work'
 import { CharacterRepository } from '../characters/character.repository'
 import { LedgerRepository } from '../ledger/ledger.repository'
 import { BossRepository } from './boss.repository'
+import { DropRepository } from '../drops/drop.repository'
 
 export class BossService {
   constructor(
@@ -24,6 +25,7 @@ export class BossService {
     private readonly characters: CharacterRepository,
     private readonly ledger: LedgerRepository,
     private readonly transaction: UnitOfWork,
+    private readonly drops: DropRepository,
     private readonly now = () => new Date()
   ) {}
   presets(value?: unknown): BossPreset[] {
@@ -108,6 +110,8 @@ export class BossService {
     if (typeof raw.isCleared !== 'boolean')
       throw new AppError('VALIDATION_ERROR', '클리어 여부를 확인해 주세요.')
     const current = this.findRun(readId(raw.id))
+    if (!raw.isCleared && this.drops.hasLots({ kind: 'boss', id: current.id }))
+      throw new AppError('DROP_IN_USE', '드랍 묶음을 정리한 뒤 클리어 체크를 해제해 주세요.')
     if (!raw.isCleared && current.settlement)
       throw new AppError('BOSS_ALREADY_SETTLED', '판매 취소 후 클리어 체크를 해제해 주세요.')
     const run = { ...current, isCleared: raw.isCleared, updatedAt: this.now().toISOString() }
@@ -155,6 +159,8 @@ export class BossService {
     const id = readId(value)
     return this.transaction.run(() => {
       const run = this.findRun(id)
+      if (this.drops.hasSales({ kind: 'boss', id }))
+        throw new AppError('DROP_IN_USE', '드랍 판매를 모두 취소한 뒤 보스 기록을 삭제해 주세요.')
       if (run.settlement)
         throw new AppError('BOSS_ALREADY_SETTLED', '판매 취소 후 보스 기록을 삭제해 주세요.')
       this.repository.removeRun(id)

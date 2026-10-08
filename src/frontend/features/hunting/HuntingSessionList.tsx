@@ -6,11 +6,13 @@ export function HuntingSessionList({
   sessions,
   busy,
   onEdit,
+  onDrops,
   onRemove
 }: {
   sessions: HuntingSession[]
   busy: boolean
   onEdit: (session: HuntingSession) => void
+  onDrops: (session: HuntingSession) => void
   onRemove: (session: HuntingSession) => void
 }) {
   return (
@@ -34,6 +36,9 @@ export function HuntingSessionList({
               </p>
             </div>
             <div className="flex gap-2">
+              <Button variant="secondary" disabled={busy} onClick={() => onDrops(session)}>
+                드랍 관리
+              </Button>
               <Button variant="secondary" disabled={busy} onClick={() => onEdit(session)}>
                 수정
               </Button>
@@ -51,6 +56,11 @@ export function HuntingSessionList({
             {[
               { label: '획득 메소', value: formatMeso(session.mesos), color: 'text-brand' },
               { label: '소모 비용', value: formatMeso(session.cost), color: 'text-expense' },
+              {
+                label: '드랍 판매 내 몫',
+                value: formatMeso(session.saleIncome),
+                color: 'text-brand'
+              },
               {
                 label: '순수익',
                 value: formatMeso(session.net),

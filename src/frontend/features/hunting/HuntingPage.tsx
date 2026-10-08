@@ -9,12 +9,14 @@ import { formatMeso, formatMinutes, thisMonthQuery } from '../../lib/format'
 import { HuntingSessionForm } from './HuntingSessionForm'
 import { HuntingSessionList } from './HuntingSessionList'
 import { useHunting } from './useHunting'
+import { DropManager } from '../drops/DropManager'
 
 export function HuntingPage() {
   const [query, setQuery] = useState(thisMonthQuery)
   const state = useHunting(query)
   const [editing, setEditing] = useState<HuntingSession | null>(null)
   const [deleting, setDeleting] = useState<HuntingSession | null>(null)
+  const [drops, setDrops] = useState<HuntingSession | null>(null)
   const summary = state.data?.summary
   return (
     <div className="space-y-5">
@@ -41,6 +43,10 @@ export function HuntingPage() {
         onApply={setQuery}
       />
       <FinancialSummary summary={summary} loading={state.loading} />
+      <p className="text-[11px] leading-5 text-muted">
+        사냥 수익은 사냥 날짜 기준으로 연결된 드랍 판매 내 몫을 포함합니다. 거래 장부와 대시보드는
+        실제 판매일 기준입니다. 미판매 예상 금액은 순수익에서 제외됩니다.
+      </p>
       <div className="grid items-start gap-5 lg:grid-cols-[300px_1fr]">
         <section className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-sm font-semibold">사냥 회차 추가</h2>
@@ -90,6 +96,7 @@ export function HuntingPage() {
             <HuntingSessionList
               sessions={state.data.sessions}
               busy={state.busy}
+              onDrops={setDrops}
               onEdit={(session) => {
                 state.clearFeedback()
                 setEditing(session)
@@ -128,6 +135,14 @@ export function HuntingPage() {
             }}
           />
         </Dialog>
+      )}
+      {drops && (
+        <DropManager
+          source={{ kind: 'hunting', id: drops.id }}
+          title={`${drops.characterName} · ${drops.date}`}
+          onClose={() => setDrops(null)}
+          onChanged={state.reload}
+        />
       )}
       {deleting && (
         <Dialog title="사냥 기록 삭제" busy={state.busy} onClose={() => setDeleting(null)}>

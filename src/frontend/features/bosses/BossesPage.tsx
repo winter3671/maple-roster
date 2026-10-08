@@ -14,6 +14,7 @@ import { BossPresetForm } from './BossPresetForm'
 import { BossRunForm, CrystalSaleForm } from './BossRunForm'
 import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
+import { DropManager } from '../drops/DropManager'
 
 type Confirmation = {
   title: string
@@ -30,6 +31,7 @@ export function BossesPage() {
   const [editingPreset, setEditingPreset] = useState<BossPreset | null>(null)
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
   const [selling, setSelling] = useState<BossRun | null>(null)
+  const [drops, setDrops] = useState<BossRun | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const disabled = state.loading || state.busy
   const week = bossWeek(query.date)
@@ -142,7 +144,7 @@ export function BossesPage() {
           {
             title: '이 주차 판매 확정',
             value: summary ? `${formatMeso(summary.settled)} 메소` : '—',
-            detail: '판매일에 관계없이 이 주차 기록의 수령액'
+            detail: '결정석 수령액 · 드랍 판매는 드랍 관리에서 확인'
           }
         ].map((card) => (
           <article
@@ -162,7 +164,8 @@ export function BossesPage() {
           <div>
             <h2 className="text-sm font-semibold">주간 보스 기록</h2>
             <p className="mt-2 text-xs leading-5 text-muted">
-              클리어 체크만으로 수입이 생기지 않습니다. 실제 수입은 결정석 판매 확정 후 반영됩니다.
+              클리어 후 결정석·드랍 판매를 기록하면 실제 수입이 반영됩니다. 위 주차 요약은 결정석
+              기준입니다.
             </p>
           </div>
           <Button
@@ -276,6 +279,13 @@ export function BossesPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2">
+                        <Button
+                          variant="secondary"
+                          disabled={disabled || !run.isCleared}
+                          onClick={() => setDrops(run)}
+                        >
+                          드랍 관리
+                        </Button>
                         <Button
                           variant="secondary"
                           disabled={disabled || Boolean(run.settlement)}
@@ -406,6 +416,14 @@ export function BossesPage() {
             }}
           />
         </Dialog>
+      )}
+      {drops && (
+        <DropManager
+          source={{ kind: 'boss', id: drops.id }}
+          title={`${drops.characterName} · ${drops.bossName}`}
+          onClose={() => setDrops(null)}
+          onChanged={state.reload}
+        />
       )}
       {editingRun && (
         <Dialog title="주차 보스 기록 수정" busy={state.busy} onClose={() => setEditingRun(null)}>

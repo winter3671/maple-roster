@@ -1,4 +1,11 @@
 export const IPC_CHANNELS = {
+  dropsList: 'drops:list',
+  dropsCreateLot: 'drops:create-lot',
+  dropsUpdateLot: 'drops:update-lot',
+  dropsRemoveLot: 'drops:remove-lot',
+  dropsCreateSale: 'drops:create-sale',
+  dropsUpdateSale: 'drops:update-sale',
+  dropsCancelSale: 'drops:cancel-sale',
   bossesPresets: 'bosses:presets',
   bossesCreatePreset: 'bosses:create-preset',
   bossesUpdatePreset: 'bosses:update-preset',

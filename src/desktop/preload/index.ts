@@ -3,6 +3,15 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  drops: {
+    list: (source) => ipcRenderer.invoke(IPC_CHANNELS.dropsList, source),
+    createLot: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsCreateLot, input),
+    updateLot: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsUpdateLot, input),
+    removeLot: (id) => ipcRenderer.invoke(IPC_CHANNELS.dropsRemoveLot, id),
+    createSale: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsCreateSale, input),
+    updateSale: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsUpdateSale, input),
+    cancelSale: (id) => ipcRenderer.invoke(IPC_CHANNELS.dropsCancelSale, id)
+  },
   bosses: {
     presets: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesPresets, id),
     createPreset: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesCreatePreset, input),

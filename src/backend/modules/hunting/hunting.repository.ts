@@ -19,6 +19,7 @@ function mapRow(row: Record<string, SQLOutputValue>): HuntingSession {
     notes: String(row.notes),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
+    saleIncome: 0,
     ...huntingProfit(input)
   }
 }

@@ -5,6 +5,16 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type {
+  DropSource,
+  DropList,
+  DropLot,
+  DropLotCreate,
+  DropLotUpdate,
+  DropSale,
+  DropSaleCreate,
+  DropSaleUpdate
+} from './drop.contract'
 import type { HuntingCreate, HuntingUpdate, HuntingSession, HuntingList } from './hunting.contract'
 import type { LedgerList, RecordQuery } from './ledger.contract'
 import type {
@@ -32,6 +42,15 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  drops: {
+    list: (source: DropSource) => Promise<ApiResult<DropList>>
+    createLot: (input: DropLotCreate) => Promise<ApiResult<DropLot>>
+    updateLot: (input: DropLotUpdate) => Promise<ApiResult<DropLot>>
+    removeLot: (id: string) => Promise<ApiResult<null>>
+    createSale: (input: DropSaleCreate) => Promise<ApiResult<DropSale>>
+    updateSale: (input: DropSaleUpdate) => Promise<ApiResult<DropSale>>
+    cancelSale: (id: string) => Promise<ApiResult<null>>
+  }
   bosses: {
     presets: (characterId?: string) => Promise<ApiResult<BossPreset[]>>
     createPreset: (input: BossPresetInput) => Promise<ApiResult<BossPreset>>

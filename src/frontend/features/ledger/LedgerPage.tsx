@@ -30,7 +30,8 @@ export function LedgerPage() {
           <div>
             <h2 className="text-sm font-semibold">수입과 지출</h2>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              사냥·결정석 판매에서 생성된 거래입니다. 수정·취소는 원본 장부에서 진행하세요.
+              사냥·결정석·드랍 판매에서 생성된 거래입니다. 수정·취소는 원본 활동의 장부에서
+              진행하세요.
             </p>
           </div>
           <Button variant="secondary" disabled={state.loading} onClick={state.reload}>

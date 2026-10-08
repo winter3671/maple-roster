@@ -1,3 +1,4 @@
+import { DropRepository } from '../modules/drops/drop.repository'
 import { randomUUID } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -36,6 +37,7 @@ describe('사냥 회차와 거래 장부', () => {
       characterRepository,
       ledgerRepository,
       new UnitOfWork(database),
+      new DropRepository(database),
       () => new Date('2026-10-07T12:00:00Z')
     )
     ledger = new LedgerService(ledgerRepository)
@@ -199,7 +201,7 @@ describe('사냥 회차와 거래 장부', () => {
     const upgraded = openDatabase(legacyPath)
     try {
       expect(new CharacterRepository(upgraded).list()[0].name).toBe('기존캐릭터')
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(3)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(4)
       expect(upgraded.prepare('SELECT * FROM hunting_sessions').all()).toHaveLength(0)
     } finally {
       upgraded.close()
