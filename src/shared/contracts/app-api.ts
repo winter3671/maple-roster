@@ -5,6 +5,7 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type { BossSyncPreview } from './boss-sync.contract'
 import type {
   BossMember,
   BossRosterState,
@@ -60,6 +61,15 @@ export interface AppApi {
     cancelSale: (id: string) => Promise<ApiResult<null>>
   }
   bosses: {
+    previewClears: (input: {
+      date: string
+      characterId: string
+    }) => Promise<ApiResult<BossSyncPreview>>
+    applyClears: (input: {
+      previewId: string
+      runIds: string[]
+      incomeDate: string
+    }) => Promise<ApiResult<{ applied: number; alreadyCleared: number }>>
     rosterState: () => Promise<ApiResult<BossRosterState>>
     saveTemplate: (input: BossTemplateInput & { id?: string }) => Promise<ApiResult<BossTemplate>>
     removeTemplate: (id: string) => Promise<ApiResult<null>>

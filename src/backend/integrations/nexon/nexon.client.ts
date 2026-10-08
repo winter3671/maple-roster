@@ -1,4 +1,7 @@
 import { AppError } from '../../../shared/errors'
+import { getKstDate, readDate } from '../../../shared/dates'
+import { shiftDate } from '../../../shared/boss-period'
+import type { SchedulerBoss } from '../../../shared/contracts/boss-sync.contract'
 import {
   readOcid,
   type NexonCharacter,
@@ -79,9 +82,60 @@ export class NexonClient {
       fetchedAt: new Date().toISOString()
     }
   }
+  async scheduler(
+    value: unknown,
+    date: string,
+    today = getKstDate()
+  ): Promise<{ date: string; bosses: SchedulerBoss[] }> {
+    const ocid = readOcid(value)
+    readDate(date)
+    if (date > today || date < shiftDate(today, -14))
+      throw new AppError('VALIDATION_ERROR', '스케줄러는 오늘부터 14일 전까지 조회할 수 있습니다.')
+    // Today's real-time state is requested without the date parameter.
+    const row = object(
+      await this.request('scheduler/character-state', { ocid, ...(date === today ? {} : { date }) })
+    )
+    const responseDate = text(row.date, 40)
+    if (
+      !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?\+09:00)?$/.test(responseDate) ||
+      responseDate.slice(0, 10) !== date ||
+      !Array.isArray(row.boss_contents)
+    )
+      return invalid()
+    const difficulties: Record<string, string> = {
+      easy: '이지',
+      normal: '노멀',
+      hard: '하드',
+      chaos: '카오스',
+      extreme: '익스트림'
+    }
+    const bosses: SchedulerBoss[] = []
+    const seen = new Set<string>()
+    for (const entry of row.boss_contents) {
+      const boss = object(entry)
+      const cycle = text(boss.cycle, 40)
+      if (!['bossWeekly', 'weekly', '주간'].includes(cycle)) continue
+      const bossName = text(boss.content_name, 60).normalize('NFC')
+      const rawDifficulty = text(boss.difficulty, 40)
+      const difficulty = difficulties[rawDifficulty.toLowerCase()] ?? rawDifficulty
+      const flag = boss.complete_flag ?? boss.clear_flag
+      if (flag !== 'true' && flag !== 'false') return invalid()
+      if (
+        boss.complete_flag !== undefined &&
+        boss.clear_flag !== undefined &&
+        boss.complete_flag !== boss.clear_flag
+      )
+        return invalid()
+      const key = JSON.stringify([bossName.replace(/\s/g, ''), difficulty])
+      if (seen.has(key)) return invalid()
+      seen.add(key)
+      bosses.push({ bossName, difficulty, isCleared: flag === 'true' })
+    }
+    return { date, bosses }
+  }
 
   private request(
-    endpoint: 'character/list' | 'character/basic',
+    endpoint: 'character/list' | 'character/basic' | 'scheduler/character-state',
     params: Record<string, string> = {}
   ): Promise<unknown> {
     const task = this.queue.then(async () => {
@@ -89,7 +143,7 @@ export class NexonClient {
       if (!key)
         throw new AppError(
           'API_KEY_MISSING',
-          '프로젝트의 .env에 NEXON_API_KEY를 입력하고 앱을 다시 실행해 주세요.'
+          '설정에서 넥슨 API 키를 저장하거나 개발용 .env 키 설정을 확인해 주세요.'
         )
       const delay = this.nextRequestAt - Date.now()
       if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))

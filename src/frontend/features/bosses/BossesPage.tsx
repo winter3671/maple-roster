@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import {
   currentBossWeek,
@@ -12,6 +12,9 @@ import { formatMeso } from '../../lib/format'
 import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
+import { BossClearPreview } from './BossClearPreview'
+import type { BossSyncPreview } from '../../../shared/contracts/boss-sync.contract'
+import { getKstDate } from '../../../shared/dates'
 import type { Character } from '../../../shared/contracts/character.contract'
 import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
@@ -33,16 +36,54 @@ export function BossesPage() {
   const [addingCharacter, setAddingCharacter] = useState<Character | null>(null)
   const [drops, setDrops] = useState<BossRun | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
-  const disabled = state.loading || state.busy
+  const [apiPreview, setApiPreview] = useState<BossSyncPreview | null>(null)
+  const [apiBusy, setApiBusy] = useState(false)
+  const [apiError, setApiError] = useState('')
+  const apiLock = useRef(false),
+    mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const disabled = state.loading || state.busy || apiBusy
   const week = bossWeek(query.date)
   const summary = state.data?.summary
-  const modal = Boolean(editingRun || addingCharacter || confirmation)
+  const modal = Boolean(editingRun || addingCharacter || confirmation || apiPreview)
+  async function queryApi(character: Character) {
+    if (apiLock.current) return
+    apiLock.current = true
+    setApiBusy(true)
+    setApiError('')
+    state.clearFeedback()
+    try {
+      const preview = await bossesApi.previewClears(week, character.id)
+      if (mounted.current) setApiPreview(preview)
+    } catch (caught) {
+      if (mounted.current)
+        setApiError(caught instanceof Error ? caught.message : 'API 클리어 조회에 실패했습니다.')
+    } finally {
+      apiLock.current = false
+      if (mounted.current) setApiBusy(false)
+    }
+  }
   function confirm(value: Confirmation) {
     state.clearFeedback()
     setConfirmation(value)
   }
   return (
     <div className="space-y-5">
+      {apiBusy && (
+        <p role="status" className="rounded-xl bg-brand-soft p-4 text-xs text-brand">
+          API 보스 클리어를 조회하고 있습니다…
+        </p>
+      )}
+      {apiError && (
+        <p role="alert" className="rounded-xl bg-expense/5 p-4 text-xs text-expense">
+          {apiError}
+        </p>
+      )}
       {state.notice && (
         <p role="status" className="rounded-xl bg-brand-soft p-4 text-xs text-brand">
           {state.notice}
@@ -191,6 +232,10 @@ export function BossesPage() {
             characterId={query.characterId}
             busy={disabled}
             canAdd={week <= currentBossWeek()}
+            canQueryApi={
+              week <= currentBossWeek() && shiftDate(week, 6) >= shiftDate(getKstDate(), -14)
+            }
+            onQueryApi={(character) => void queryApi(character)}
             onAdd={(character) => {
               state.clearFeedback()
               setAddingCharacter(character)
@@ -240,6 +285,32 @@ export function BossesPage() {
           onClose={() => setDrops(null)}
           onChanged={state.reload}
         />
+      )}
+      {apiPreview && (
+        <Dialog
+          title="API 보스 클리어 확인"
+          wide
+          busy={state.busy}
+          onClose={() => setApiPreview(null)}
+        >
+          {state.error && (
+            <p role="alert" className="mb-4 text-xs text-expense">
+              {state.error}
+            </p>
+          )}
+          <BossClearPreview
+            preview={apiPreview}
+            busy={state.busy}
+            onCancel={() => setApiPreview(null)}
+            onApply={async (ids, date) => {
+              const saved = await state.mutate(
+                () => bossesApi.applyClears(apiPreview.id, ids, date),
+                'API에서 확인한 클리어와 결정석 수익을 반영했습니다.'
+              )
+              if (saved) setApiPreview(null)
+            }}
+          />
+        </Dialog>
       )}
       {editingRun && (
         <Dialog title="주차 보스 기록 수정" busy={state.busy} onClose={() => setEditingRun(null)}>

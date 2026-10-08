@@ -204,6 +204,40 @@ export class BossService {
       return this.findRun(run.id)
     })
   }
+  applyApiClears(snapshots: BossRun[], date: string): { applied: number; alreadyCleared: number } {
+    const incomeDate = readDate(date)
+    const today = getKstDate(this.now())
+    return this.transaction.run(() => {
+      let applied = 0,
+        alreadyCleared = 0
+      for (const snapshot of snapshots) {
+        const current = this.findRun(snapshot.id)
+        if (current.week > incomeDate || incomeDate > today)
+          throw new AppError(
+            'VALIDATION_ERROR',
+            '수익 반영일은 주차 시작일부터 오늘 사이여야 합니다.'
+          )
+        if (
+          ['characterId', 'week', 'bossName', 'difficulty', 'partySize', 'crystalPrice'].some(
+            (key) => current[key as keyof BossRun] !== snapshot[key as keyof BossRun]
+          )
+        )
+          throw new AppError(
+            'REQUEST_CONFLICT',
+            '조회 이후 보스 구성이 변경되었습니다. API 클리어를 다시 조회해 주세요.'
+          )
+        if (current.isCleared) {
+          alreadyCleared++
+          continue
+        }
+        const run = { ...current, isCleared: true, updatedAt: this.now().toISOString() }
+        this.repository.updateRun(run)
+        if (!current.settlement) this.syncClearIncome(run, incomeDate)
+        applied++
+      }
+      return { applied, alreadyCleared }
+    })
+  }
   updateRun(value: unknown): BossRun {
     const raw = readObject(value)
     return this.transaction.run(() => {

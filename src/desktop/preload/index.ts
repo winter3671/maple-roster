@@ -13,6 +13,8 @@ const api: AppApi = {
     cancelSale: (id) => ipcRenderer.invoke(IPC_CHANNELS.dropsCancelSale, id)
   },
   bosses: {
+    previewClears: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesPreviewClears, input),
+    applyClears: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesApplyClears, input),
     rosterState: () => ipcRenderer.invoke(IPC_CHANNELS.bossesRosterState),
     saveTemplate: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSaveTemplate, input),
     removeTemplate: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesRemoveTemplate, id),

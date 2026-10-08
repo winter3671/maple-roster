@@ -11,6 +11,10 @@ import type {
 } from '../../../shared/contracts/boss.contract'
 
 export const bossesApi = {
+  previewClears: (date: string, characterId: string) =>
+    unwrap(getBridge().bosses.previewClears({ date, characterId })),
+  applyClears: (previewId: string, runIds: string[], incomeDate: string) =>
+    unwrap(getBridge().bosses.applyClears({ previewId, runIds, incomeDate })),
   rosterState: () => unwrap(getBridge().bosses.rosterState()),
   saveTemplate: (input: BossTemplateInput & { id?: string }) =>
     unwrap(getBridge().bosses.saveTemplate(input)),

@@ -10,6 +10,8 @@ export function BossRunGroups({
   characterId,
   busy,
   canAdd,
+  canQueryApi,
+  onQueryApi,
   onAdd,
   onEdit,
   onDelete,
@@ -21,6 +23,8 @@ export function BossRunGroups({
   characterId?: string
   busy: boolean
   canAdd: boolean
+  canQueryApi: boolean
+  onQueryApi: (character: Character) => void
   onAdd: (character: Character) => void
   onEdit: (run: BossRun) => void
   onDelete: (run: BossRun) => void
@@ -84,13 +88,31 @@ export function BossRunGroups({
                         {formatMeso(income)} 메소
                       </span>
                     </div>
-                    <Button
-                      variant="secondary"
-                      disabled={busy || !canAdd || group.character.isHidden || count >= 12}
-                      onClick={() => onAdd(group.character)}
-                    >
-                      + 보스 추가
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        disabled={
+                          busy || !canQueryApi || !group.character.nexon || !group.runs.length
+                        }
+                        title={
+                          !group.character.nexon
+                            ? '캐릭터 관리에서 API 연결이 필요합니다.'
+                            : !canQueryApi
+                              ? '최근 14일 범위의 주차만 조회할 수 있습니다.'
+                              : '스케줄러의 완료 보스를 확인합니다.'
+                        }
+                        onClick={() => onQueryApi(group.character)}
+                      >
+                        API 클리어 조회
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={busy || !canAdd || group.character.isHidden || count >= 12}
+                        onClick={() => onAdd(group.character)}
+                      >
+                        + 보스 추가
+                      </Button>
+                    </div>
                   </div>
                   {group.runs.length ? (
                     <div className="overflow-x-auto">
