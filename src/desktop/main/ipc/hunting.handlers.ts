@@ -8,7 +8,6 @@ export function registerHuntingHandlers(window: BrowserWindow, services: Service
     [IPC_CHANNELS.huntingList, (input) => services.hunting.list(input)],
     [IPC_CHANNELS.huntingCreate, (input) => services.hunting.create(input)],
     [IPC_CHANNELS.huntingUpdate, (input) => services.hunting.update(input)],
-    [IPC_CHANNELS.huntingRemove, (input) => services.hunting.remove(input)],
-    [IPC_CHANNELS.ledgerList, (input) => services.ledger.list(input)]
+    [IPC_CHANNELS.huntingRemove, (input) => services.hunting.remove(input)]
   ])
 }

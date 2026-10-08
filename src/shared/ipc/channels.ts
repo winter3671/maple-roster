@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  ledgerExportCsv: 'ledger:export-csv',
   backupExport: 'backup:export',
   backupSelect: 'backup:select',
   backupRestore: 'backup:restore',

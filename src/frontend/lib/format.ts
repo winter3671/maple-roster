@@ -5,7 +5,7 @@ export const formatMeso = (value: number) => value.toLocaleString('ko-KR')
 export function ledgerLabel(entry: LedgerEntry): string {
   if (entry.source === 'drop') return '드랍 판매'
   return entry.source === 'crystal'
-    ? '결정석 판매'
+    ? '결정석 수익'
     : entry.direction === 'income'
       ? '사냥 획득'
       : '사냥 소모 비용'

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve, dirname, basename } from 'node:path'
 import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { readBackupFile, saveBackupFile, saveRecoveryBackup } from '../modules/backup/backup.files'
+import { saveAtomicTextFile } from '../files/atomic-text-file'
 
 describe('백업 파일 저장과 읽기', () => {
   let directory: string
@@ -33,12 +34,24 @@ describe('백업 파일 저장과 읽기', () => {
     const target = join(directory, 'directory.json')
     mkdirSync(target)
     expect(() => saveBackupFile(target, '{}')).toThrow('저장하지 못')
-    expect(readdirSync(directory).some((name) => name.startsWith('.maple-backup-'))).toBe(false)
+    expect(readdirSync(directory).some((name) => name.startsWith('.maple-export-'))).toBe(false)
     expect(() => readBackupFile(protectedFile)).toThrow('JSON')
     expect(() => readBackupFile(join(directory, 'missing.json'))).toThrow('읽지 못')
     const malformed = join(directory, 'invalid-utf8.json')
     writeFileSync(malformed, Buffer.from([0xff, 0xfe]))
     expect(() => readBackupFile(malformed)).toThrow('읽지 못')
+  })
+  it('CSV도 BOM과 줄바꿈을 보존하고 실패한 저장은 원본을 유지한다', () => {
+    const target = join(directory, '거래.csv'),
+      contents = '\uFEFF"날짜","금액"\r\n"2026-10-08","1000"\r\n'
+    saveAtomicTextFile(target, contents, '.csv', 'CSV')
+    expect(readFileSync(target, 'utf8')).toBe(contents)
+    expect(() => saveAtomicTextFile(target, 'wrong', '.json', '백업')).toThrow('.json')
+    expect(readFileSync(target, 'utf8')).toBe(contents)
+    const failed = join(directory, 'directory.csv')
+    mkdirSync(failed)
+    expect(() => saveAtomicTextFile(failed, contents, '.csv', 'CSV')).toThrow('저장하지 못')
+    expect(readdirSync(directory).some((name) => name.startsWith('.maple-export-'))).toBe(false)
   })
   it('복원 전 안전 백업은 서로 다른 이름으로 모두 유지한다', () => {
     const recovery = join(directory, 'backups')

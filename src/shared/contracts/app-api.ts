@@ -5,6 +5,7 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type { CsvSaved } from './csv.contract'
 import type { BackupPreview, BackupSaved, BackupRestored } from './backup.contract'
 import type {
   BossSyncPreview,
@@ -130,5 +131,8 @@ export interface AppApi {
     update: (input: HuntingUpdate) => Promise<ApiResult<HuntingSession>>
     remove: (id: string) => Promise<ApiResult<null>>
   }
-  ledger: { list: (query: RecordQuery) => Promise<ApiResult<LedgerList>> }
+  ledger: {
+    list: (query: RecordQuery) => Promise<ApiResult<LedgerList>>
+    exportCsv: (query: RecordQuery) => Promise<ApiResult<CsvSaved | null>>
+  }
 }

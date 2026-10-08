@@ -1,19 +1,9 @@
-import {
-  closeSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-  fsyncSync
-} from 'node:fs'
-import { dirname, extname, join } from 'node:path'
+import { mkdirSync, readFileSync, statSync } from 'node:fs'
+import { extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { AppError } from '../../../shared/errors'
 import { MAX_BACKUP_BYTES } from './backup.service'
+import { saveAtomicTextFile } from '../../files/atomic-text-file'
 
 export function readBackupFile(path: string): string {
   try {
@@ -32,26 +22,7 @@ export function readBackupFile(path: string): string {
   }
 }
 export function saveBackupFile(path: string, contents: string): void {
-  if (extname(path).toLowerCase() !== '.json')
-    throw new AppError('VALIDATION_ERROR', '백업 파일 확장자는 .json이어야 합니다.')
-  const temporary = join(dirname(path), `.maple-backup-${randomUUID()}.tmp`)
-  let descriptor: number | undefined
-  try {
-    descriptor = openSync(temporary, 'wx', 0o600)
-    writeFileSync(descriptor, contents, 'utf8')
-    fsyncSync(descriptor)
-    closeSync(descriptor)
-    descriptor = undefined
-    renameSync(temporary, path)
-  } catch {
-    throw new AppError(
-      'DATABASE_ERROR',
-      '백업 파일을 저장하지 못했습니다. 저장 공간과 권한을 확인하세요.'
-    )
-  } finally {
-    if (descriptor !== undefined) closeSync(descriptor)
-    if (existsSync(temporary)) unlinkSync(temporary)
-  }
+  saveAtomicTextFile(path, contents, '.json', '백업')
 }
 export function saveRecoveryBackup(directory: string, contents: string): string {
   mkdirSync(directory, { recursive: true })
