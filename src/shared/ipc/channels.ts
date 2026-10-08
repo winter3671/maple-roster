@@ -1,4 +1,7 @@
 export const IPC_CHANNELS = {
+  pricesList: 'prices:list',
+  pricesSave: 'prices:save',
+  pricesRemove: 'prices:remove',
   dashboardSummary: 'dashboard:summary',
   ledgerExportCsv: 'ledger:export-csv',
   backupExport: 'backup:export',

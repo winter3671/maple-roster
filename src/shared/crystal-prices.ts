@@ -1,4 +1,5 @@
 import { AppError } from './errors'
+import type { CrystalPriceEntry } from './contracts/crystal-price.contract'
 
 export const CRYSTAL_PRICES_CHECKED_ON = '2026-10-08'
 export const CRYSTAL_PRICE_CHANGE_DATE = '2026-09-17'
@@ -61,21 +62,68 @@ const prices: readonly (readonly [string, string, number, number])[] = [
   ['유피테르', '하드', 4845000000, 4845000000]
 ]
 
+export const BUILTIN_CRYSTAL_HISTORY: readonly CrystalPriceEntry[] = prices.flatMap(
+  ([bossName, difficulty, current, previous], index) => {
+    const source =
+      bossName === '벨로나' && difficulty === '하드'
+        ? '보조 확인: https://matsu1207.tistory.com/m/757'
+        : bossName === '벨로나'
+          ? '변경 전 가격 확인: https://maplestory.nexon.com/News/Update/813'
+          : '6월 공지/기존 가격 대조: https://maplestory.nexon.com/News/Update/806 · https://maplewhoru.kr/boss/'
+    return [
+      {
+        id: `builtin-${index}-first`,
+        bossName,
+        difficulty,
+        amount: previous,
+        effectiveOn: bossName === '벨로나' ? '2026-08-20' : '2026-06-18',
+        checkedOn: CRYSTAL_PRICES_CHECKED_ON,
+        source,
+        isCustom: false
+      },
+      {
+        id: `builtin-${index}-second`,
+        bossName,
+        difficulty,
+        amount: current,
+        effectiveOn: CRYSTAL_PRICE_CHANGE_DATE,
+        checkedOn: CRYSTAL_PRICES_CHECKED_ON,
+        source:
+          bossName === '벨로나' && difficulty === '하드'
+            ? source
+            : 'https://maplestory.nexon.com/News/Update/813',
+        isCustom: false
+      }
+    ]
+  }
+)
+
 export function findCrystalPrice(
   boss: string,
   difficulty: string,
-  date: string
-): { amount: number; effectiveOn: string } | undefined {
-  const row = prices.find(([name, level]) => name === boss && level === difficulty)
-  const firstDate = boss === '벨로나' ? '2026-08-20' : '2026-06-18'
-  if (!row || date < firstDate) return undefined
-  return date >= CRYSTAL_PRICE_CHANGE_DATE
-    ? { amount: row[2], effectiveOn: CRYSTAL_PRICE_CHANGE_DATE }
-    : { amount: row[3], effectiveOn: firstDate }
+  date: string,
+  custom: readonly CrystalPriceEntry[] = []
+): CrystalPriceEntry | undefined {
+  let selected: CrystalPriceEntry | undefined
+  for (const row of [...BUILTIN_CRYSTAL_HISTORY, ...custom]) {
+    if (row.bossName !== boss || row.difficulty !== difficulty || row.effectiveOn > date) continue
+    if (
+      !selected ||
+      row.effectiveOn > selected.effectiveOn ||
+      (row.effectiveOn === selected.effectiveOn && row.isCustom)
+    )
+      selected = row
+  }
+  return selected
 }
 
-export function requireCrystalPrice(boss: string, difficulty: string, date: string): number {
-  const price = findCrystalPrice(boss, difficulty, date)
+export function requireCrystalPrice(
+  boss: string,
+  difficulty: string,
+  date: string,
+  custom: readonly CrystalPriceEntry[] = []
+): number {
+  const price = findCrystalPrice(boss, difficulty, date, custom)
   if (!price)
     throw new AppError(
       'VALIDATION_ERROR',

@@ -15,6 +15,7 @@ import {
 } from '../../../shared/boss-catalog'
 import { findCrystalPrice, requireCrystalPrice } from '../../../shared/crystal-prices'
 import { getKstDate } from '../../../shared/dates'
+import type { CrystalPriceEntry } from '../../../shared/contracts/crystal-price.contract'
 import { UnitOfWork } from '../../database/unit-of-work'
 import { BossRepository } from './boss.repository'
 import { CharacterRepository } from '../characters/character.repository'
@@ -25,7 +26,8 @@ export class BossRosterService {
     private readonly bosses: BossRepository,
     private readonly characters: CharacterRepository,
     private readonly transaction: UnitOfWork,
-    private readonly now = () => new Date()
+    private readonly now = () => new Date(),
+    private readonly priceHistory: () => CrystalPriceEntry[] = () => []
   ) {}
   state(): BossRosterState {
     const templates = this.db
@@ -136,9 +138,19 @@ export class BossRosterService {
     for (const member of members) {
       const old = previous.find((row) => row.bossName === member.bossName)
       const crystalPrice =
-        findCrystalPrice(member.bossName, member.difficulty, getKstDate(this.now()))?.amount ??
+        findCrystalPrice(
+          member.bossName,
+          member.difficulty,
+          getKstDate(this.now()),
+          this.priceHistory()
+        )?.amount ??
         old?.crystalPrice ??
-        requireCrystalPrice(member.bossName, member.difficulty, getKstDate(this.now()))
+        requireCrystalPrice(
+          member.bossName,
+          member.difficulty,
+          getKstDate(this.now()),
+          this.priceHistory()
+        )
       this.bosses.savePreset({
         ...member,
         characterId,

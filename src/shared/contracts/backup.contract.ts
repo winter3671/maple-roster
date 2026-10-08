@@ -1,4 +1,5 @@
 export interface BackupCounts {
+  customPrices: number
   characters: number
   bossRuns: number
   huntingSessions: number

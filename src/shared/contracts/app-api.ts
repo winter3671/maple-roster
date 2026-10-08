@@ -6,6 +6,7 @@ import type {
 } from './character.contract'
 import type { ApiResult } from '../errors'
 import type { DashboardStats } from './dashboard.contract'
+import type { CrystalPriceEntry, CrystalPriceInput } from './crystal-price.contract'
 import type { CsvSaved } from './csv.contract'
 import type { BackupPreview, BackupSaved, BackupRestored } from './backup.contract'
 import type {
@@ -59,6 +60,11 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  prices: {
+    list: () => Promise<ApiResult<CrystalPriceEntry[]>>
+    save: (input: CrystalPriceInput) => Promise<ApiResult<CrystalPriceEntry[]>>
+    remove: (id: string) => Promise<ApiResult<CrystalPriceEntry[]>>
+  }
   dashboard: { summary: (query: RecordQuery) => Promise<ApiResult<DashboardStats>> }
   backup: {
     exportFile: () => Promise<ApiResult<BackupSaved | null>>

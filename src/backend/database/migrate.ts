@@ -7,6 +7,7 @@ import rostersSql from './migrations/005_boss_rosters.sql?raw'
 import clearIncomeSql from './migrations/006_boss_clear_income.sql?raw'
 import profilesSql from './migrations/007_character_profiles.sql?raw'
 import partyReviewSql from './migrations/008_boss_party_review.sql?raw'
+import priceHistorySql from './migrations/009_crystal_price_history.sql?raw'
 
 const migrations = [
   { version: 1, name: 'characters', sql: charactersSql },
@@ -16,7 +17,8 @@ const migrations = [
   { version: 5, name: 'boss_rosters', sql: rostersSql },
   { version: 6, name: 'boss_clear_income', sql: clearIncomeSql },
   { version: 7, name: 'character_profiles', sql: profilesSql },
-  { version: 8, name: 'boss_party_review', sql: partyReviewSql }
+  { version: 8, name: 'boss_party_review', sql: partyReviewSql },
+  { version: 9, name: 'crystal_price_history', sql: priceHistorySql }
 ]
 
 export function migrate(database: DatabaseSync): void {

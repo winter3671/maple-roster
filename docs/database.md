@@ -6,7 +6,7 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## 적용된 마이그레이션
 
-`001_characters.sql`부터 `008_boss_party_review.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 8번 버전까지 순서대로 갱신한다.
+`001_characters.sql`부터 `009_crystal_price_history.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 9번 버전까지 순서대로 갱신한다.
 
 ## characters
 
@@ -66,6 +66,8 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 남은 수량·예상 가치·판매 수입은 저장된 판매에서 계산한다. 판매가 있으면 원본 활동 삭제를 막고 판매 취소를 안내한다. 4번 마이그레이션은 기존 조각·젬스톤 수량을 재고로 생성하고 장부를 확장하면서 기존 거래를 그대로 복사한다. 자세한 규칙은 [드랍 판매](drop-sales.md)를 참고한다.
 
 ## boss_presets / boss_runs / crystal_settlements
+
+9번 마이그레이션은 수동 가격 이력을 저장하는 `crystal_price_history` 테이블을 추가한다. 보스·난이도·적용일은 UNIQUE이며 양의 정수 가격, 확인일과 출처를 저장한다. 기본 가격표는 앱에 포함하고 수동 이력만 DB·JSON 백업에서 관리한다. 가격표 저장·삭제는 기존 보스 기록이나 정산을 갱신하지 않는다. 상세 규칙은 [결정석 가격 이력](crystal-price-history.md)을 참고한다.
 
 8번 마이그레이션은 `boss_runs`에 `party_size_needs_review`(0 또는 1)를 추가한다. API 자동 추가나 난이도 변경으로 인원을 추정한 기록은 1로 저장하고, 사용자가 인원을 확인하거나 보스·난이도·인원을 변경해 저장하면 0으로 바꾼다. 메모·날짜만 수정하면 상태를 유지한다. 기존 기록은 기본값 0으로 보존하며 인원과 수익을 바꾸지 않는다.
 

@@ -20,6 +20,7 @@ import { DropService } from '../../backend/modules/drops/drop.service'
 import { dirname, join } from 'node:path'
 import { BackupService } from '../../backend/modules/backup/backup.service'
 import { saveRecoveryBackup } from '../../backend/modules/backup/backup.files'
+import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.service'
 
 export function createServices(
   version: string,
@@ -36,16 +37,34 @@ export function createServices(
   const transactions = new UnitOfWork(database)
   const characterService = new CharacterService(characters)
   const nexonClient = new NexonClient(() => (keyStore ? keyStore.getKey() : nexonKey.key))
-  const bossService = new BossService(bosses, characters, ledger, transactions, drops)
+  const prices = new CrystalPriceService(database)
+  const history = () => prices.custom()
+  const bossService = new BossService(
+    bosses,
+    characters,
+    ledger,
+    transactions,
+    drops,
+    undefined,
+    history
+  )
   return {
+    prices,
     backup: new BackupService(database, (content) =>
       saveRecoveryBackup(join(dirname(databasePath), '..', 'backups'), content)
     ),
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,
     bosses: bossService,
-    bossSync: new BossSyncService(nexonClient, characters, bossService),
-    bossRosters: new BossRosterService(database, bosses, characters, transactions),
+    bossSync: new BossSyncService(nexonClient, characters, bossService, undefined, history),
+    bossRosters: new BossRosterService(
+      database,
+      bosses,
+      characters,
+      transactions,
+      undefined,
+      history
+    ),
     nexon: new NexonService(
       nexonClient,
       nexonKey,

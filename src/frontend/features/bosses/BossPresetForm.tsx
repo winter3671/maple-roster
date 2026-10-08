@@ -4,7 +4,8 @@ import { parseBossPreset } from '../../../shared/contracts/boss.contract'
 import type { Character } from '../../../shared/contracts/character.contract'
 import { parseDigits, formatMeso } from '../../lib/format'
 import { getKstDate } from '../../../shared/dates'
-import { findCrystalPrice, crystalShare } from '../../../shared/crystal-prices'
+import { crystalShare } from '../../../shared/crystal-prices'
+import { useCrystalPrices } from '../prices/CrystalPriceProvider'
 import { Button } from '../../components/ui/Button'
 import {
   WEEKLY_BOSSES,
@@ -184,9 +185,10 @@ export function BossDetailsFields({
   change: (key: 'difficulty' | 'partySize', value: string) => void
 }) {
   const difficulties = findWeeklyBoss(bossName)?.difficulties ?? []
+  const { findPrice } = useCrystalPrices()
   const legacy =
     legacyDifficulty && !difficulties.includes(legacyDifficulty) ? legacyDifficulty : undefined
-  const price = findCrystalPrice(bossName, draft.difficulty, priceDate)
+  const price = findPrice(bossName, draft.difficulty, priceDate)
   const usingSnapshot = preserveStoredPrice && draft.difficulty === legacyDifficulty
   const amount = usingSnapshot ? storedPrice : (price?.amount ?? storedPrice)
   const maximum = bossPartyLimit(bossName, draft.difficulty)
@@ -277,7 +279,7 @@ export function BossDetailsFields({
             {usingSnapshot
               ? '이 주차에 저장된 가격 · 1인 가격 ÷ 클리어 인원 · 1메소 미만 버림'
               : price
-                ? `가격표 적용일 ${price.effectiveOn} · 1인 가격 ÷ 클리어 인원 · 1메소 미만 버림`
+                ? `가격표 적용일 ${price.effectiveOn} · 확인일 ${price.checkedOn} · ${price.isCustom ? '수동 가격' : '앱 기본 가격'} · 1인 가격 ÷ 클리어 인원 · 1메소 미만 버림`
                 : amount === undefined
                   ? '확인된 가격표가 없으면 자동 계산할 수 없습니다.'
                   : '가격표에 없는 기존 기록의 저장 가격을 유지합니다.'}

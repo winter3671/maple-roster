@@ -16,6 +16,25 @@ export function registerHandlers(window: BrowserWindow, services: Services): voi
   const disposeBosses = registerBossHandlers(window, services)
   const disposeBackup = registerBackupHandlers(window, services)
   const disposeLedger = registerLedgerHandlers(window, services)
+  const disposePrices = registerRoutes(window, [
+    [IPC_CHANNELS.pricesList, () => services.prices.list()],
+    [
+      IPC_CHANNELS.pricesSave,
+      (input) => {
+        const result = services.prices.save(input)
+        services.bossSync.invalidatePreviews()
+        return result
+      }
+    ],
+    [
+      IPC_CHANNELS.pricesRemove,
+      (id) => {
+        const result = services.prices.remove(id)
+        services.bossSync.invalidatePreviews()
+        return result
+      }
+    ]
+  ])
   const disposeDrops = registerRoutes(window, [
     [IPC_CHANNELS.dropsList, (input) => services.drops.list(input)],
     [IPC_CHANNELS.dropsCreateLot, (input) => services.drops.createLot(input)],
@@ -39,6 +58,7 @@ export function registerHandlers(window: BrowserWindow, services: Services): voi
     disposeBosses()
     disposeBackup()
     disposeLedger()
+    disposePrices()
     disposeDrops()
   })
 }

@@ -15,6 +15,7 @@ import { CharacterRepository } from '../characters/character.repository'
 import { BossService } from './boss.service'
 import { WEEKLY_BOSSES, bossPartyLimit, validateBossSelection } from '../../../shared/boss-catalog'
 import { crystalShare, findCrystalPrice } from '../../../shared/crystal-prices'
+import type { CrystalPriceEntry } from '../../../shared/contracts/crystal-price.contract'
 
 export class BossSyncService {
   private batchRunning = false
@@ -26,7 +27,8 @@ export class BossSyncService {
     private readonly client: NexonClient,
     private readonly characters: CharacterRepository,
     private readonly bosses: BossService,
-    private readonly now = () => new Date()
+    private readonly now = () => new Date(),
+    private readonly priceHistory: () => CrystalPriceEntry[] = () => []
   ) {}
   invalidatePreviews(): void {
     this.previews.clear()
@@ -159,7 +161,7 @@ export class BossSyncService {
         const crystalPrice =
           existing?.difficulty === boss.difficulty
             ? existing.crystalPrice
-            : findCrystalPrice(bossName, boss.difficulty, week)?.amount
+            : findCrystalPrice(bossName, boss.difficulty, week, this.priceHistory())?.amount
         if (crystalPrice === undefined)
           blockedReasons.push(`${bossName} · ${boss.difficulty}: 해당 주차의 가격표가 없습니다.`)
         return {

@@ -3,6 +3,7 @@ import type { AppInfo } from '../../../shared/contracts/app-api'
 import { getBridge } from '../../lib/bridge'
 import { NexonConnection } from '../nexon/NexonConnection'
 import { BackupManager } from './BackupManager'
+import { CrystalPriceManager } from './CrystalPriceManager'
 
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null)
@@ -49,6 +50,7 @@ export function SettingsPage() {
         </dl>
       </section>
       <NexonConnection />
+      <CrystalPriceManager />
       <BackupManager />
     </div>
   )

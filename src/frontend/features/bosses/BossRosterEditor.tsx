@@ -8,7 +8,8 @@ import {
   bossPartyLimit,
   clampBossParty
 } from '../../../shared/boss-catalog'
-import { crystalShare, findCrystalPrice } from '../../../shared/crystal-prices'
+import { crystalShare } from '../../../shared/crystal-prices'
+import { useCrystalPrices } from '../prices/CrystalPriceProvider'
 import { getKstDate } from '../../../shared/dates'
 import { Button } from '../../components/ui/Button'
 import { formatMeso } from '../../lib/format'
@@ -30,13 +31,14 @@ export function BossRosterEditor({
   onCancel: () => void
 }) {
   const [name, setName] = useState(initialName)
+  const { findPrice } = useCrystalPrices()
   const [rows, setRows] = useState(() => initial.map((member) => ({ ...member })))
   const [error, setError] = useState('')
   const total = rows.reduce(
     (sum, row) =>
       sum +
       crystalShare(
-        findCrystalPrice(row.bossName, row.difficulty, getKstDate())?.amount ?? 0,
+        findPrice(row.bossName, row.difficulty, getKstDate())?.amount ?? 0,
         row.partySize
       ),
     0
@@ -108,7 +110,7 @@ export function BossRosterEditor({
             old?.difficulty === row.difficulty && old.partySize > maximum
               ? old.partySize
               : undefined
-          const amount = findCrystalPrice(row.bossName, row.difficulty, getKstDate())?.amount
+          const amount = findPrice(row.bossName, row.difficulty, getKstDate())?.amount
           return (
             <div key={index} className="rounded-xl border border-line p-3">
               <div className="grid grid-cols-[1fr_100px_85px_auto] items-end gap-2">

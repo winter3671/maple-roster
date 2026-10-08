@@ -6,6 +6,7 @@ import { AppError } from '../../../shared/errors'
 import { readId, readObject, readText } from '../../../shared/validation'
 import { readDate } from '../../../shared/dates'
 import { bossWeek } from '../../../shared/boss-period'
+import { validateBossSelection } from '../../../shared/boss-catalog'
 import { parseBossMembers } from '../../../shared/contracts/boss-roster.contract'
 import { readOcid } from '../../../shared/contracts/nexon.contract'
 import type {
@@ -16,6 +17,7 @@ import type {
 
 // Parent tables precede their dependents. File content never supplies SQL identifiers.
 const TABLES = [
+  'crystal_price_history',
   'characters',
   'boss_templates',
   'boss_presets',
@@ -47,6 +49,7 @@ function invalid(): never {
 const digest = (tables: Tables) => createHash('sha256').update(JSON.stringify(tables)).digest('hex')
 function counts(tables: Tables): BackupCounts {
   return {
+    customPrices: tables.crystal_price_history.length,
     characters: tables.characters.length,
     bossRuns: tables.boss_runs.length,
     huntingSessions: tables.hunting_sessions.length,
@@ -90,6 +93,13 @@ function insert(database: DatabaseSync, tables: Tables): void {
 }
 
 function validateRelations(database: DatabaseSync, tables: Tables): void {
+  if (tables.crystal_price_history.length > 5000) invalid()
+  for (const row of tables.crystal_price_history) {
+    validateBossSelection(String(row.boss_name), String(row.difficulty))
+    readDate(row.effective_on)
+    readDate(row.checked_on)
+    readText(row.source, '출처', 300)
+  }
   const byId = (table: Table) => new Map(tables[table].map((row) => [row.id, row]))
   const hunts = byId('hunting_sessions'),
     bosses = byId('boss_runs'),
@@ -247,7 +257,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        (raw.schemaVersion !== schemaVersion(this.database) && raw.schemaVersion !== 7)
+        ![7, 8, schemaVersion(this.database)].includes(raw.schemaVersion as number)
       )
         throw new AppError(
           'VALIDATION_ERROR',
@@ -259,7 +269,12 @@ export class BackupService {
       )
         invalid()
       const tables = readObject(raw.tables)
-      if (Object.keys(tables).sort().join(',') !== [...TABLES].sort().join(',')) invalid()
+      const older = raw.schemaVersion === 7 || raw.schemaVersion === 8
+      const expectedTables = older
+        ? TABLES.filter((table) => table !== 'crystal_price_history')
+        : TABLES
+      if (Object.keys(tables).sort().join(',') !== [...expectedTables].sort().join(',')) invalid()
+      if (older) tables.crystal_price_history = []
       staging = openDatabase(':memory:')
       let total = 0
       for (const table of TABLES) {

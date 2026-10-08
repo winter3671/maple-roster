@@ -598,7 +598,7 @@ describe('주간 보스와 결정석 장부', () => {
     old.close()
     const upgraded = openDatabase(file)
     try {
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(8)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(9)
       expect(
         upgraded
           .prepare('SELECT id FROM ledger_entries ORDER BY id')

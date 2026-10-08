@@ -4,8 +4,10 @@ import { getBridge } from '../../lib/bridge'
 import { unwrap } from '../../lib/api'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
+import { useCrystalPrices } from '../prices/CrystalPriceProvider'
 
 const labels: { key: keyof BackupCounts; label: string }[] = [
+  { key: 'customPrices', label: '수동 결정석 가격표' },
   { key: 'characters', label: '캐릭터' },
   { key: 'templates', label: '보스 묶음 프리셋' },
   { key: 'bossRuns', label: '주간 보스 기록' },
@@ -15,6 +17,7 @@ const labels: { key: keyof BackupCounts; label: string }[] = [
   { key: 'ledgerEntries', label: '수입·지출 거래' }
 ]
 export function BackupManager() {
+  const prices = useCrystalPrices()
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('')
@@ -165,6 +168,7 @@ export function BackupManager() {
               onClick={() =>
                 void run(async () => {
                   const restored = await unwrap(getBridge().backup.restore(preview.id))
+                  await prices.reload()
                   if (mounted.current) {
                     setPreview(null)
                     setConfirmed(false)

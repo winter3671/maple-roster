@@ -104,6 +104,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     backup.restore({ previewId: refreshed.id })
     expect(bosses.list({ date: '2026-10-15' }).runs[0].partySizeNeedsReview).toBe(true)
     file.schemaVersion = 7
+    delete file.tables.crystal_price_history
     for (const row of file.tables.boss_runs) delete row.party_size_needs_review
     const old = backup.prepare(JSON.stringify(file), '이전.json')
     backup.restore({ previewId: old.id })

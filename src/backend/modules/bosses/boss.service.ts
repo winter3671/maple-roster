@@ -26,6 +26,7 @@ import { UnitOfWork } from '../../database/unit-of-work'
 import { CharacterRepository } from '../characters/character.repository'
 import { LedgerRepository } from '../ledger/ledger.repository'
 import { BossRepository } from './boss.repository'
+import type { CrystalPriceEntry } from '../../../shared/contracts/crystal-price.contract'
 import { DropRepository } from '../drops/drop.repository'
 
 export class BossService {
@@ -35,7 +36,8 @@ export class BossService {
     private readonly ledger: LedgerRepository,
     private readonly transaction: UnitOfWork,
     private readonly drops: DropRepository,
-    private readonly now = () => new Date()
+    private readonly now = () => new Date(),
+    private readonly priceHistory: () => CrystalPriceEntry[] = () => []
   ) {}
   presets(value?: unknown): BossPreset[] {
     return this.repository.presets(value === undefined ? undefined : readId(value))
@@ -58,7 +60,12 @@ export class BossService {
       const timestamp = this.now().toISOString()
       const preset = {
         ...input,
-        crystalPrice: requireCrystalPrice(input.bossName, input.difficulty, getKstDate(this.now())),
+        crystalPrice: requireCrystalPrice(
+          input.bossName,
+          input.difficulty,
+          getKstDate(this.now()),
+          this.priceHistory()
+        ),
         id: randomUUID(),
         bossKey,
         characterName: character.name,
@@ -82,8 +89,12 @@ export class BossService {
       ...current,
       ...input,
       crystalPrice:
-        findCrystalPrice(input.bossName, input.difficulty, getKstDate(this.now()))?.amount ??
-        current.crystalPrice,
+        findCrystalPrice(
+          input.bossName,
+          input.difficulty,
+          getKstDate(this.now()),
+          this.priceHistory()
+        )?.amount ?? current.crystalPrice,
       updatedAt: this.now().toISOString()
     }
     this.repository.savePreset(preset)
@@ -190,7 +201,12 @@ export class BossService {
       const timestamp = this.now().toISOString()
       const run: BossRun = {
         ...input,
-        crystalPrice: requireCrystalPrice(input.bossName, input.difficulty, week),
+        crystalPrice: requireCrystalPrice(
+          input.bossName,
+          input.difficulty,
+          week,
+          this.priceHistory()
+        ),
         id: randomUUID(),
         bossKey: input.bossName.toLowerCase(),
         characterName: character.name,
@@ -333,7 +349,7 @@ export class BossService {
         const price =
           existing?.difficulty === member.difficulty
             ? existing.crystalPrice
-            : requireCrystalPrice(member.bossName, member.difficulty, week)
+            : requireCrystalPrice(member.bossName, member.difficulty, week, this.priceHistory())
         return { existing, member: { ...member, partySize: details.partySize }, price }
       })
       if (new Set(members.map((row) => key(row.bossName))).size !== members.length)
@@ -586,7 +602,7 @@ export class BossService {
     this.ledger.syncCrystal(this.findRun(run.id), run.updatedAt)
   }
   private priceForRun(name: string, difficulty: string, week: string, previous: number): number {
-    const price = findCrystalPrice(name, difficulty, week)
+    const price = findCrystalPrice(name, difficulty, week, this.priceHistory())
     if (price) return price.amount
     // Unknown historical names/difficulties keep their stored price. Known selections
     // before the supported price history cannot use today's price silently.
@@ -595,7 +611,7 @@ export class BossService {
     } catch {
       return previous
     }
-    return requireCrystalPrice(name, difficulty, week)
+    return requireCrystalPrice(name, difficulty, week, this.priceHistory())
   }
   private findRun(id: string): BossRun {
     const run = this.repository.find(id)
