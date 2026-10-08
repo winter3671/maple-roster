@@ -201,7 +201,7 @@ describe('사냥 회차와 거래 장부', () => {
     const upgraded = openDatabase(legacyPath)
     try {
       expect(new CharacterRepository(upgraded).list()[0].name).toBe('기존캐릭터')
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(4)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(5)
       expect(upgraded.prepare('SELECT * FROM hunting_sessions').all()).toHaveLength(0)
     } finally {
       upgraded.close()

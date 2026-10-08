@@ -12,6 +12,7 @@ import { NexonClient } from '../../backend/integrations/nexon/nexon.client'
 import { NexonService } from '../../backend/modules/nexon/nexon.service'
 import { BossRepository } from '../../backend/modules/bosses/boss.repository'
 import { BossService } from '../../backend/modules/bosses/boss.service'
+import { BossRosterService } from '../../backend/modules/bosses/boss-roster.service'
 import { DropRepository } from '../../backend/modules/drops/drop.repository'
 import { DropService } from '../../backend/modules/drops/drop.service'
 
@@ -32,6 +33,7 @@ export function createServices(
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,
     bosses: new BossService(bosses, characters, ledger, transactions, drops),
+    bossRosters: new BossRosterService(database, bosses, characters, transactions),
     nexon: new NexonService(
       new NexonClient(() => nexonKey.key),
       nexonKey,

@@ -3,14 +3,13 @@ import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import {
   currentBossWeek,
   parseBossQuery,
-  type BossPreset,
   type BossRun
 } from '../../../shared/contracts/boss.contract'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatMeso } from '../../lib/format'
-import { BossPresetForm } from './BossPresetForm'
+import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm, CrystalSaleForm } from './BossRunForm'
 import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
@@ -28,7 +27,6 @@ export function BossesPage() {
   }))
   const state = useBosses(query)
   const [periodError, setPeriodError] = useState('')
-  const [editingPreset, setEditingPreset] = useState<BossPreset | null>(null)
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
   const [selling, setSelling] = useState<BossRun | null>(null)
   const [drops, setDrops] = useState<BossRun | null>(null)
@@ -36,7 +34,7 @@ export function BossesPage() {
   const disabled = state.loading || state.busy
   const week = bossWeek(query.date)
   const summary = state.data?.summary
-  const modal = Boolean(editingPreset || editingRun || selling || confirmation)
+  const modal = Boolean(editingRun || selling || confirmation)
   function confirm(value: Confirmation) {
     state.clearFeedback()
     setConfirmation(value)
@@ -328,96 +326,14 @@ export function BossesPage() {
           />
         )}
       </section>
-      <details className="rounded-2xl border border-line bg-surface" open>
-        <summary className="cursor-pointer px-6 py-5 text-sm font-semibold">
-          프리셋 관리 · {state.presets.length}개
-        </summary>
-        <div className="grid items-start gap-5 border-t border-line p-6 lg:grid-cols-[280px_1fr]">
-          <div>
-            <h2 className="mb-4 text-sm font-semibold">보스 프리셋 추가</h2>
-            <BossPresetForm
-              characters={
-                query.characterId
-                  ? state.characters.filter((row) => row.id === query.characterId)
-                  : state.characters
-              }
-              busy={disabled}
-              onSave={(input) =>
-                state.mutate(
-                  () => bossesApi.createPreset(input),
-                  '프리셋을 추가했습니다. 주차 생성을 눌러 이번 기록에 적용하세요.'
-                )
-              }
-            />
-          </div>
-          <div className="space-y-3">
-            <p className="text-xs leading-5 text-muted">
-              보스를 선택하면 해당 보스의 주간 난이도만 표시됩니다. 같은 캐릭터·보스는 난이도별로
-              중복 추가할 수 없습니다. 프리셋 수정·삭제는 이미 생성한 주차 기록에 영향을 주지
-              않습니다.
-            </p>
-            {state.presets.map((preset) => (
-              <article key={preset.id} className="rounded-xl border border-line p-4">
-                <p className="text-sm font-semibold">
-                  {preset.characterName} · {preset.bossName} ({preset.difficulty})
-                </p>
-                <p className="mt-2 text-xs text-muted">
-                  {preset.partySize}인 · 결정석 전체 {formatMeso(preset.crystalPrice)} 메소
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="secondary"
-                    disabled={disabled}
-                    onClick={() => {
-                      state.clearFeedback()
-                      setEditingPreset(preset)
-                    }}
-                  >
-                    프리셋 수정
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={disabled}
-                    onClick={() =>
-                      confirm({
-                        title: '프리셋 삭제',
-                        description: `${preset.characterName}의 ${preset.bossName} 프리셋을 삭제합니다. 과거 주차와 판매 기록은 유지됩니다.`,
-                        action: () => bossesApi.removePreset(preset.id),
-                        message: '프리셋을 삭제했습니다. 주차 기록은 유지했습니다.'
-                      })
-                    }
-                  >
-                    프리셋 삭제
-                  </Button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </details>
-      {editingPreset && (
-        <Dialog title="보스 프리셋 수정" busy={state.busy} onClose={() => setEditingPreset(null)}>
-          {state.error && (
-            <p role="alert" className="mb-4 text-xs text-expense">
-              {state.error}
-            </p>
-          )}
-          <BossPresetForm
-            characters={state.characters}
-            initial={editingPreset}
-            busy={state.busy}
-            onCancel={() => setEditingPreset(null)}
-            onSave={async (input) => {
-              const saved = await state.mutate(
-                () => bossesApi.updatePreset({ ...input, id: editingPreset.id }),
-                '프리셋을 수정했습니다. 기존 주차 기록은 유지했습니다.'
-              )
-              if (saved) setEditingPreset(null)
-              return saved
-            }}
-          />
-        </Dialog>
-      )}
+      <BossRosterManager
+        state={state.rosterState}
+        characters={state.characters}
+        characterId={query.characterId}
+        busy={disabled}
+        error={state.error}
+        mutate={state.mutate}
+      />
       {drops && (
         <DropManager
           source={{ kind: 'boss', id: drops.id }}

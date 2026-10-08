@@ -6,6 +6,11 @@ import { registerRoutes } from './register-routes'
 export function registerBossHandlers(window: BrowserWindow, services: Services): () => void {
   const bosses = services.bosses
   return registerRoutes(window, [
+    [C.bossesRosterState, () => services.bossRosters.state()],
+    [C.bossesSaveTemplate, (input) => services.bossRosters.saveTemplate(input)],
+    [C.bossesRemoveTemplate, (input) => services.bossRosters.removeTemplate(input)],
+    [C.bossesAssignTemplate, (input) => services.bossRosters.assign(input)],
+    [C.bossesSaveRoster, (input) => services.bossRosters.saveRoster(input)],
     [C.bossesPresets, (input) => bosses.presets(input)],
     [C.bossesCreatePreset, (input) => bosses.createPreset(input)],
     [C.bossesUpdatePreset, (input) => bosses.updatePreset(input)],

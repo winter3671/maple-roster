@@ -6,6 +6,12 @@ import type {
 } from './character.contract'
 import type { ApiResult } from '../errors'
 import type {
+  BossMember,
+  BossRosterState,
+  BossTemplate,
+  BossTemplateInput
+} from './boss-roster.contract'
+import type {
   DropSource,
   DropList,
   DropLot,
@@ -52,6 +58,14 @@ export interface AppApi {
     cancelSale: (id: string) => Promise<ApiResult<null>>
   }
   bosses: {
+    rosterState: () => Promise<ApiResult<BossRosterState>>
+    saveTemplate: (input: BossTemplateInput & { id?: string }) => Promise<ApiResult<BossTemplate>>
+    removeTemplate: (id: string) => Promise<ApiResult<null>>
+    assignTemplate: (input: {
+      templateId: string
+      characterIds: string[]
+    }) => Promise<ApiResult<null>>
+    saveRoster: (input: { characterId: string; members: BossMember[] }) => Promise<ApiResult<null>>
     presets: (characterId?: string) => Promise<ApiResult<BossPreset[]>>
     createPreset: (input: BossPresetInput) => Promise<ApiResult<BossPreset>>
     updatePreset: (input: BossPresetUpdate) => Promise<ApiResult<BossPreset>>

@@ -13,6 +13,11 @@ const api: AppApi = {
     cancelSale: (id) => ipcRenderer.invoke(IPC_CHANNELS.dropsCancelSale, id)
   },
   bosses: {
+    rosterState: () => ipcRenderer.invoke(IPC_CHANNELS.bossesRosterState),
+    saveTemplate: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSaveTemplate, input),
+    removeTemplate: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesRemoveTemplate, id),
+    assignTemplate: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesAssignTemplate, input),
+    saveRoster: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSaveRoster, input),
     presets: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesPresets, id),
     createPreset: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesCreatePreset, input),
     updatePreset: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesUpdatePreset, input),

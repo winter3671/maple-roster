@@ -1,5 +1,6 @@
 import { unwrap } from '../../lib/api'
 import { getBridge } from '../../lib/bridge'
+import type { BossMember, BossTemplateInput } from '../../../shared/contracts/boss-roster.contract'
 import type {
   BossPresetInput,
   BossPresetUpdate,
@@ -9,6 +10,14 @@ import type {
 } from '../../../shared/contracts/boss.contract'
 
 export const bossesApi = {
+  rosterState: () => unwrap(getBridge().bosses.rosterState()),
+  saveTemplate: (input: BossTemplateInput & { id?: string }) =>
+    unwrap(getBridge().bosses.saveTemplate(input)),
+  removeTemplate: (id: string) => unwrap(getBridge().bosses.removeTemplate(id)),
+  assignTemplate: (templateId: string, characterIds: string[]) =>
+    unwrap(getBridge().bosses.assignTemplate({ templateId, characterIds })),
+  saveRoster: (characterId: string, members: BossMember[]) =>
+    unwrap(getBridge().bosses.saveRoster({ characterId, members })),
   presets: (id?: string) => unwrap(getBridge().bosses.presets(id)),
   createPreset: (input: BossPresetInput) => unwrap(getBridge().bosses.createPreset(input)),
   updatePreset: (input: BossPresetUpdate) => unwrap(getBridge().bosses.updatePreset(input)),
