@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -32,7 +32,7 @@ export function createWindow(): BrowserWindow {
 }
 
 export async function loadWindow(window: BrowserWindow): Promise<void> {
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
     await window.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     await window.loadFile(join(outputDir, '../renderer/index.html'))

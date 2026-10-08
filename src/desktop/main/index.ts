@@ -9,7 +9,10 @@ import { NexonKeyStore } from '../../backend/config/nexon-key-store'
 let services: Services | undefined
 
 // 테스트 실행은 일반 장부와 분리된 저장 위치를 지정할 수 있다.
-if (process.env.MAPLE_ROSTER_DATA_DIR) app.setPath('userData', process.env.MAPLE_ROSTER_DATA_DIR)
+app.setPath(
+  'userData',
+  process.env.MAPLE_ROSTER_DATA_DIR || join(app.getPath('appData'), 'maple-roster')
+)
 
 const singleInstance = app.requestSingleInstanceLock()
 if (!singleInstance) app.quit()

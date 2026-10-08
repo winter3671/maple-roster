@@ -1,0 +1,26 @@
+appId: com.mapleroster.desktop
+productName: Maple Roster
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+asar: true
+npmRebuild: false
+win:
+  signExecutable: false
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: Maple-Roster-Setup-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Maple Roster
+  deleteAppDataOnUninstall: false
+  runAfterFinish: false
