@@ -61,6 +61,11 @@ export interface BossRunUpdate {
   incomeDate?: string
   confirmPartySize?: boolean
 }
+export interface BossIncomeDateUpdate {
+  id: string
+  date: string
+  expectedDate: string
+}
 export interface BossRunCreate extends BossPresetInput {
   date: string
   notes?: string

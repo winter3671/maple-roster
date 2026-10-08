@@ -96,7 +96,9 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
           <p className="text-sm font-semibold text-brand">기간별 장부 수익을 확인하세요</p>
           <p className="mt-1.5 text-xs leading-5 text-muted">
             사냥·결정석·드랍 거래를 수익·지출 반영일 기준으로 집계합니다. 주간 조회는 목요일
-            00시(KST) 기준이며 숨긴 캐릭터의 기록도 포함합니다.
+            00시(KST) 기준이며 숨긴 캐릭터의 기록도 포함합니다. 결정석은 실제 처치일이 아닌 장부
+            반영일 기준입니다. API로 새로 확인한 수익은 이번 주에는 조회일, 과거 주에는 주차
+            시작일로 기록하며 보스 장부에서 수정할 수 있습니다.
           </p>
         </div>
         <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">

@@ -543,6 +543,40 @@ export class BossService {
       return this.findRun(run.id)
     })
   }
+  updateIncomeDate(value: unknown): BossRun {
+    const input = readObject(value),
+      id = readId(input.id),
+      date = readDate(input.date),
+      expectedDate = readDate(input.expectedDate)
+    return this.transaction.run(() => {
+      const current = this.findRun(id)
+      if (!current.isCleared || !current.settlement)
+        throw new AppError(
+          'VALIDATION_ERROR',
+          '수익이 반영된 클리어 기록의 날짜만 변경할 수 있습니다.'
+        )
+      if (date < current.week || date > getKstDate(this.now()))
+        throw new AppError(
+          'VALIDATION_ERROR',
+          '수익 반영일은 주차 시작일부터 오늘 사이여야 합니다.'
+        )
+      if (current.settlement.date !== expectedDate)
+        throw new AppError(
+          'REQUEST_CONFLICT',
+          '수익 반영일이 변경되었습니다. 기록을 새로고침한 뒤 다시 수정해 주세요.'
+        )
+      if (date === current.settlement.date) return current
+      const timestamp = this.now().toISOString()
+      this.repository.settle(
+        { runId: id, date, amount: current.settlement.amount },
+        current.settlement.id,
+        timestamp
+      )
+      const updated = this.findRun(id)
+      this.ledger.syncCrystal(updated, timestamp)
+      return updated
+    })
+  }
   settle(value: unknown): BossRun {
     const input = parseCrystal(value, getKstDate(this.now()))
     return this.transaction.run(() => {

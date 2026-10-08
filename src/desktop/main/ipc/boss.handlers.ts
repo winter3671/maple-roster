@@ -22,6 +22,7 @@ export function registerBossHandlers(window: BrowserWindow, services: Services):
     [C.bossesGenerate, (input) => bosses.generate(input)],
     [C.bossesSetClear, (input) => bosses.setClear(input)],
     [C.bossesUpdateRun, (input) => bosses.updateRun(input)],
+    [C.bossesUpdateIncomeDate, (input) => bosses.updateIncomeDate(input)],
     [C.bossesCreateRun, (input) => bosses.createRun(input)],
     [C.bossesSettle, (input) => bosses.settle(input)],
     [C.bossesCancelSale, (input) => bosses.cancelSale(input)],

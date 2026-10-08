@@ -6,6 +6,7 @@ import type {
   BossPresetUpdate,
   BossQuery,
   BossRunUpdate,
+  BossIncomeDateUpdate,
   BossRunCreate,
   CrystalInput
 } from '../../../shared/contracts/boss.contract'
@@ -38,6 +39,8 @@ export const bossesApi = {
   setClear: (id: string, isCleared: boolean) =>
     unwrap(getBridge().bosses.setClear({ id, isCleared })),
   updateRun: (input: BossRunUpdate) => unwrap(getBridge().bosses.updateRun(input)),
+  updateIncomeDate: (input: BossIncomeDateUpdate) =>
+    unwrap(getBridge().bosses.updateIncomeDate(input)),
   createRun: (input: BossRunCreate) => unwrap(getBridge().bosses.createRun(input)),
   settle: (input: CrystalInput) => unwrap(getBridge().bosses.settle(input)),
   cancelSale: (id: string) => unwrap(getBridge().bosses.cancelSale(id)),

@@ -100,6 +100,98 @@ describe('주간 보스와 결정석 장부', () => {
     const record = cleared()
     return bosses.settle({ runId: record.id, date: '2026-10-13', amount: 60 })
   }
+  it('반영일만 변경하면 자동 수익·거래 ID·인원 확인 상태를 보존하고 날짜별 집계만 이동한다', () => {
+    const record = cleared()
+    database.prepare('UPDATE boss_runs SET party_size_needs_review=1 WHERE id=?').run(record.id)
+    const before = bosses.list(query).runs[0],
+      entry = ledger.list(month).entries[0]
+    const updated = bosses.updateIncomeDate({
+      id: record.id,
+      date: '2026-10-13',
+      expectedDate: record.settlement!.date,
+      amount: 1,
+      partySize: 1
+    })
+    expect(updated).toMatchObject({
+      week: before.week,
+      partySize: before.partySize,
+      partySizeNeedsReview: true,
+      crystalPrice: before.crystalPrice,
+      notes: before.notes,
+      settlement: {
+        id: before.settlement!.id,
+        date: '2026-10-13',
+        amount: before.settlement!.amount
+      }
+    })
+    expect(new BossRepository(database).isAutomatic(record.id)).toBe(true)
+    expect(ledger.list(month).entries).toEqual([{ ...entry, date: '2026-10-13' }])
+    expect(ledger.list({ from: '2026-10-08', to: '2026-10-08' }).summary.income).toBe(0)
+    expect(ledger.dashboard({ from: '2026-10-13', to: '2026-10-13' }).summary.income).toBe(
+      before.settlement!.amount
+    )
+    expect(
+      bosses.updateIncomeDate({ id: record.id, date: '2026-10-13', expectedDate: '2026-10-13' })
+    ).toEqual(updated)
+    expect(bosses.updateRun({ ...updated, partySize: 2 }).settlement?.amount).toBe(4175000)
+  })
+  it('수동 수익의 날짜를 수정해도 금액과 수동 상태를 유지하며 주차는 바꾸지 않는다', () => {
+    const record = sold()
+    const updated = bosses.updateIncomeDate({
+      id: record.id,
+      date: '2026-10-15',
+      expectedDate: '2026-10-13'
+    })
+    expect(updated.week).toBe(record.week)
+    expect(updated.settlement).toEqual({ ...record.settlement, date: '2026-10-15' })
+    expect(new BossRepository(database).isAutomatic(record.id)).toBe(false)
+    expect(bosses.updateRun({ ...updated, notes: '날짜 변경 후 메모' }).settlement?.amount).toBe(60)
+  })
+  it('미클리어·미래·주차 이전 날짜와 조회 후 변경된 날짜는 덮어쓰지 않는다', () => {
+    const record = run()
+    expect(() =>
+      bosses.updateIncomeDate({ id: record.id, date: '2026-10-13', expectedDate: '2026-10-08' })
+    ).toThrow('클리어 기록')
+    const clearedRecord = bosses.setClear({ id: record.id, isCleared: true })
+    for (const date of ['2026-10-07', '2026-10-16'])
+      expect(() =>
+        bosses.updateIncomeDate({
+          id: record.id,
+          date,
+          expectedDate: clearedRecord.settlement!.date
+        })
+      ).toThrow('주차 시작일')
+    bosses.updateIncomeDate({
+      id: record.id,
+      date: '2026-10-13',
+      expectedDate: clearedRecord.settlement!.date
+    })
+    const entries = ledger.list(month).entries
+    expect(() =>
+      bosses.updateIncomeDate({
+        id: record.id,
+        date: '2026-10-14',
+        expectedDate: clearedRecord.settlement!.date
+      })
+    ).toThrow('반영일이 변경')
+    expect(ledger.list(month).entries).toEqual(entries)
+  })
+  it('날짜 수정 중 장부 저장에 실패하면 결정석 정산과 거래 날짜를 모두 되돌린다', () => {
+    const record = cleared(),
+      entries = ledger.list(month).entries
+    database.exec(
+      "CREATE TRIGGER reject_income_date BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT,'date failure'); END"
+    )
+    expect(() =>
+      bosses.updateIncomeDate({
+        id: record.id,
+        date: '2026-10-13',
+        expectedDate: record.settlement!.date
+      })
+    ).toThrow('date failure')
+    expect(bosses.list(query).runs[0]).toEqual(record)
+    expect(ledger.list(month).entries).toEqual(entries)
+  })
 
   it('프리셋 없이 주차 보스를 추가하고 중복과 미래 주차를 막는다', () => {
     const input = {

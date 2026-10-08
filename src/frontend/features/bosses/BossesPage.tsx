@@ -12,6 +12,7 @@ import { formatMeso } from '../../lib/format'
 import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
+import { BossIncomeDateForm } from './BossIncomeDateForm'
 import { BossClearPreview } from './BossClearPreview'
 import type {
   BossSyncPreview,
@@ -36,6 +37,7 @@ export function BossesPage() {
   const state = useBosses(query)
   const [periodError, setPeriodError] = useState('')
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
+  const [editingIncomeDate, setEditingIncomeDate] = useState<BossRun | null>(null)
   const [addingCharacter, setAddingCharacter] = useState<Character | null>(null)
   const [drops, setDrops] = useState<BossRun | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
@@ -55,7 +57,9 @@ export function BossesPage() {
   const disabled = state.loading || state.busy || apiBusy
   const week = bossWeek(query.date)
   const summary = state.data?.summary
-  const modal = Boolean(editingRun || addingCharacter || confirmation || apiPreview)
+  const modal = Boolean(
+    editingRun || editingIncomeDate || addingCharacter || confirmation || apiPreview
+  )
   const canSyncApi = week <= currentBossWeek() && shiftDate(week, 6) >= shiftDate(getKstDate(), -14)
   async function refreshAll() {
     if (apiLock.current) return
@@ -317,6 +321,10 @@ export function BossesPage() {
               state.clearFeedback()
               setEditingRun(run)
             }}
+            onEditIncomeDate={(run) => {
+              state.clearFeedback()
+              setEditingIncomeDate(run)
+            }}
             onDrops={setDrops}
             onClear={(run, value) =>
               void state.mutate(
@@ -414,6 +422,32 @@ export function BossesPage() {
                 '이 주차의 보스 기록을 수정했습니다.'
               )
               if (saved) setEditingRun(null)
+              return saved
+            }}
+          />
+        </Dialog>
+      )}
+      {editingIncomeDate && (
+        <Dialog
+          title="결정석 수익 반영일 수정"
+          busy={state.busy}
+          onClose={() => setEditingIncomeDate(null)}
+        >
+          {state.error && (
+            <p role="alert" className="mb-4 text-xs text-expense">
+              {state.error}
+            </p>
+          )}
+          <BossIncomeDateForm
+            run={editingIncomeDate}
+            busy={state.busy}
+            onCancel={() => setEditingIncomeDate(null)}
+            onSave={async (input) => {
+              const saved = await state.mutate(
+                () => bossesApi.updateIncomeDate(input),
+                '수익 반영일을 수정했습니다. 금액과 보스 주차는 유지됩니다.'
+              )
+              if (saved) setEditingIncomeDate(null)
               return saved
             }}
           />

@@ -14,6 +14,7 @@ export function BossRunGroups({
   onQueryApi,
   onAdd,
   onEdit,
+  onEditIncomeDate,
   onDelete,
   onClear,
   onDrops
@@ -27,6 +28,7 @@ export function BossRunGroups({
   onQueryApi: (character: Character) => void
   onAdd: (character: Character) => void
   onEdit: (run: BossRun) => void
+  onEditIncomeDate: (run: BossRun) => void
   onDelete: (run: BossRun) => void
   onClear: (run: BossRun, value: boolean) => void
   onDrops: (run: BossRun) => void
@@ -185,6 +187,17 @@ export function BossRunGroups({
                                   run.isCleared ? (run.settlement?.amount ?? run.expectedShare) : 0
                                 )}{' '}
                                 메소
+                                {run.isCleared && run.settlement && (
+                                  <button
+                                    type="button"
+                                    aria-label={`${run.characterName} ${run.bossName} 수익 반영일 수정`}
+                                    disabled={busy}
+                                    onClick={() => onEditIncomeDate(run)}
+                                    className="mt-1 block rounded px-1 py-1 text-[11px] font-normal text-muted underline decoration-line underline-offset-4 hover:bg-brand-soft hover:text-brand focus-visible:outline-brand disabled:opacity-50"
+                                  >
+                                    반영일 {run.settlement.date}
+                                  </button>
+                                )}
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-end gap-2">

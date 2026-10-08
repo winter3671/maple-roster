@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  bossesUpdateIncomeDate: 'bosses:update-income-date',
   pricesList: 'prices:list',
   pricesSave: 'prices:save',
   pricesRemove: 'prices:remove',

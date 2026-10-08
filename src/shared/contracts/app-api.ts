@@ -41,6 +41,7 @@ import type {
   BossQuery,
   BossRun,
   BossRunUpdate,
+  BossIncomeDateUpdate,
   BossRunCreate,
   CrystalInput
 } from './boss.contract'
@@ -104,6 +105,7 @@ export interface AppApi {
     generate: (query: BossQuery) => Promise<ApiResult<BossList>>
     setClear: (input: { id: string; isCleared: boolean }) => Promise<ApiResult<BossRun>>
     updateRun: (input: BossRunUpdate) => Promise<ApiResult<BossRun>>
+    updateIncomeDate: (input: BossIncomeDateUpdate) => Promise<ApiResult<BossRun>>
     createRun: (input: BossRunCreate) => Promise<ApiResult<BossRun>>
     settle: (input: CrystalInput) => Promise<ApiResult<BossRun>>
     cancelSale: (id: string) => Promise<ApiResult<null>>
