@@ -1,17 +1,19 @@
 import { WEEKLY_BOSSES } from './boss-catalog'
-import { CRYSTAL_PRICES_CHECKED_ON, findCrystalPrice } from './crystal-prices'
+import { BOSS_DISPLAY_ORDER } from './boss-display-order'
 
 type BossSelection = { bossName: string; difficulty: string }
+const key = (boss: BossSelection) => JSON.stringify([boss.bossName, boss.difficulty])
+const ranks = new Map(
+  BOSS_DISPLAY_ORDER.map(([bossName, difficulty], index) => [key({ bossName, difficulty }), index])
+)
 
-// Progression uses the catalog's solo base reward as a difficulty proxy.
-// A fixed catalog date keeps historical weeks, party sizes and saved prices
-// from changing the display order. This is not a measured combat difficulty.
+// Display order is maintained separately from all prices and party sizes.
 export function compareBossProgression(a: BossSelection, b: BossSelection): number {
-  const aPrice = findCrystalPrice(a.bossName, a.difficulty, CRYSTAL_PRICES_CHECKED_ON)?.amount
-  const bPrice = findCrystalPrice(b.bossName, b.difficulty, CRYSTAL_PRICES_CHECKED_ON)?.amount
-  if (aPrice !== undefined && bPrice !== undefined && aPrice !== bPrice) return aPrice - bPrice
-  if (aPrice === undefined && bPrice !== undefined) return 1
-  if (aPrice !== undefined && bPrice === undefined) return -1
+  const aRank = ranks.get(key(a))
+  const bRank = ranks.get(key(b))
+  if (aRank !== undefined && bRank !== undefined) return aRank - bRank
+  if (aRank === undefined && bRank !== undefined) return 1
+  if (aRank !== undefined && bRank === undefined) return -1
   const index = (name: string) => {
     const found = WEEKLY_BOSSES.findIndex((boss) => boss.name === name)
     return found < 0 ? WEEKLY_BOSSES.length : found

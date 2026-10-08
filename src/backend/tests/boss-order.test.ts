@@ -1,7 +1,52 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { compareBossProgression } from '../../shared/boss-order'
+import { BOSS_DISPLAY_ORDER } from '../../shared/boss-display-order'
+import { WEEKLY_BOSSES } from '../../shared/boss-catalog'
+import * as prices from '../../shared/crystal-prices'
 
 describe('주간 보스 진행 순서', () => {
+  it('현재 카탈로그의 모든 보스·난이도가 중복과 누락 없이 정렬 데이터에 포함된다', () => {
+    const known = WEEKLY_BOSSES.flatMap((boss) =>
+      boss.difficulties.map((difficulty) => JSON.stringify([boss.name, difficulty]))
+    )
+    const ordered = BOSS_DISPLAY_ORDER.map((row) => JSON.stringify(row))
+    expect(new Set(ordered).size).toBe(ordered.length)
+    expect([...ordered].sort()).toEqual([...known].sort())
+  })
+  it('가격 조회 함수와 기본 가격 이력이 변경되어도 표시 순서는 그대로다', () => {
+    const spy = vi.spyOn(prices, 'findCrystalPrice').mockImplementation(() => {
+      throw new Error('정렬에서 가격을 조회하면 안 됩니다.')
+    })
+    try {
+      const rows = [
+        { bossName: '찬란한 흉성', difficulty: '노멀' },
+        { bossName: '스우', difficulty: '익스트림' },
+        { bossName: '데미안', difficulty: '노멀' }
+      ]
+      expect(rows.sort(compareBossProgression).map((row) => row.bossName)).toEqual([
+        '데미안',
+        '스우',
+        '찬란한 흉성'
+      ])
+      expect(spy).not.toHaveBeenCalled()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+  it('정렬표에 없는 기존 난이도·이름은 알려진 조합 뒤에 일관되게 표시한다', () => {
+    const rows = [
+      { bossName: '기존 보스', difficulty: '하드' },
+      { bossName: '스우', difficulty: '기존 난이도' },
+      { bossName: '카링', difficulty: '익스트림' },
+      { bossName: '기존 보스', difficulty: '노멀' }
+    ]
+    expect(rows.sort(compareBossProgression)).toEqual([
+      { bossName: '카링', difficulty: '익스트림' },
+      { bossName: '스우', difficulty: '기존 난이도' },
+      { bossName: '기존 보스', difficulty: '노멀' },
+      { bossName: '기존 보스', difficulty: '하드' }
+    ])
+  })
   it('익세노흉 구성은 익스트림 스우와 노멀 흉성이 마지막에 온다', () => {
     const selections = [
       ['스우', '익스트림'],
