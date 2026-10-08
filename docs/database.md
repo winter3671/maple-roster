@@ -10,16 +10,16 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## characters
 
-| 컬럼 | 타입 | 의미 |
-| --- | --- | --- |
-| id | TEXT, PK | 내부 UUID, 이름·월드를 수정해도 유지 |
-| name | TEXT | 수동 입력 이름, 1~40자 |
-| world | TEXT | 수동 입력 월드, 1~40자 |
-| identity_key | TEXT, UNIQUE | 이름·월드의 정규화된 중복 검사 키 |
-| notes | TEXT | 선택 메모, 최대 500자 |
-| is_hidden | INTEGER | 0: 표시, 1: 숨김 |
-| created_at | TEXT | UTC 생성 시각 |
-| updated_at | TEXT | UTC 최종 수정 시각 |
+| 컬럼         | 타입         | 의미                                 |
+| ------------ | ------------ | ------------------------------------ |
+| id           | TEXT, PK     | 내부 UUID, 이름·월드를 수정해도 유지 |
+| name         | TEXT         | 수동 입력 이름, 1~40자               |
+| world        | TEXT         | 수동 입력 월드, 1~40자               |
+| identity_key | TEXT, UNIQUE | 이름·월드의 정규화된 중복 검사 키    |
+| notes        | TEXT         | 선택 메모, 최대 500자                |
+| is_hidden    | INTEGER      | 0: 표시, 1: 숨김                     |
+| created_at   | TEXT         | UTC 생성 시각                        |
+| updated_at   | TEXT         | UTC 최종 수정 시각                   |
 
 앱의 입력 길이는 수동 장부를 위한 제한이며, 게임의 캐릭터명 규칙을 그대로 검증하는 것은 아니다. 월드도 수동 입력한다. API 연결 시에는 실제 월드와 프로필을 확인할 예정이다.
 
@@ -27,34 +27,34 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## hunting_sessions
 
-| 컬럼 | 타입 | 의미 |
-| --- | --- | --- |
-| id | TEXT, PK | 클라이언트 저장 요청 UUID, 반복 요청 중복 방지 |
-| character_id | TEXT, FK | 캐릭터 ID, ON DELETE RESTRICT |
-| world_snapshot | TEXT | 기록 당시 월드 |
-| activity_date | TEXT | 한국 기준 사냥 날짜, YYYY-MM-DD |
-| minutes | INTEGER | 0~1,440분, 0은 시간 미기록 |
-| mesos / cost | INTEGER | 직접 획득한 메소 / 소모 비용 |
-| sol_fragments / nodestones | INTEGER | 솔 에르다 조각 / 코어 젬스톤 수량 |
-| notes | TEXT | 최대 500자 회차 메모 |
-| created_at / updated_at | TEXT | UTC 생성 / 수정 시각 |
+| 컬럼                       | 타입     | 의미                                           |
+| -------------------------- | -------- | ---------------------------------------------- |
+| id                         | TEXT, PK | 클라이언트 저장 요청 UUID, 반복 요청 중복 방지 |
+| character_id               | TEXT, FK | 캐릭터 ID, ON DELETE RESTRICT                  |
+| world_snapshot             | TEXT     | 기록 당시 월드                                 |
+| activity_date              | TEXT     | 한국 기준 사냥 날짜, YYYY-MM-DD                |
+| minutes                    | INTEGER  | 0~1,440분, 0은 시간 미기록                     |
+| mesos / cost               | INTEGER  | 직접 획득한 메소 / 소모 비용                   |
+| sol_fragments / nodestones | INTEGER  | 솔 에르다 조각 / 코어 젬스톤 수량              |
+| notes                      | TEXT     | 최대 500자 회차 메모                           |
+| created_at / updated_at    | TEXT     | UTC 생성 / 수정 시각                           |
 
 순수익과 시간당 순수익은 저장된 금액·시간으로 계산한다. 캐릭터 이름은 현재 이름을 표시하고 월드는 기록 당시 값을 보존한다. 같은 캐릭터의 월드를 변경해도 과거 사냥 기록의 월드는 바뀌지 않는다. 회차를 다른 캐릭터로 옮기면 새 캐릭터의 현재 월드를 적용한다.
 
 ## ledger_entries
 
-| 컬럼 | 타입 | 의미 |
-| --- | --- | --- |
-| id | TEXT, PK | 거래 UUID |
-| hunting_session_id | TEXT, FK, NULL 가능 | 사냥 회차 ID, ON DELETE CASCADE |
-| crystal_settlement_id | TEXT, UNIQUE, FK, NULL 가능 | 결정석 정산 ID, ON DELETE CASCADE |
-| drop_sale_id | TEXT, UNIQUE, FK, NULL 가능 | 드랍 판매 ID, ON DELETE CASCADE |
-| character_id | TEXT, FK | 캐릭터 ID, ON DELETE RESTRICT |
-| world_snapshot | TEXT | 기록 당시 월드 |
-| occurred_on | TEXT | 사냥 거래는 활동일, 결정석·드랍은 판매일 |
-| direction | TEXT | income 또는 expense |
-| amount | INTEGER | 1 이상 정수 메소 |
-| created_at / updated_at | TEXT | UTC 생성 / 수정 시각 |
+| 컬럼                    | 타입                        | 의미                                     |
+| ----------------------- | --------------------------- | ---------------------------------------- |
+| id                      | TEXT, PK                    | 거래 UUID                                |
+| hunting_session_id      | TEXT, FK, NULL 가능         | 사냥 회차 ID, ON DELETE CASCADE          |
+| crystal_settlement_id   | TEXT, UNIQUE, FK, NULL 가능 | 결정석 정산 ID, ON DELETE CASCADE        |
+| drop_sale_id            | TEXT, UNIQUE, FK, NULL 가능 | 드랍 판매 ID, ON DELETE CASCADE          |
+| character_id            | TEXT, FK                    | 캐릭터 ID, ON DELETE RESTRICT            |
+| world_snapshot          | TEXT                        | 기록 당시 월드                           |
+| occurred_on             | TEXT                        | 사냥 거래는 활동일, 결정석·드랍은 판매일 |
+| direction               | TEXT                        | income 또는 expense                      |
+| amount                  | INTEGER                     | 1 이상 정수 메소                         |
+| created_at / updated_at | TEXT                        | UTC 생성 / 수정 시각                     |
 
 회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 결정석·드랍 판매는 판매당 수입 하나만 생성하고 각 원본 FK를 UNIQUE로 보호한다. 세 원본 FK 중 정확히 하나만 값이 있어야 하며 결정석·드랍 거래는 income만 허용한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 수동 거래는 후속 단계다.
 
@@ -76,6 +76,8 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 금액은 JavaScript의 안전한 정수 범위까지 허용한다. 합계와 시간당 계산의 중간 연산은 BigInt를 사용하고, 반환값이 안전한 범위를 넘으면 오류로 처리한다. 날짜·캐릭터별 조회를 위해 사냥 날짜와 거래 날짜에 인덱스를 둔다.
 
 ## 저장과 삭제 규칙
+
+7번 마이그레이션은 `characters`에 `nexon_ocid`와 프로필 캐시(`nexon_level`, `nexon_job`, `nexon_guild`, `nexon_fetched_at`)를 추가한다. 기존 캐릭터는 API 미연결 상태로 유지하며 장부를 수정하지 않는다. OCID는 NULL을 제외한 UNIQUE 인덱스로 중복 연결을 막는다. 프로필 갱신은 캐릭터의 최신 이름·월드·중복 키와 API 캐시를 원자적으로 갱신하며 메모·숨김·생성 시각을 보존한다. 30일 지난 프로필 캐시는 캐릭터 조회 시 제거하고, 연결 해제는 OCID와 캐시를 함께 지운다. 상세 갱신 규칙은 [넥슨 연동](nexon-api.md)을 따른다.
 
 - 외래 키 검사를 켜고, WAL 모드와 5초 busy timeout을 사용한다.
 - SQL은 값을 바인딩한 prepared statement로 실행한다.

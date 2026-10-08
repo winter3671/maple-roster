@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  nexonSyncProfiles: 'nexon:sync-profiles',
+  nexonUnlink: 'nexon:unlink',
   nexonSaveKey: 'nexon:save-key',
   nexonRemoveKey: 'nexon:remove-key',
   bossesRosterState: 'bosses:roster-state',

@@ -12,6 +12,10 @@ export interface Character extends CharacterInput {
   isHidden: boolean
   createdAt: string
   updatedAt: string
+  nexon?: {
+    ocid: string
+    profile: { level: number; job: string; guild: string; fetchedAt: string } | null
+  }
 }
 
 export interface CharacterUpdate extends CharacterInput {

@@ -39,7 +39,8 @@ import type {
   NexonCharacter,
   NexonProfile,
   NexonRegistration,
-  NexonBatchResult
+  NexonBatchResult,
+  NexonSyncResult
 } from './nexon.contract'
 
 export interface AppInfo {
@@ -81,6 +82,11 @@ export interface AppApi {
     removeRun: (id: string) => Promise<ApiResult<null>>
   }
   nexon: {
+    syncProfiles: (input: {
+      force: boolean
+      characterIds?: string[]
+    }) => Promise<ApiResult<NexonSyncResult>>
+    unlink: (characterId: string) => Promise<ApiResult<Character>>
     saveKey: (key: string) => Promise<ApiResult<NexonStatus>>
     removeKey: () => Promise<ApiResult<NexonStatus>>
     status: () => Promise<ApiResult<NexonStatus>>

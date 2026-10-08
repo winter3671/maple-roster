@@ -5,6 +5,7 @@ import bossesSql from './migrations/003_bosses.sql?raw'
 import dropsSql from './migrations/004_drops.sql?raw'
 import rostersSql from './migrations/005_boss_rosters.sql?raw'
 import clearIncomeSql from './migrations/006_boss_clear_income.sql?raw'
+import profilesSql from './migrations/007_character_profiles.sql?raw'
 
 const migrations = [
   { version: 1, name: 'characters', sql: charactersSql },
@@ -12,7 +13,8 @@ const migrations = [
   { version: 3, name: 'bosses', sql: bossesSql },
   { version: 4, name: 'drops', sql: dropsSql },
   { version: 5, name: 'boss_rosters', sql: rostersSql },
-  { version: 6, name: 'boss_clear_income', sql: clearIncomeSql }
+  { version: 6, name: 'boss_clear_income', sql: clearIncomeSql },
+  { version: 7, name: 'character_profiles', sql: profilesSql }
 ]
 
 export function migrate(database: DatabaseSync): void {

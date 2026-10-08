@@ -172,7 +172,14 @@ describe('API character registration', () => {
     return {
       database,
       characters,
-      service: new NexonService(client, { configured: true, issue: null }, repository, characters)
+      service: new NexonService(
+        client,
+        { configured: true, issue: null },
+        repository,
+        characters,
+        undefined,
+        new UnitOfWork(database)
+      )
     }
   }
   it('resolves metadata in the backend and makes repeated registration idempotent', async () => {

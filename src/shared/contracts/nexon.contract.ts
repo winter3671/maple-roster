@@ -29,6 +29,16 @@ export type NexonBatchItem =
 export interface NexonBatchResult {
   items: NexonBatchItem[]
 }
+export interface NexonSyncResult {
+  items: (
+    | { characterId: string; status: 'updated' }
+    | {
+        characterId: string
+        status: 'failed' | 'notAttempted'
+        error: { code: ErrorCode; message: string }
+      }
+  )[]
+}
 
 export function readOcidSelection(value: unknown): string[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > 500)

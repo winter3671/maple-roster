@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Character, CharacterInput } from '../../../shared/contracts/character.contract'
 import { AppError } from '../../../shared/errors'
 import { charactersApi } from './characters.api'
+import { nexonApi } from '../nexon/nexon.api'
+import type { NexonSyncResult } from '../../../shared/contracts/nexon.contract'
 
 export function useCharacters() {
   const [characters, setCharacters] = useState<Character[]>([])
@@ -9,6 +11,7 @@ export function useCharacters() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [syncResult, setSyncResult] = useState<NexonSyncResult | null>(null)
   const mounted = useRef(false)
   const pending = useRef(false)
   const sequence = useRef(0)
@@ -47,6 +50,7 @@ export function useCharacters() {
     setBusy(true)
     setError(null)
     setNotice(null)
+    setSyncResult(null)
     let saved = false
     try {
       await operation()
@@ -79,11 +83,23 @@ export function useCharacters() {
     busy,
     error,
     notice,
+    syncResult,
     reload,
     clearFeedback: () => {
       setError(null)
       setNotice(null)
+      setSyncResult(null)
     },
+    syncProfiles: (force: boolean, characterIds?: string[]) =>
+      mutate(
+        async () => {
+          const result = await nexonApi.syncProfiles(force, characterIds)
+          if (mounted.current) setSyncResult(result)
+        },
+        force ? 'API 프로필 갱신을 완료했습니다. 아래 결과를 확인하세요.' : ''
+      ),
+    unlink: (id: string) =>
+      mutate(() => nexonApi.unlink(id), 'API 연결을 해제했습니다. 캐릭터와 장부는 유지됩니다.'),
     create: (input: CharacterInput) =>
       mutate(() => charactersApi.create(input), '캐릭터를 등록했습니다.'),
     update: (id: string, input: CharacterInput) =>

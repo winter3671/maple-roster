@@ -41,7 +41,8 @@ export function createServices(
       nexonKey,
       characters,
       characterService,
-      keyStore
+      keyStore,
+      transactions
     ),
     hunting: new HuntingService(hunting, characters, ledger, transactions, drops),
     drops: new DropService(drops, hunting, bosses, ledger, transactions),

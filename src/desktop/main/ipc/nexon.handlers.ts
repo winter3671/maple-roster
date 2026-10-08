@@ -5,6 +5,8 @@ import { registerRoutes } from './register-routes'
 
 export function registerNexonHandlers(window: BrowserWindow, services: Services): () => void {
   return registerRoutes(window, [
+    [IPC_CHANNELS.nexonSyncProfiles, (input) => services.nexon.syncProfiles(input)],
+    [IPC_CHANNELS.nexonUnlink, (input) => services.nexon.unlink(input)],
     [IPC_CHANNELS.nexonSaveKey, (input) => services.nexon.saveKey(input)],
     [IPC_CHANNELS.nexonRemoveKey, () => services.nexon.removeKey()],
     [IPC_CHANNELS.nexonStatus, () => services.nexon.status()],

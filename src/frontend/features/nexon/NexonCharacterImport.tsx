@@ -64,8 +64,8 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
     }
   }
   const registered = new Map(characters.map((row) => [identity(row), row]))
-  const isRegistered = (row: NexonCharacter) =>
-    completed.has(row.ocid) || registered.has(identity(row))
+  const linked = new Map(characters.filter((row) => row.nexon).map((row) => [row.nexon!.ocid, row]))
+  const isRegistered = (row: NexonCharacter) => completed.has(row.ocid) || linked.has(row.ocid)
   const disabled = busy || pending
   const matching =
     rows?.filter((row) =>
@@ -211,7 +211,7 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
             </div>
             <div className="max-h-96 space-y-2 overflow-y-auto pr-1" aria-label="넥슨 캐릭터 목록">
               {matching.map((row) => {
-                const existing = registered.get(identity(row))
+                const existing = linked.get(row.ocid) ?? registered.get(identity(row))
                 const saved = isRegistered(row)
                 const checkboxId = `${id}-${row.ocid}`
                 return (
@@ -235,6 +235,7 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
                       <span className="mt-1 block text-xs text-muted">
                         Lv. {row.level} · {row.job}
                         {saved ? (existing?.isHidden ? ' · 등록됨 (숨김)' : ' · 이미 등록됨') : ''}
+                        {!saved && existing ? ' · 기존 캐릭터에 API 연결' : ''}
                       </span>
                     </label>
                     <Button
@@ -289,8 +290,8 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
                 {new Date(profile.fetchedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
               </p>
               <p className="mt-4 text-xs leading-5 text-muted">
-                등록할 캐릭터는 목록에서 체크하세요. 레벨·직업은 조회 정보이며 자동 동기화는 후속
-                단계입니다.
+                등록할 캐릭터는 목록에서 체크하세요. 등록하면 API 정보를 저장하며, 이후 캐릭터
+                카드에서 갱신할 수 있습니다.
               </p>
             </div>
           ) : (
