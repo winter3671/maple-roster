@@ -7,12 +7,14 @@ import { FinancialSummary } from '../../components/FinancialSummary'
 import { RecordFilters } from '../../components/RecordFilters'
 import { formatMeso, formatMinutes, thisMonthQuery } from '../../lib/format'
 import { HuntingSessionForm } from './HuntingSessionForm'
+import { HuntingQuickForm } from './HuntingQuickForm'
 import { HuntingSessionList } from './HuntingSessionList'
 import { useHunting } from './useHunting'
 import { DropManager } from '../drops/DropManager'
 
 export function HuntingPage() {
   const [query, setQuery] = useState(thisMonthQuery)
+  const [recordMode, setRecordMode] = useState<'quick' | 'detail'>('quick')
   const state = useHunting(query)
   const [editing, setEditing] = useState<HuntingSession | null>(null)
   const [deleting, setDeleting] = useState<HuntingSession | null>(null)
@@ -51,18 +53,43 @@ export function HuntingPage() {
         <section className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-sm font-semibold">사냥 회차 추가</h2>
           <p className="mb-5 mt-2 text-xs leading-5 text-muted">
-            30분을 기본으로 기록합니다. 획득 메소는 거래 내역에 자동 반영됩니다.
+            빠른 기록은 오늘의 30분 사냥을 메소·조각만 입력해 저장합니다.
           </p>
+          <div role="group" aria-label="사냥 기록 모드" className="mb-5 grid grid-cols-2 gap-2">
+            {(['quick', 'detail'] as const).map((mode) => (
+              <Button
+                key={mode}
+                variant={recordMode === mode ? 'primary' : 'secondary'}
+                aria-pressed={recordMode === mode}
+                disabled={state.busy}
+                onClick={() => {
+                  state.clearFeedback()
+                  setRecordMode(mode)
+                }}
+              >
+                {mode === 'quick' ? '빠른 기록' : '상세 기록'}
+              </Button>
+            ))}
+          </div>
           {!state.loading && state.characters.every((character) => character.isHidden) && (
             <p className="mb-4 rounded-lg bg-brand-soft p-3 text-xs leading-5 text-brand">
               캐릭터 관리에서 캐릭터를 등록하거나 숨김을 해제해 주세요.
             </p>
           )}
-          <HuntingSessionForm
-            characters={state.characters}
-            busy={state.busy || state.loading}
-            onSave={state.create}
-          />
+          <div hidden={recordMode !== 'quick'}>
+            <HuntingQuickForm
+              characters={state.characters}
+              busy={state.busy || state.loading}
+              onSave={state.create}
+            />
+          </div>
+          <div hidden={recordMode !== 'detail'}>
+            <HuntingSessionForm
+              characters={state.characters}
+              busy={state.busy || state.loading}
+              onSave={state.create}
+            />
+          </div>
         </section>
         <section
           aria-busy={state.loading}
