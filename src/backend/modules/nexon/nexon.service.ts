@@ -8,16 +8,29 @@ import { AppError } from '../../../shared/errors'
 import { NexonClient } from '../../integrations/nexon/nexon.client'
 import { CharacterRepository } from '../characters/character.repository'
 import { CharacterService } from '../characters/character.service'
+import type { NexonKeyStore } from '../../config/nexon-key-store'
 
 export class NexonService {
   constructor(
     private readonly client: NexonClient,
     private readonly configuration: NexonStatus,
     private readonly characters: CharacterRepository,
-    private readonly characterService: CharacterService
+    private readonly characterService: CharacterService,
+    private readonly keyStore?: NexonKeyStore
   ) {}
   status(): NexonStatus {
+    if (this.keyStore) return this.keyStore.status()
     return { configured: this.configuration.configured, issue: this.configuration.issue }
+  }
+  saveKey(value: unknown): NexonStatus {
+    if (!this.keyStore)
+      throw new AppError('API_KEY_STORAGE_ERROR', 'API 키 저장소를 사용할 수 없습니다.')
+    return this.keyStore.save(value)
+  }
+  removeKey(): NexonStatus {
+    if (!this.keyStore)
+      throw new AppError('API_KEY_STORAGE_ERROR', 'API 키 저장소를 사용할 수 없습니다.')
+    return this.keyStore.remove()
   }
   list() {
     return this.client.list()

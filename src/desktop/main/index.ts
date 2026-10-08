@@ -1,9 +1,10 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { createServices, type Services } from './bootstrap'
 import { registerHandlers } from './ipc/register-handlers'
 import { createWindow, loadWindow } from './window'
 import { readNexonKey } from '../../backend/config/nexon-key'
+import { NexonKeyStore } from '../../backend/config/nexon-key-store'
 
 let services: Services | undefined
 
@@ -30,10 +31,26 @@ app
   .whenReady()
   .then(async () => {
     if (!singleInstance) return
+    const developmentKey = app.isPackaged
+      ? { configured: false, issue: 'missing' as const }
+      : readNexonKey(app.getAppPath())
+    const keyStore = new NexonKeyStore(
+      join(app.getPath('userData'), 'secrets', 'nexon-api-key.bin'),
+      {
+        available: () =>
+          safeStorage.isEncryptionAvailable() &&
+          (process.platform !== 'linux' ||
+            safeStorage.getSelectedStorageBackend() !== 'basic_text'),
+        encrypt: (key) => safeStorage.encryptString(key),
+        decrypt: (data) => safeStorage.decryptString(data)
+      },
+      developmentKey
+    )
     services = createServices(
       app.getVersion(),
       join(app.getPath('userData'), 'data', 'maple-roster.sqlite'),
-      app.isPackaged ? { configured: false, issue: 'missing' } : readNexonKey(app.getAppPath())
+      developmentKey,
+      keyStore
     )
     await openApp()
     app.on('activate', () => {

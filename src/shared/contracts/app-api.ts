@@ -81,6 +81,8 @@ export interface AppApi {
     removeRun: (id: string) => Promise<ApiResult<null>>
   }
   nexon: {
+    saveKey: (key: string) => Promise<ApiResult<NexonStatus>>
+    removeKey: () => Promise<ApiResult<NexonStatus>>
     status: () => Promise<ApiResult<NexonStatus>>
     list: () => Promise<ApiResult<NexonCharacter[]>>
     basic: (ocid: string) => Promise<ApiResult<NexonProfile>>

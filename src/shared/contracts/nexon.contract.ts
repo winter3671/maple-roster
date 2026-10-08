@@ -15,6 +15,9 @@ export interface NexonProfile extends NexonCharacter {
 export interface NexonStatus {
   configured: boolean
   issue: 'missing' | 'unreadable' | 'invalid' | null
+  keySource?: 'saved' | 'env' | null
+  hasSavedKey?: boolean
+  encryptionAvailable?: boolean
 }
 export interface NexonRegistration {
   character: Character

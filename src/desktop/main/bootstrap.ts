@@ -8,6 +8,7 @@ import { LedgerRepository } from '../../backend/modules/ledger/ledger.repository
 import { LedgerService } from '../../backend/modules/ledger/ledger.service'
 import { UnitOfWork } from '../../backend/database/unit-of-work'
 import type { NexonKeyConfig } from '../../backend/config/nexon-key'
+import type { NexonKeyStore } from '../../backend/config/nexon-key-store'
 import { NexonClient } from '../../backend/integrations/nexon/nexon.client'
 import { NexonService } from '../../backend/modules/nexon/nexon.service'
 import { BossRepository } from '../../backend/modules/bosses/boss.repository'
@@ -19,7 +20,8 @@ import { DropService } from '../../backend/modules/drops/drop.service'
 export function createServices(
   version: string,
   databasePath: string,
-  nexonKey: NexonKeyConfig = { configured: false, issue: 'missing' }
+  nexonKey: NexonKeyConfig = { configured: false, issue: 'missing' },
+  keyStore?: NexonKeyStore
 ) {
   const database = openDatabase(databasePath)
   const characters = new CharacterRepository(database)
@@ -35,10 +37,11 @@ export function createServices(
     bosses: new BossService(bosses, characters, ledger, transactions, drops),
     bossRosters: new BossRosterService(database, bosses, characters, transactions),
     nexon: new NexonService(
-      new NexonClient(() => nexonKey.key),
+      new NexonClient(() => (keyStore ? keyStore.getKey() : nexonKey.key)),
       nexonKey,
       characters,
-      characterService
+      characterService,
+      keyStore
     ),
     hunting: new HuntingService(hunting, characters, ledger, transactions, drops),
     drops: new DropService(drops, hunting, bosses, ledger, transactions),

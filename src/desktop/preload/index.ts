@@ -32,6 +32,8 @@ const api: AppApi = {
     removeRun: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesRemoveRun, id)
   },
   nexon: {
+    saveKey: (key) => ipcRenderer.invoke(IPC_CHANNELS.nexonSaveKey, key),
+    removeKey: () => ipcRenderer.invoke(IPC_CHANNELS.nexonRemoveKey),
     status: () => ipcRenderer.invoke(IPC_CHANNELS.nexonStatus),
     list: () => ipcRenderer.invoke(IPC_CHANNELS.nexonList),
     basic: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonBasic, ocid),
