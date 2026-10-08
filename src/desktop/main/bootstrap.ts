@@ -20,6 +20,7 @@ import { DropService } from '../../backend/modules/drops/drop.service'
 import { dirname, join } from 'node:path'
 import { BackupService } from '../../backend/modules/backup/backup.service'
 import { saveRecoveryBackup } from '../../backend/modules/backup/backup.files'
+import { AutomaticBackupService } from '../../backend/modules/backup/automatic-backup.service'
 import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.service'
 
 export function createServices(
@@ -48,11 +49,16 @@ export function createServices(
     undefined,
     history
   )
+  const backup = new BackupService(database, (content) =>
+    saveRecoveryBackup(join(dirname(databasePath), '..', 'backups'), content)
+  )
   return {
-    prices,
-    backup: new BackupService(database, (content) =>
-      saveRecoveryBackup(join(dirname(databasePath), '..', 'backups'), content)
+    automaticBackup: new AutomaticBackupService(
+      join(dirname(databasePath), '..', 'backups', 'automatic'),
+      () => backup.export()
     ),
+    prices,
+    backup,
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,
     bosses: bossService,

@@ -8,7 +8,12 @@ import type { ApiResult } from '../errors'
 import type { DashboardStats } from './dashboard.contract'
 import type { CrystalPriceEntry, CrystalPriceInput } from './crystal-price.contract'
 import type { CsvSaved } from './csv.contract'
-import type { BackupPreview, BackupSaved, BackupRestored } from './backup.contract'
+import type {
+  BackupPreview,
+  BackupSaved,
+  BackupRestored,
+  AutomaticBackupStatus
+} from './backup.contract'
 import type {
   BossSyncPreview,
   BossSyncApply,
@@ -68,6 +73,8 @@ export interface AppApi {
   }
   dashboard: { summary: (query: RecordQuery) => Promise<ApiResult<DashboardStats>> }
   backup: {
+    automaticStatus: () => Promise<ApiResult<AutomaticBackupStatus>>
+    automaticNow: () => Promise<ApiResult<AutomaticBackupStatus>>
     exportFile: () => Promise<ApiResult<BackupSaved | null>>
     selectFile: () => Promise<ApiResult<BackupPreview | null>>
     restore: (previewId: string) => Promise<ApiResult<BackupRestored>>

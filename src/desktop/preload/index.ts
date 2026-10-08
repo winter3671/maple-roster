@@ -10,6 +10,8 @@ const api: AppApi = {
   },
   dashboard: { summary: (query) => ipcRenderer.invoke(IPC_CHANNELS.dashboardSummary, query) },
   backup: {
+    automaticStatus: () => ipcRenderer.invoke(IPC_CHANNELS.backupAutomaticStatus),
+    automaticNow: () => ipcRenderer.invoke(IPC_CHANNELS.backupAutomaticNow),
     exportFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupExport),
     selectFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupSelect),
     restore: (previewId) => ipcRenderer.invoke(IPC_CHANNELS.backupRestore, { previewId }),

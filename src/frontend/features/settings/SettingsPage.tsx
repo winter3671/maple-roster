@@ -3,6 +3,7 @@ import type { AppInfo } from '../../../shared/contracts/app-api'
 import { getBridge } from '../../lib/bridge'
 import { NexonConnection } from '../nexon/NexonConnection'
 import { BackupManager } from './BackupManager'
+import { AutomaticBackupManager } from './AutomaticBackupManager'
 import { CrystalPriceManager } from './CrystalPriceManager'
 
 export function SettingsPage() {
@@ -51,6 +52,7 @@ export function SettingsPage() {
       </section>
       <NexonConnection />
       <CrystalPriceManager />
+      <AutomaticBackupManager />
       <BackupManager />
     </div>
   )

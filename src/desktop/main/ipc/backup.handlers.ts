@@ -7,6 +7,8 @@ import { registerRoutes, requireIdleRestore } from './register-routes'
 
 export function registerBackupHandlers(window: BrowserWindow, services: Services): () => void {
   return registerRoutes(window, [
+    [C.backupAutomaticStatus, () => services.automaticBackup.status()],
+    [C.backupAutomaticNow, () => services.automaticBackup.check(true)],
     [
       C.backupExport,
       async () => {

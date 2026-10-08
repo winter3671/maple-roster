@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  backupAutomaticStatus: 'backup:automatic-status',
+  backupAutomaticNow: 'backup:automatic-now',
   bossesUpdateIncomeDate: 'bosses:update-income-date',
   pricesList: 'prices:list',
   pricesSave: 'prices:save',

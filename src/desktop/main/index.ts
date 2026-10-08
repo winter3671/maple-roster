@@ -5,8 +5,10 @@ import { registerHandlers } from './ipc/register-handlers'
 import { createWindow, loadWindow } from './window'
 import { readNexonKey } from '../../backend/config/nexon-key'
 import { NexonKeyStore } from '../../backend/config/nexon-key-store'
+import { AUTOMATIC_BACKUP_INTERVAL } from '../../backend/modules/backup/automatic-backup.service'
 
 let services: Services | undefined
+let backupTimer: ReturnType<typeof setInterval> | undefined
 
 // 테스트 실행은 일반 장부와 분리된 저장 위치를 지정할 수 있다.
 app.setPath(
@@ -55,6 +57,9 @@ app
       developmentKey,
       keyStore
     )
+    services.automaticBackup.check()
+    backupTimer = setInterval(() => services?.automaticBackup.check(), AUTOMATIC_BACKUP_INTERVAL)
+    backupTimer.unref()
     await openApp()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -75,4 +80,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('will-quit', () => services?.close())
+app.on('will-quit', () => {
+  if (backupTimer) clearInterval(backupTimer)
+  services?.automaticBackup.check()
+  services?.close()
+})

@@ -22,6 +22,14 @@ export interface BackupSaved {
   filePath: string
 }
 
+export interface AutomaticBackupStatus {
+  directory: string
+  lastSavedAt: string | null
+  lastFilePath: string | null
+  count: number
+  error: string | null
+}
+
 export interface BackupRestored {
   recoveryPath: string
   counts: BackupCounts
