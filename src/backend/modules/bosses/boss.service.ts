@@ -10,7 +10,7 @@ import {
 } from '../../../shared/contracts/boss.contract'
 import { AppError } from '../../../shared/errors'
 import { readId, readObject, readText } from '../../../shared/validation'
-import { getKstDate } from '../../../shared/dates'
+import { getKstDate, readDate } from '../../../shared/dates'
 import { bossWeek } from '../../../shared/boss-period'
 import {
   validateBossSelection,
@@ -19,6 +19,7 @@ import {
 } from '../../../shared/boss-catalog'
 import { findCrystalPrice, requireCrystalPrice } from '../../../shared/crystal-prices'
 import { summarizeBosses } from '../../domain/boss-profit'
+import { crystalShare } from '../../../shared/crystal-prices'
 import { UnitOfWork } from '../../database/unit-of-work'
 import { CharacterRepository } from '../characters/character.repository'
 import { LedgerRepository } from '../ledger/ledger.repository'
@@ -139,34 +140,58 @@ export class BossService {
     const raw = readObject(value)
     if (typeof raw.isCleared !== 'boolean')
       throw new AppError('VALIDATION_ERROR', '클리어 여부를 확인해 주세요.')
-    const current = this.findRun(readId(raw.id))
-    if (!raw.isCleared && this.drops.hasLots({ kind: 'boss', id: current.id }))
-      throw new AppError('DROP_IN_USE', '드랍 묶음을 정리한 뒤 클리어 체크를 해제해 주세요.')
-    if (!raw.isCleared && current.settlement)
-      throw new AppError('BOSS_ALREADY_SETTLED', '판매 취소 후 클리어 체크를 해제해 주세요.')
-    const run = { ...current, isCleared: raw.isCleared, updatedAt: this.now().toISOString() }
-    this.repository.updateRun(run)
-    return run
+    const isCleared = raw.isCleared
+    return this.transaction.run(() => {
+      const current = this.findRun(readId(raw.id))
+      if (!raw.isCleared && this.drops.hasLots({ kind: 'boss', id: current.id }))
+        throw new AppError('DROP_IN_USE', '드랍 묶음을 정리한 뒤 클리어 체크를 해제해 주세요.')
+      const run = { ...current, isCleared, updatedAt: this.now().toISOString() }
+      this.repository.updateRun(run)
+      if (!raw.isCleared) this.repository.cancelSettlement(run.id, run.updatedAt)
+      else if (!current.settlement) this.syncClearIncome(run, this.defaultIncomeDate(run.week))
+      return this.findRun(run.id)
+    })
   }
   updateRun(value: unknown): BossRun {
     const raw = readObject(value)
-    const current = this.findRun(readId(raw.id))
-    if (current.settlement)
-      throw new AppError('BOSS_ALREADY_SETTLED', '판매 취소 후 보스 기록을 수정해 주세요.')
-    const run = {
-      ...current,
-      ...parseBossDetails(raw),
-      notes: readText(raw.notes ?? '', '메모', 500, false, true),
-      updatedAt: this.now().toISOString()
-    }
-    validateBossDifficultyChange(current.bossName, run.difficulty, current.difficulty)
-    validateBossParty(current.bossName, run.difficulty, run.partySize, current)
-    run.crystalPrice =
-      run.difficulty === current.difficulty
-        ? current.crystalPrice
-        : this.priceForRun(current.bossName, run.difficulty, current.week, current.crystalPrice)
-    this.repository.updateRun(run)
-    return this.findRun(run.id)
+    return this.transaction.run(() => {
+      const current = this.findRun(readId(raw.id))
+      const run = {
+        ...current,
+        ...parseBossDetails(raw),
+        notes: readText(raw.notes ?? '', '메모', 500, false, true),
+        updatedAt: this.now().toISOString()
+      }
+      validateBossDifficultyChange(current.bossName, run.difficulty, current.difficulty)
+      validateBossParty(current.bossName, run.difficulty, run.partySize, current)
+      run.crystalPrice =
+        run.difficulty === current.difficulty
+          ? current.crystalPrice
+          : this.priceForRun(current.bossName, run.difficulty, current.week, current.crystalPrice)
+      this.repository.updateRun(run)
+      if (run.isCleared) {
+        const date =
+          raw.incomeDate === undefined
+            ? (current.settlement?.date ?? this.defaultIncomeDate(run.week))
+            : readDate(raw.incomeDate)
+        if (date < run.week)
+          throw new AppError('VALIDATION_ERROR', '수익 반영일은 주차 시작일보다 빠를 수 없습니다.')
+        if (date > getKstDate(this.now()))
+          throw new AppError('VALIDATION_ERROR', '오늘 이후의 수익은 기록할 수 없습니다.')
+        const changed = run.difficulty !== current.difficulty || run.partySize !== current.partySize
+        const preserve = current.settlement && !changed && !this.repository.isAutomatic(run.id)
+        if (preserve) {
+          this.repository.settle(
+            { runId: run.id, date, amount: current.settlement!.amount },
+            current.settlement!.id,
+            run.updatedAt,
+            false
+          )
+          this.ledger.syncCrystal(this.findRun(run.id), run.updatedAt)
+        } else this.syncClearIncome(run, date)
+      }
+      return this.findRun(run.id)
+    })
   }
   settle(value: unknown): BossRun {
     const input = parseCrystal(value, getKstDate(this.now()))
@@ -177,7 +202,7 @@ export class BossService {
       if (input.date < current.week)
         throw new AppError('VALIDATION_ERROR', '판매일은 보스 주차 시작일보다 빠를 수 없습니다.')
       const timestamp = this.now().toISOString()
-      this.repository.settle(input, current.settlement?.id ?? randomUUID(), timestamp)
+      this.repository.settle(input, current.settlement?.id ?? randomUUID(), timestamp, false)
       const run = this.findRun(current.id)
       this.ledger.syncCrystal(run, timestamp)
       return run
@@ -186,8 +211,12 @@ export class BossService {
   cancelSale(value: unknown): null {
     const id = readId(value)
     return this.transaction.run(() => {
-      this.findRun(id)
+      const run = this.findRun(id)
       this.repository.cancelSettlement(id, this.now().toISOString())
+      // Legacy API cancellation now means undoing the clear and its income.
+      if (this.drops.hasLots({ kind: 'boss', id }))
+        throw new AppError('DROP_IN_USE', '드랍 묶음을 정리한 뒤 클리어 체크를 해제해 주세요.')
+      this.repository.updateRun({ ...run, isCleared: false, updatedAt: this.now().toISOString() })
       return null
     })
   }
@@ -197,8 +226,6 @@ export class BossService {
       const run = this.findRun(id)
       if (this.drops.hasSales({ kind: 'boss', id }))
         throw new AppError('DROP_IN_USE', '드랍 판매를 모두 취소한 뒤 보스 기록을 삭제해 주세요.')
-      if (run.settlement)
-        throw new AppError('BOSS_ALREADY_SETTLED', '판매 취소 후 보스 기록을 삭제해 주세요.')
       this.repository.removeRun(id)
       return null
     })
@@ -208,6 +235,21 @@ export class BossService {
     if (!preset)
       throw new AppError('BOSS_NOT_FOUND', '보스 프리셋을 찾을 수 없습니다. 새로고침해 주세요.')
     return preset
+  }
+  private defaultIncomeDate(week: string): string {
+    const today = getKstDate(this.now())
+    return bossWeek(today) === week ? today : week
+  }
+  private syncClearIncome(run: BossRun, date: string): void {
+    if (date > getKstDate(this.now()))
+      throw new AppError('VALIDATION_ERROR', '오늘 이후의 수익은 기록할 수 없습니다.')
+    this.repository.settle(
+      { runId: run.id, date, amount: crystalShare(run.crystalPrice, run.partySize) },
+      run.settlement?.id ?? randomUUID(),
+      run.updatedAt,
+      true
+    )
+    this.ledger.syncCrystal(this.findRun(run.id), run.updatedAt)
   }
   private priceForRun(name: string, difficulty: string, week: string, previous: number): number {
     const price = findCrystalPrice(name, difficulty, week)

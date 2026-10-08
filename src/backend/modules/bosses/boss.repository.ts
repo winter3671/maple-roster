@@ -127,12 +127,23 @@ export class BossRepository {
   removeRun(id: string): void {
     this.database.prepare('DELETE FROM boss_runs WHERE id = ?').run(id)
   }
-  settle(input: CrystalInput, id: string, timestamp: string): void {
+  isAutomatic(runId: string): boolean {
+    return (
+      this.database
+        .prepare('SELECT is_automatic FROM crystal_settlements WHERE boss_run_id=?')
+        .get(runId)?.is_automatic === 1
+    )
+  }
+  settle(input: CrystalInput, id: string, timestamp: string, automatic?: boolean): void {
     this.database
       .prepare(
         `INSERT INTO crystal_settlements (id, boss_run_id, sold_on, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(boss_run_id) DO UPDATE SET sold_on = excluded.sold_on, amount = excluded.amount, updated_at = excluded.updated_at`
       )
       .run(id, input.runId, input.date, input.amount, timestamp, timestamp)
+    if (automatic !== undefined)
+      this.database
+        .prepare('UPDATE crystal_settlements SET is_automatic=? WHERE boss_run_id=?')
+        .run(Number(automatic), input.runId)
     this.database
       .prepare('UPDATE boss_runs SET updated_at = ? WHERE id = ?')
       .run(timestamp, input.runId)

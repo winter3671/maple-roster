@@ -10,7 +10,7 @@ import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatMeso } from '../../lib/format'
 import { BossRosterManager } from './BossRosterManager'
-import { BossRunForm, CrystalSaleForm } from './BossRunForm'
+import { BossRunForm } from './BossRunForm'
 import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
 import { DropManager } from '../drops/DropManager'
@@ -28,13 +28,12 @@ export function BossesPage() {
   const state = useBosses(query)
   const [periodError, setPeriodError] = useState('')
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
-  const [selling, setSelling] = useState<BossRun | null>(null)
   const [drops, setDrops] = useState<BossRun | null>(null)
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const disabled = state.loading || state.busy
   const week = bossWeek(query.date)
   const summary = state.data?.summary
-  const modal = Boolean(editingRun || selling || confirmation)
+  const modal = Boolean(editingRun || confirmation)
   function confirm(value: Confirmation) {
     state.clearFeedback()
     setConfirmation(value)
@@ -132,17 +131,17 @@ export function BossesPage() {
           {
             title: '클리어 진행',
             value: summary ? `${summary.cleared} / ${summary.count}` : '—',
-            detail: `판매 확정 ${summary?.sold ?? 0}개`
+            detail: '클리어 체크 시 결정석 수익 자동 반영'
           },
           {
-            title: '클리어 후 미판매 예상',
-            value: summary ? `${formatMeso(summary.clearedUnsold)} 메소` : '—',
+            title: '남은 보스 예상 수익',
+            value: summary ? `${formatMeso(summary.remaining)} 메소` : '—',
             detail: '주차에 저장된 결정석 가격과 클리어 인원으로 계산'
           },
           {
-            title: '이 주차 판매 확정',
+            title: '이 주차 결정석 수익',
             value: summary ? `${formatMeso(summary.settled)} 메소` : '—',
-            detail: '결정석 수령액 · 드랍 판매는 드랍 관리에서 확인'
+            detail: '클리어한 보스 기준 · 드랍 수익은 별도 반영'
           }
         ].map((card) => (
           <article
@@ -162,8 +161,8 @@ export function BossesPage() {
           <div>
             <h2 className="text-sm font-semibold">주간 보스 기록</h2>
             <p className="mt-2 text-xs leading-5 text-muted">
-              클리어 후 결정석·드랍 판매를 기록하면 실제 수입이 반영됩니다. 위 주차 요약은 결정석
-              기준입니다.
+              클리어를 체크하면 결정석 수익이 바로 반영됩니다. 체크 해제 시 해당 수입도 취소됩니다.
+              드랍 판매는 별도로 기록합니다.
             </p>
           </div>
           <Button
@@ -187,7 +186,7 @@ export function BossesPage() {
             <table className="w-full min-w-[850px] text-left text-xs">
               <thead className="border-b border-line bg-canvas text-muted">
                 <tr>
-                  {['캐릭터 / 보스', '예상 내 몫', '클리어', '판매 기록', '관리'].map((title) => (
+                  {['캐릭터 / 보스', '결정석 내 몫', '클리어', '반영 수익', '관리'].map((title) => (
                     <th key={title} scope="col" className="px-5 py-4 font-medium">
                       {title}
                     </th>
@@ -223,11 +222,13 @@ export function BossesPage() {
                           type="checkbox"
                           aria-label={`${run.characterName} ${run.bossName} 클리어`}
                           checked={run.isCleared}
-                          disabled={disabled || Boolean(run.settlement)}
+                          disabled={disabled}
                           onChange={(event) =>
                             void state.mutate(
                               () => bossesApi.setClear(run.id, event.target.checked),
-                              '클리어 상태를 저장했습니다.'
+                              event.target.checked
+                                ? '클리어와 결정석 수익을 반영했습니다.'
+                                : '클리어와 결정석 수익을 취소했습니다.'
                             )
                           }
                           className="accent-brand"
@@ -236,44 +237,15 @@ export function BossesPage() {
                       </label>
                     </td>
                     <td className="px-5 py-4">
-                      {run.settlement ? (
-                        <>
-                          <p className="font-semibold text-brand">
-                            {formatMeso(run.settlement.amount)} 메소
-                          </p>
-                          <p className="mt-2 text-muted">판매일 {run.settlement.date}</p>
-                        </>
-                      ) : (
-                        <span className="text-muted">미판매</span>
+                      <p className="font-semibold text-brand">
+                        {formatMeso(
+                          run.isCleared ? (run.settlement?.amount ?? run.expectedShare) : 0
+                        )}{' '}
+                        메소
+                      </p>
+                      {run.settlement && (
+                        <p className="mt-2 text-muted">반영일 {run.settlement.date}</p>
                       )}
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          variant="secondary"
-                          disabled={disabled || !run.isCleared}
-                          onClick={() => {
-                            state.clearFeedback()
-                            setSelling(run)
-                          }}
-                        >
-                          {run.settlement ? '판매 수정' : '판매 기록'}
-                        </Button>
-                        {run.settlement && (
-                          <Button
-                            variant="secondary"
-                            disabled={disabled}
-                            onClick={() =>
-                              confirm({
-                                title: '결정석 판매 취소',
-                                description: `${run.characterName}의 ${run.bossName} 판매 기록과 연결 수입을 삭제합니다. 클리어 기록은 유지됩니다.`,
-                                action: () => bossesApi.cancelSale(run.id),
-                                message: '판매 기록과 연결 수입을 취소했습니다.'
-                              })
-                            }
-                          >
-                            판매 취소
-                          </Button>
-                        )}
-                      </div>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2">
@@ -286,7 +258,7 @@ export function BossesPage() {
                         </Button>
                         <Button
                           variant="secondary"
-                          disabled={disabled || Boolean(run.settlement)}
+                          disabled={disabled}
                           onClick={() => {
                             state.clearFeedback()
                             setEditingRun(run)
@@ -296,11 +268,11 @@ export function BossesPage() {
                         </Button>
                         <Button
                           variant="secondary"
-                          disabled={disabled || Boolean(run.settlement)}
+                          disabled={disabled}
                           onClick={() =>
                             confirm({
                               title: '보스 기록 삭제',
-                              description: `${run.characterName}의 ${run.bossName} 기록을 이 주차에서 삭제합니다. 프리셋은 유지됩니다. 다시 주차를 생성하면 이 기록이 추가됩니다.`,
+                              description: `${run.characterName}의 ${run.bossName} 기록을 이 주차에서 삭제합니다. 결정석 수익도 취소됩니다. 프리셋은 유지됩니다. 다시 주차를 생성하면 이 기록이 추가됩니다.`,
                               action: () => bossesApi.removeRun(run.id),
                               message: '주차 보스 기록을 삭제했습니다.'
                             })
@@ -309,9 +281,6 @@ export function BossesPage() {
                           기록 삭제
                         </Button>
                       </div>
-                      {run.settlement && (
-                        <p className="mt-2 text-[11px] text-muted">판매 취소 후 기록 수정 가능</p>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -359,28 +328,6 @@ export function BossesPage() {
                 '이 주차의 보스 기록을 수정했습니다.'
               )
               if (saved) setEditingRun(null)
-              return saved
-            }}
-          />
-        </Dialog>
-      )}
-      {selling && (
-        <Dialog title="결정석 판매 기록" busy={state.busy} onClose={() => setSelling(null)}>
-          {state.error && (
-            <p role="alert" className="mb-4 text-xs text-expense">
-              {state.error}
-            </p>
-          )}
-          <CrystalSaleForm
-            run={selling}
-            busy={state.busy}
-            onCancel={() => setSelling(null)}
-            onSave={async (input) => {
-              const saved = await state.mutate(
-                () => bossesApi.settle(input),
-                '결정석 판매와 연결 수입을 저장했습니다.'
-              )
-              if (saved) setSelling(null)
               return saved
             }}
           />

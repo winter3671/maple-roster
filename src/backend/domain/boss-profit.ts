@@ -11,6 +11,7 @@ export function summarizeBosses(runs: BossRun[]) {
     clearedUnsold: sumIntegers(
       runs.filter((run) => run.isCleared && !run.settlement).map((run) => run.expectedShare)
     ),
-    settled: sumIntegers(runs.map((run) => run.settlement?.amount ?? 0))
+    settled: sumIntegers(runs.map((run) => run.settlement?.amount ?? 0)),
+    remaining: sumIntegers(runs.filter((run) => !run.isCleared).map((run) => run.expectedShare))
   }
 }

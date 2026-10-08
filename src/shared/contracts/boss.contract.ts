@@ -56,6 +56,7 @@ export interface BossRunUpdate {
   partySize: number
   crystalPrice?: number
   notes: string
+  incomeDate?: string
 }
 export interface BossList {
   week: string
@@ -67,6 +68,7 @@ export interface BossList {
     expected: number
     clearedUnsold: number
     settled: number
+    remaining: number
   }
 }
 

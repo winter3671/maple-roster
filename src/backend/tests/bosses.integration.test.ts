@@ -231,15 +231,109 @@ describe('주간 보스와 결정석 장부', () => {
       characterWorld: '루나'
     })
   })
-  it('클리어 체크는 수입을 만들지 않고 미판매 예상만 집계한다', () => {
+  it('클리어 체크는 결정석 수입을 바로 장부에 반영한다', () => {
     cleared()
-    expect(ledger.list(month).summary.income).toBe(0)
+    expect(ledger.list(month).summary.income).toBe(2783333)
     expect(bosses.list(query).summary).toMatchObject({
       cleared: 1,
-      sold: 0,
-      clearedUnsold: 2783333,
-      settled: 0
+      settled: 2783333,
+      remaining: 0
     })
+  })
+  it('중복 체크는 수익·거래 ID·반영일을 중복하거나 변경하지 않는다', () => {
+    const record = cleared()
+    const entry = ledger.list(month).entries[0]
+    bosses.setClear({ id: record.id, isCleared: true })
+    expect(ledger.list(month).entries).toEqual([entry])
+    const updated = bosses.updateRun({
+      ...record,
+      partySize: 1,
+      incomeDate: '2026-10-14',
+      notes: '수정'
+    })
+    expect(updated.settlement).toMatchObject({
+      id: record.settlement?.id,
+      amount: 8350000,
+      date: '2026-10-14'
+    })
+    expect(ledger.list(month).entries[0]).toMatchObject({
+      id: entry.id,
+      amount: 8350000,
+      date: '2026-10-14'
+    })
+    expect(() => bosses.updateRun({ ...updated, incomeDate: '2026-10-16' })).toThrow('오늘 이후')
+    expect(() => bosses.updateRun({ ...updated, incomeDate: '2026-10-07' })).toThrow('주차 시작일')
+    expect(bosses.list(query).runs[0].settlement?.date).toBe('2026-10-14')
+  })
+  it('자동 수익 갱신 실패 시 인원과 수익도 함께 롤백한다', () => {
+    const record = cleared()
+    database.exec(
+      "CREATE TRIGGER fail_auto_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'forced failure'); END"
+    )
+    expect(() => bosses.updateRun({ ...record, partySize: 1 })).toThrow('forced failure')
+    expect(bosses.list(query).runs[0]).toMatchObject({
+      partySize: 3,
+      settlement: record.settlement
+    })
+    expect(ledger.list(month).summary.income).toBe(2783333)
+  })
+  it('기존 직접 입력 수령액·날짜는 메모 수정과 반복 체크에서 유지한다', () => {
+    const record = sold()
+    bosses.updateRun({ ...record, notes: '과거 수령액 보존' })
+    bosses.setClear({ id: record.id, isCleared: true })
+    expect(bosses.list(query).runs[0].settlement).toEqual(record.settlement)
+    expect(ledger.list(month).summary.income).toBe(60)
+    expect(() => bosses.updateRun({ ...record, incomeDate: '2026-10-16' })).toThrow('오늘 이후')
+  })
+  it('현재 주차는 오늘, 과거 주차는 주차 시작일에 수익을 반영한다', () => {
+    preset()
+    const current = bosses.generate({ date: '2026-10-15' }).runs[0]
+    expect(bosses.setClear({ id: current.id, isCleared: true }).settlement?.date).toBe('2026-10-15')
+    const old = bosses.generate({ date: '2026-09-24' }).runs[0]
+    expect(bosses.setClear({ id: old.id, isCleared: true }).settlement?.date).toBe('2026-09-24')
+  })
+  it('수익이 0인 클리어도 완료 상태만 기록하고 거래는 만들지 않는다', () => {
+    const record = run()
+    database.prepare('UPDATE boss_runs SET crystal_price=0 WHERE id=?').run(record.id)
+    const result = bosses.setClear({ id: record.id, isCleared: true })
+    expect(result).toMatchObject({ isCleared: true, settlement: { amount: 0 } })
+    expect(ledger.list(month).entries).toEqual([])
+  })
+  it('6번 전환은 미정산 클리어만 수익으로 채우고 기존 거래·금액·날짜를 보존한다', () => {
+    preset()
+    preset({ bossName: '데미안' })
+    preset({ bossName: '자쿰', difficulty: '카오스' })
+    preset({ bossName: '파풀라투스', difficulty: '카오스' })
+    const rows = bosses.generate(query).runs
+    const manual = rows.find((row) => row.bossName === '스우')!
+    bosses.setClear({ id: manual.id, isCleared: true })
+    bosses.settle({ runId: manual.id, date: '2026-10-13', amount: 60 })
+    const entry = ledger.list(month).entries[0]
+    const auto = rows.find((row) => row.bossName === '데미안')!
+    const zero = rows.find((row) => row.bossName === '자쿰')!
+    database
+      .prepare('UPDATE boss_runs SET is_cleared=1, updated_at=? WHERE id=?')
+      .run('2026-10-12T03:00:00Z', auto.id)
+    database
+      .prepare('UPDATE boss_runs SET is_cleared=1, crystal_price=0, updated_at=? WHERE id=?')
+      .run('2026-10-15T03:00:00Z', zero.id)
+    database.exec(
+      'ALTER TABLE crystal_settlements DROP COLUMN is_automatic; DELETE FROM schema_migrations WHERE version=6'
+    )
+    database.close()
+    database = openDatabase(join(directory, 'test.sqlite'))
+    const migrated = new BossRepository(database)
+    expect(migrated.find(auto.id)?.settlement).toMatchObject({
+      amount: 2916666,
+      date: '2026-10-12'
+    })
+    expect(migrated.find(zero.id)?.settlement).toMatchObject({ amount: 0, date: '2026-10-08' })
+    expect(
+      migrated.find(rows.find((row) => row.bossName === '파풀라투스')!.id)?.settlement
+    ).toBeNull()
+    expect(new LedgerRepository(database).list(month)).toEqual(expect.arrayContaining([entry]))
+    expect(new LedgerRepository(database).list(month)).toHaveLength(2)
+    expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([])
   })
   it('판매 실제 수령액을 판매일 기준으로 한 번만 반영한다', () => {
     const record = sold()
@@ -278,20 +372,19 @@ describe('주간 보스와 결정석 장부', () => {
     expect(ledger.list(month).entries).toHaveLength(0)
     expect(bosses.list(query).summary.sold).toBe(1)
   })
-  it('정산된 기록은 완료 취소·내용 수정·삭제를 막고 판매 취소 후 허용한다', () => {
+  it('클리어 해제로 수입을 취소하고 재체크·인원 수정·삭제에 수입을 연동한다', () => {
     const record = sold()
-    expect(() => bosses.setClear({ id: record.id, isCleared: false })).toThrow('판매 취소')
-    expect(() => bosses.updateRun({ ...record, partySize: 1 })).toThrow('판매 취소')
-    expect(() => bosses.removeRun(record.id)).toThrow('판매 취소')
-    bosses.cancelSale(record.id)
-    bosses.cancelSale(record.id)
+    bosses.setClear({ id: record.id, isCleared: false })
+    bosses.setClear({ id: record.id, isCleared: false })
     expect(ledger.list(month).entries).toHaveLength(0)
-    expect(bosses.list(query).runs[0].isCleared).toBe(true)
+    expect(bosses.list(query).runs[0].isCleared).toBe(false)
+    bosses.setClear({ id: record.id, isCleared: true })
     bosses.updateRun({ ...record, partySize: 1, crystalPrice: 90, notes: '수정' })
     expect(bosses.list(query).runs[0].expectedShare).toBe(8350000)
-    bosses.setClear({ id: record.id, isCleared: false })
+    expect(ledger.list(month).summary.income).toBe(8350000)
     bosses.removeRun(record.id)
     expect(bosses.list(query).runs).toHaveLength(0)
+    expect(ledger.list(month).entries).toHaveLength(0)
     expect(bosses.presets()).toHaveLength(1)
   })
   it('숨긴 캐릭터는 새 주차에서 제외하고 기존 기록은 조회한다', () => {
@@ -336,14 +429,13 @@ describe('주간 보스와 결정석 장부', () => {
     expect(bosses.presets()).toHaveLength(0)
   })
   it('장부 저장 실패 시 결정석 정산도 되돌린다', () => {
-    const record = cleared()
+    const record = run()
     database.exec(
       "CREATE TRIGGER fail_crystal BEFORE INSERT ON ledger_entries WHEN NEW.crystal_settlement_id IS NOT NULL BEGIN SELECT RAISE(ABORT, 'forced failure'); END"
     )
-    expect(() => bosses.settle({ runId: record.id, date: '2026-10-13', amount: 60 })).toThrow(
-      'forced failure'
-    )
+    expect(() => bosses.setClear({ id: record.id, isCleared: true })).toThrow('forced failure')
     expect(bosses.list(query).runs[0].settlement).toBeNull()
+    expect(bosses.list(query).runs[0].isCleared).toBe(false)
     expect(ledger.list(month).entries).toHaveLength(0)
   })
   it('장부 수정 실패 시 판매일과 수령액을 되돌린다', () => {
@@ -404,7 +496,7 @@ describe('주간 보스와 결정석 장부', () => {
     old.close()
     const upgraded = openDatabase(file)
     try {
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(5)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(6)
       expect(
         upgraded
           .prepare('SELECT id FROM ledger_entries ORDER BY id')

@@ -139,8 +139,8 @@ export function BossPresetForm({ characters, initial, busy, onSave, onCancel }: 
         </p>
       )}
       <p className="text-[11px] leading-5 text-muted">
-        프리셋은 현재 가격표를 사용합니다. 주차 생성 시 해당 주차의 가격을 적용하고, 실제 수입은
-        판매 확정 후 반영됩니다.
+        프리셋은 현재 가격표를 사용합니다. 주차 생성 시 해당 주차의 가격을 적용하고, 클리어 체크 시
+        결정석 수익이 바로 반영됩니다.
       </p>
       {error && (
         <p role="alert" className="text-xs text-expense">
