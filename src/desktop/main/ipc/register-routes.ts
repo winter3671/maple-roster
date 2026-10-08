@@ -2,6 +2,14 @@ import { ipcMain, type BrowserWindow } from 'electron'
 import { AppError, type ApiResult } from '../../../shared/errors'
 
 type Route = readonly [channel: string, handle: (input: unknown) => unknown]
+let activeRequests = 0
+export function requireIdleRestore(): void {
+  if (activeRequests > 1)
+    throw new AppError(
+      'REQUEST_CONFLICT',
+      'API 조회나 다른 작업이 진행 중입니다. 완료 후 복원해 주세요.'
+    )
+}
 
 export function registerRoutes(window: BrowserWindow, routes: readonly Route[]): () => void {
   for (const [channel, handle] of routes) {
@@ -15,6 +23,7 @@ export function registerRoutes(window: BrowserWindow, routes: readonly Route[]):
           error: { code: 'PERMISSION_DENIED', message: '허용되지 않은 요청입니다.' }
         }
       }
+      activeRequests++
       try {
         return { ok: true, data: await handle(input) }
       } catch (error) {
@@ -28,6 +37,8 @@ export function registerRoutes(window: BrowserWindow, routes: readonly Route[]):
             message: '기록을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'
           }
         }
+      } finally {
+        activeRequests--
       }
     })
   }

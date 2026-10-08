@@ -271,6 +271,8 @@ Button·Input·Dialog 같은 공통 컴포넌트는 Tailwind 클래스로 작성
 
 백업 JSON에는 schemaVersion과 기록을 포함하고 키는 제외한다. 복원 전에 스키마·참조 관계·금액·수량을 검증하고 기존 데이터의 백업을 만든다. 초기 복원은 전체 교체만 지원하고 확인 화면을 거친다. 원자적으로 적용해 실패 시 기존 장부를 보존한다. 실행 중 DB 파일 단순 복사 대신 DB 드라이버의 일관된 백업 기능이나 논리적 JSON 내보내기를 사용한다.
 
+현재 JSON 백업·복원은 `backend/modules/backup`, `desktop/main/ipc/backup.handlers.ts`, `frontend/features/settings/BackupManager.tsx`에 구현했다. 메모리 DB의 제약과 업무 정산 검증을 통과한 파일만 확인 토큰을 발급한다. 장부 변경·진행 중 IPC 요청을 확인하고 복원 전 안전 백업을 저장한 뒤 전체 교체한다. 자세한 지원 형식과 흐름은 [백업과 복원](backup.md)에 정리했다.
+
 ## 구현 단계
 
 1. Electron + React + Tailwind 기본 실행과 AppLayout. 임시 데이터로 메뉴와 표를 만든다.

@@ -6,12 +6,14 @@ import { registerHuntingHandlers } from './hunting.handlers'
 import { registerNexonHandlers } from './nexon.handlers'
 import { registerBossHandlers } from './boss.handlers'
 import { registerRoutes } from './register-routes'
+import { registerBackupHandlers } from './backup.handlers'
 
 export function registerHandlers(window: BrowserWindow, services: Services): void {
   const disposeCharacters = registerCharacterHandlers(window, services)
   const disposeHunting = registerHuntingHandlers(window, services)
   const disposeNexon = registerNexonHandlers(window, services)
   const disposeBosses = registerBossHandlers(window, services)
+  const disposeBackup = registerBackupHandlers(window, services)
   const disposeDrops = registerRoutes(window, [
     [IPC_CHANNELS.dropsList, (input) => services.drops.list(input)],
     [IPC_CHANNELS.dropsCreateLot, (input) => services.drops.createLot(input)],
@@ -33,6 +35,7 @@ export function registerHandlers(window: BrowserWindow, services: Services): voi
     disposeHunting()
     disposeNexon()
     disposeBosses()
+    disposeBackup()
     disposeDrops()
   })
 }

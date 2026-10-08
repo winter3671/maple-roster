@@ -17,6 +17,9 @@ import { BossSyncService } from '../../backend/modules/bosses/boss-sync.service'
 import { BossRosterService } from '../../backend/modules/bosses/boss-roster.service'
 import { DropRepository } from '../../backend/modules/drops/drop.repository'
 import { DropService } from '../../backend/modules/drops/drop.service'
+import { dirname, join } from 'node:path'
+import { BackupService } from '../../backend/modules/backup/backup.service'
+import { saveRecoveryBackup } from '../../backend/modules/backup/backup.files'
 
 export function createServices(
   version: string,
@@ -35,6 +38,9 @@ export function createServices(
   const nexonClient = new NexonClient(() => (keyStore ? keyStore.getKey() : nexonKey.key))
   const bossService = new BossService(bosses, characters, ledger, transactions, drops)
   return {
+    backup: new BackupService(database, (content) =>
+      saveRecoveryBackup(join(dirname(databasePath), '..', 'backups'), content)
+    ),
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,
     bosses: bossService,

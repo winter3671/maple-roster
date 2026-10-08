@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AppInfo } from '../../../shared/contracts/app-api'
 import { getBridge } from '../../lib/bridge'
 import { NexonConnection } from '../nexon/NexonConnection'
+import { BackupManager } from './BackupManager'
 
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null)
@@ -48,15 +49,7 @@ export function SettingsPage() {
         </dl>
       </section>
       <NexonConnection />
-      <section className="rounded-2xl border border-line bg-surface p-6">
-        <div className="flex justify-between">
-          <h2 className="text-sm font-semibold">백업과 복원</h2>
-          <span className="text-xs text-muted">준비 중</span>
-        </div>
-        <p className="mt-3 text-sm leading-6 text-muted">
-          캐릭터와 장부는 이 PC에 저장됩니다. JSON 백업·복원과 CSV 내보내기를 추가할 예정입니다.
-        </p>
-      </section>
+      <BackupManager />
     </div>
   )
 }

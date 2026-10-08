@@ -5,6 +5,7 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type { BackupPreview, BackupSaved, BackupRestored } from './backup.contract'
 import type {
   BossSyncPreview,
   BossSyncApply,
@@ -56,6 +57,12 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  backup: {
+    exportFile: () => Promise<ApiResult<BackupSaved | null>>
+    selectFile: () => Promise<ApiResult<BackupPreview | null>>
+    restore: (previewId: string) => Promise<ApiResult<BackupRestored>>
+    cancel: () => Promise<ApiResult<null>>
+  }
   drops: {
     list: (source: DropSource) => Promise<ApiResult<DropList>>
     createLot: (input: DropLotCreate) => Promise<ApiResult<DropLot>>

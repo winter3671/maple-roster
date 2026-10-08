@@ -28,6 +28,9 @@ export class BossSyncService {
     private readonly bosses: BossService,
     private readonly now = () => new Date()
   ) {}
+  invalidatePreviews(): void {
+    this.previews.clear()
+  }
   async syncAll(value: unknown): Promise<BossBatchSyncResult> {
     if (this.batchRunning)
       throw new AppError(

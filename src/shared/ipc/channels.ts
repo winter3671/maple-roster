@@ -1,4 +1,8 @@
 export const IPC_CHANNELS = {
+  backupExport: 'backup:export',
+  backupSelect: 'backup:select',
+  backupRestore: 'backup:restore',
+  backupCancel: 'backup:cancel',
   bossesSyncClears: 'bosses:sync-clears',
   bossesPreviewClears: 'bosses:preview-clears',
   bossesApplyClears: 'bosses:apply-clears',

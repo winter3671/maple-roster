@@ -3,6 +3,12 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  backup: {
+    exportFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupExport),
+    selectFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupSelect),
+    restore: (previewId) => ipcRenderer.invoke(IPC_CHANNELS.backupRestore, { previewId }),
+    cancel: () => ipcRenderer.invoke(IPC_CHANNELS.backupCancel)
+  },
   drops: {
     list: (source) => ipcRenderer.invoke(IPC_CHANNELS.dropsList, source),
     createLot: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsCreateLot, input),
