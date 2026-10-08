@@ -72,6 +72,48 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     )
   })
   afterEach(() => database.close())
+  it('자동 추가 인원은 미확인 상태이며 반복 조회·메모 수정 후에도 유지되고 명시적 확인은 수익을 보존한다', async () => {
+    await sync.syncAll(query)
+    let row = bosses.list(query).runs[0]
+    expect(row).toMatchObject({ partySize: 1, partySizeNeedsReview: true, isCleared: true })
+    const original = ledger.list(month).entries
+    await sync.syncAll(query)
+    row = bosses.updateRun({ ...row, notes: '인원 확인 전 메모' })
+    expect(row.partySizeNeedsReview).toBe(true)
+    expect(() => bosses.updateRun({ ...row, confirmPartySize: 'true' })).toThrow('인원 확인')
+    row = bosses.updateRun({ ...row, confirmPartySize: true })
+    expect(row.partySizeNeedsReview).toBe(false)
+    expect(ledger.list(month).entries).toEqual(original)
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs[0].partySizeNeedsReview).toBe(false)
+  })
+  it('인원을 수정하면 미확인 표시가 해제되고 장부 금액도 갱신된다', async () => {
+    await sync.syncAll(query)
+    const row = bosses.list(query).runs[0]
+    expect(() => bosses.updateRun({ ...row, partySize: 7, confirmPartySize: true })).toThrow(
+      '파티 인원'
+    )
+    expect(bosses.list(query).runs[0].partySizeNeedsReview).toBe(true)
+    const updated = bosses.updateRun({ ...row, partySize: 2 })
+    expect(updated).toMatchObject({ partySizeNeedsReview: false, partySize: 2 })
+    expect(updated.settlement?.amount).toBe(4175000)
+    expect(ledger.list(month).summary.income).toBe(4175000)
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs[0]).toMatchObject({ partySize: 2, partySizeNeedsReview: false })
+  })
+  it('수동으로 설정한 기존 인원은 확인 상태를 유지하되 자동 난이도 변경으로 추정한 인원은 확인이 필요하다', async () => {
+    run()
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs[0]).toMatchObject({ partySize: 3, partySizeNeedsReview: false })
+    contents[0].content_name = '데미안'
+    run('데미안')
+    contents[0].difficulty = 'hard'
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs.find((row) => row.bossName === '데미안')).toMatchObject({
+      partySizeNeedsReview: true,
+      difficulty: '하드'
+    })
+  })
   const run = (bossName = '스우', difficulty = '노멀', date = query.date) =>
     bosses.createRun({ characterId, date, bossName, difficulty, partySize: 3 })
   const preview = (date = query.date) => sync.preview({ date, characterId })

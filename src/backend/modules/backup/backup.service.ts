@@ -247,7 +247,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        raw.schemaVersion !== schemaVersion(this.database)
+        (raw.schemaVersion !== schemaVersion(this.database) && raw.schemaVersion !== 7)
       )
         throw new AppError(
           'VALIDATION_ERROR',
@@ -274,7 +274,12 @@ export class BackupService {
         if (!Array.isArray(rows) || (total += rows.length) > 200000) invalid()
         for (const entry of rows as unknown[]) {
           const row = readObject(entry)
-          if (Object.keys(row).sort().join(',') !== [...names].sort().join(',')) invalid()
+          const expectedNames =
+            raw.schemaVersion === 7 && table === 'boss_runs'
+              ? names.filter((name) => name !== 'party_size_needs_review')
+              : names
+          if (Object.keys(row).sort().join(',') !== [...expectedNames].sort().join(',')) invalid()
+          if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
           for (const [name, value] of Object.entries(row)) {
             if (value === null) continue
             if (types.get(name) === 'INTEGER' && typeof value !== 'number') invalid()
@@ -303,6 +308,7 @@ export class BackupService {
         }
       }
       const typedTables = tables as unknown as Tables
+      raw.schemaVersion = schemaVersion(this.database)
       new UnitOfWork(staging).run(() => {
         insert(staging!, typedTables)
         validateRelations(staging!, typedTables)

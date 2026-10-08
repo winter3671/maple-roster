@@ -6,7 +6,7 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## 적용된 마이그레이션
 
-`001_characters.sql`, `002_hunting_ledger.sql`, `003_bosses.sql`, `004_drops.sql`을 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 1~3번 버전 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 4번 버전으로 갱신한다.
+`001_characters.sql`부터 `008_boss_party_review.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 8번 버전까지 순서대로 갱신한다.
 
 ## characters
 
@@ -66,6 +66,8 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 남은 수량·예상 가치·판매 수입은 저장된 판매에서 계산한다. 판매가 있으면 원본 활동 삭제를 막고 판매 취소를 안내한다. 4번 마이그레이션은 기존 조각·젬스톤 수량을 재고로 생성하고 장부를 확장하면서 기존 거래를 그대로 복사한다. 자세한 규칙은 [드랍 판매](drop-sales.md)를 참고한다.
 
 ## boss_presets / boss_runs / crystal_settlements
+
+8번 마이그레이션은 `boss_runs`에 `party_size_needs_review`(0 또는 1)를 추가한다. API 자동 추가나 난이도 변경으로 인원을 추정한 기록은 1로 저장하고, 사용자가 인원을 확인하거나 보스·난이도·인원을 변경해 저장하면 0으로 바꾼다. 메모·날짜만 수정하면 상태를 유지한다. 기존 기록은 기본값 0으로 보존하며 인원과 수익을 바꾸지 않는다.
 
 - `boss_presets`: 캐릭터 FK(RESTRICT), 보스 키·이름, 난이도, 파티 인원(1~6명), 결정석 전체 가격과 생성·수정 시각. 캐릭터·보스 키를 UNIQUE로 보호한다.
 - `boss_runs`: 캐릭터 FK(RESTRICT), 기록 당시 월드, 보스·난이도·파티 인원·가격 스냅샷, 목요일 기준 `period_start`, 수동 클리어 상태와 메모. 캐릭터·보스 키·주차를 UNIQUE로 보호한다. 프리셋 삭제가 과거 기록을 지우지 않도록 프리셋 FK는 두지 않는다.

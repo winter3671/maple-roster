@@ -95,6 +95,29 @@ describe('JSON 장부 백업과 전체 복원', () => {
   })
   afterEach(() => database.close())
   const tables = () => JSON.parse(backup.export()).tables
+  it('인원 미확인 상태를 백업·복원하고 이전 DB 버전 백업은 기존 확인 상태로 변환한다', () => {
+    database.exec('UPDATE boss_runs SET party_size_needs_review=1')
+    const file = JSON.parse(backup.export())
+    const current = backup.prepare(JSON.stringify(file), '현재.json')
+    database.exec('UPDATE boss_runs SET party_size_needs_review=0')
+    const refreshed = backup.prepare(JSON.stringify(file), '현재.json')
+    backup.restore({ previewId: refreshed.id })
+    expect(bosses.list({ date: '2026-10-15' }).runs[0].partySizeNeedsReview).toBe(true)
+    file.schemaVersion = 7
+    for (const row of file.tables.boss_runs) delete row.party_size_needs_review
+    const old = backup.prepare(JSON.stringify(file), '이전.json')
+    backup.restore({ previewId: old.id })
+    expect(bosses.list({ date: '2026-10-15' }).runs[0].partySizeNeedsReview).toBe(false)
+    expect(bosses.list({ date: '2026-10-15' }).runs[0].settlement?.amount).toBe(60)
+    expect(current.incoming).toEqual(old.incoming)
+  })
+  it('인원 확인 상태에 허용되지 않은 값이나 이전 버전의 추가 필드가 있으면 복원을 거부한다', () => {
+    const file = JSON.parse(backup.export())
+    file.tables.boss_runs[0].party_size_needs_review = 2
+    expect(() => backup.prepare(JSON.stringify(file), '잘못된.json')).toThrow('올바르지')
+    file.schemaVersion = 7
+    expect(() => backup.prepare(JSON.stringify(file), '잘못된이전.json')).toThrow('올바르지')
+  })
   it('모든 기록·연결·ID·숨김·프리셋·수동 수익을 그대로 백업하고 전체 복원한다', () => {
     const content = backup.export(),
       original = tables()

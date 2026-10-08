@@ -44,6 +44,7 @@ export interface BossRun extends BossPresetInput {
   characterWorld: string
   week: string
   isCleared: boolean
+  partySizeNeedsReview: boolean
   notes: string
   expectedShare: number
   settlement: CrystalSettlement | null
@@ -58,6 +59,7 @@ export interface BossRunUpdate {
   crystalPrice?: number
   notes: string
   incomeDate?: string
+  confirmPartySize?: boolean
 }
 export interface BossRunCreate extends BossPresetInput {
   date: string

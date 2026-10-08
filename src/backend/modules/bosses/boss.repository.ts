@@ -24,6 +24,7 @@ function run(row: Row): BossRun {
     characterWorld: String(row.world_snapshot),
     week: String(row.period_start),
     isCleared: row.is_cleared === 1,
+    partySizeNeedsReview: row.party_size_needs_review === 1,
     notes: String(row.notes),
     expectedShare: crystalShare(Number(row.crystal_price), Number(row.party_size)),
     settlement:
@@ -91,7 +92,7 @@ export class BossRepository {
   insertRun(r: BossRun): void {
     this.database
       .prepare(
-        `INSERT INTO boss_runs (id, character_id, world_snapshot, boss_key, boss_name, difficulty, party_size, crystal_price, period_start, is_cleared, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(character_id, boss_key, period_start) DO NOTHING`
+        `INSERT INTO boss_runs (id, character_id, world_snapshot, boss_key, boss_name, difficulty, party_size, crystal_price, period_start, is_cleared, notes, created_at, updated_at, party_size_needs_review) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(character_id, boss_key, period_start) DO NOTHING`
       )
       .run(
         r.id,
@@ -106,13 +107,14 @@ export class BossRepository {
         Number(r.isCleared),
         r.notes,
         r.createdAt,
-        r.updatedAt
+        r.updatedAt,
+        Number(r.partySizeNeedsReview)
       )
   }
   updateRun(r: BossRun): void {
     this.database
       .prepare(
-        'UPDATE boss_runs SET boss_name = ?, boss_key = ?, difficulty = ?, party_size = ?, crystal_price = ?, is_cleared = ?, notes = ?, updated_at = ? WHERE id = ?'
+        'UPDATE boss_runs SET boss_name = ?, boss_key = ?, difficulty = ?, party_size = ?, crystal_price = ?, is_cleared = ?, notes = ?, updated_at = ?, party_size_needs_review = ? WHERE id = ?'
       )
       .run(
         r.bossName,
@@ -123,6 +125,7 @@ export class BossRepository {
         Number(r.isCleared),
         r.notes,
         r.updatedAt,
+        Number(r.partySizeNeedsReview),
         r.id
       )
   }

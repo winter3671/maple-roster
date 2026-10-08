@@ -22,6 +22,7 @@ import { crystalShare } from '../domain/boss-profit'
 import { WEEKLY_BOSSES } from '../../shared/boss-catalog'
 import charactersSql from '../database/migrations/001_characters.sql?raw'
 import huntingSql from '../database/migrations/002_hunting_ledger.sql?raw'
+import { migrate } from '../database/migrate'
 
 describe('주간 보스와 결정석 장부', () => {
   let directory: string
@@ -33,6 +34,28 @@ describe('주간 보스와 결정석 장부', () => {
   const clock = () => new Date('2026-10-15T00:00:00Z')
   const query = { date: '2026-10-08' }
   const month = { from: '2026-10-01', to: '2026-10-15' }
+  it('기존 DB를 갱신할 때 인원·수익을 보존하고 과거 기록은 미확인으로 추정하지 않는다', () => {
+    const original = bosses.createRun({
+      characterId: character.id,
+      date: query.date,
+      bossName: '스우',
+      difficulty: '노멀',
+      partySize: 2
+    })
+    bosses.setClear({ id: original.id, isCleared: true })
+    const entries = ledger.list(month).entries
+    database.exec(
+      'ALTER TABLE boss_runs DROP COLUMN party_size_needs_review; DELETE FROM schema_migrations WHERE version=8'
+    )
+    migrate(database)
+    expect(bosses.list(query).runs[0]).toMatchObject({
+      id: original.id,
+      partySize: 2,
+      partySizeNeedsReview: false,
+      isCleared: true
+    })
+    expect(ledger.list(month).entries).toEqual(entries)
+  })
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'maple-boss-test-'))
     database = openDatabase(join(directory, 'test.sqlite'))
@@ -575,7 +598,7 @@ describe('주간 보스와 결정석 장부', () => {
     old.close()
     const upgraded = openDatabase(file)
     try {
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(7)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(8)
       expect(
         upgraded
           .prepare('SELECT id FROM ledger_entries ORDER BY id')

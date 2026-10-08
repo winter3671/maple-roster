@@ -444,6 +444,7 @@ export function BossesPage() {
               expectedShare: 0,
               week,
               isCleared: false,
+              partySizeNeedsReview: false,
               notes: '',
               settlement: null,
               createdAt: '',

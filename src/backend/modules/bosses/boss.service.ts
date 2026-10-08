@@ -139,6 +139,7 @@ export class BossService {
           id: randomUUID(),
           week,
           isCleared: false,
+          partySizeNeedsReview: false,
           notes: '',
           expectedShare: 0,
           settlement: null,
@@ -196,6 +197,7 @@ export class BossService {
         characterWorld: character.world,
         week,
         isCleared: false,
+        partySizeNeedsReview: false,
         notes: readText(raw.notes ?? '', '메모', 500, false, true),
         expectedShare: 0,
         settlement: null,
@@ -261,7 +263,8 @@ export class BossService {
     week: string,
     members: { bossName: string; difficulty: string; partySize: number }[],
     date: string,
-    preservedRunIds: string[] = []
+    preservedRunIds: string[] = [],
+    partySizeConfirmed = true
   ): { applied: number; alreadyCleared: number; added: number; removed: number } {
     const incomeDate = readDate(date)
     if (incomeDate < week || incomeDate > getKstDate(this.now()))
@@ -288,6 +291,7 @@ export class BossService {
                   'partySize',
                   'crystalPrice',
                   'isCleared',
+                  'partySizeNeedsReview',
                   'notes',
                   'updatedAt'
                 ].every((key) => run[key as keyof BossRun] === snapshot[key as keyof BossRun]) &&
@@ -355,6 +359,9 @@ export class BossService {
               partySize: member.partySize,
               crystalPrice: price,
               isCleared: true,
+              partySizeNeedsReview: partySizeConfirmed
+                ? false
+                : existing.partySizeNeedsReview || existing.difficulty !== member.difficulty,
               updatedAt: timestamp
             }
           : {
@@ -368,6 +375,7 @@ export class BossService {
               crystalPrice: price,
               expectedShare: 0,
               isCleared: true,
+              partySizeNeedsReview: !partySizeConfirmed,
               notes: '',
               settlement: null,
               createdAt: timestamp,
@@ -443,11 +451,14 @@ export class BossService {
       week,
       members,
       incomeDate,
-      preserved.map((row) => row.id)
+      preserved.map((row) => row.id),
+      false
     )
   }
   updateRun(value: unknown): BossRun {
     const raw = readObject(value)
+    if (raw.confirmPartySize !== undefined && typeof raw.confirmPartySize !== 'boolean')
+      throw new AppError('VALIDATION_ERROR', '인원 확인 여부를 확인해 주세요.')
     return this.transaction.run(() => {
       const current = this.findRun(readId(raw.id))
       const run = {
@@ -481,6 +492,13 @@ export class BossService {
         !bossChanged && run.difficulty === current.difficulty
           ? current.crystalPrice
           : this.priceForRun(run.bossName, run.difficulty, current.week, current.crystalPrice)
+      if (
+        raw.confirmPartySize === true ||
+        bossChanged ||
+        run.difficulty !== current.difficulty ||
+        run.partySize !== current.partySize
+      )
+        run.partySizeNeedsReview = false
       this.repository.updateRun(run)
       if (run.isCleared) {
         const date =
