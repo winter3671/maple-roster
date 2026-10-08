@@ -3,6 +3,7 @@ export const IPC_CHANNELS = {
   nexonList: 'nexon:list',
   nexonBasic: 'nexon:basic',
   nexonRegister: 'nexon:register',
+  nexonRegisterMany: 'nexon:register-many',
   systemGetInfo: 'system:get-info',
   charactersList: 'characters:list',
   charactersCreate: 'characters:create',

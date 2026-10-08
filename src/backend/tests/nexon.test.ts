@@ -160,16 +160,14 @@ describe('Nexon API boundary', () => {
 })
 
 describe('API character registration', () => {
-  function fixture() {
+  function fixture(
+    transport: typeof fetch = vi.fn<typeof fetch>().mockImplementation(async () => response(basic))
+  ) {
     const database = openDatabase(join(directory(), 'test.sqlite'))
     closes.push(() => database.close())
     const repository = new CharacterRepository(database)
     const characters = new CharacterService(repository)
-    const client = new NexonClient(
-      () => 'fake',
-      vi.fn<typeof fetch>().mockImplementation(async () => response(basic)),
-      0
-    )
+    const client = new NexonClient(() => 'fake', transport, 0)
     return {
       database,
       characters,
@@ -220,5 +218,59 @@ describe('API character registration', () => {
     })
     expect(hunting.list({ from: '2026-10-07', to: '2026-10-08' }).sessions[0].id).toBe(session.id)
     expect(service.status()).toEqual({ configured: true, issue: null })
+  })
+  it('registers multiple distinct characters and deduplicates repeated selections', async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      const ocid = new URL(String(url)).searchParams.get('ocid')!
+      return response({ ...basic, character_name: ocid === 'first' ? '첫캐릭터' : '둘째캐릭터' })
+    })
+    const { characters, service } = fixture(transport)
+    const result = await service.registerMany(['first', 'first', 'second'])
+    expect(result.items.map((item) => item.status)).toEqual(['created', 'created'])
+    expect(characters.list()).toHaveLength(2)
+    const ids = characters.list().map((character) => character.id)
+    expect(
+      (await service.registerMany(['first', 'second'])).items.map((item) => item.status)
+    ).toEqual(['existing', 'existing'])
+    expect(characters.list().map((character) => character.id)).toEqual(ids)
+    expect(transport).toHaveBeenCalledTimes(4)
+  })
+  it('validates the whole selection before creating any records', async () => {
+    const transport = vi.fn<typeof fetch>()
+    const { characters, service } = fixture(transport)
+    for (const selection of [[], ['valid', '../invalid'], Array(501).fill('valid'), 'valid', null])
+      await expect(service.registerMany(selection)).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR'
+      })
+    expect(transport).not.toHaveBeenCalled()
+    expect(characters.list()).toHaveLength(0)
+  })
+  it('keeps successful registrations when a single profile fails', async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      const ocid = new URL(String(url)).searchParams.get('ocid')!
+      return ocid === 'bad'
+        ? response({})
+        : response({ ...basic, character_name: ocid === 'first' ? '첫캐릭터' : '둘째캐릭터' })
+    })
+    const { characters, service } = fixture(transport)
+    const result = await service.registerMany(['first', 'bad', 'second'])
+    expect(result.items.map((item) => item.status)).toEqual(['created', 'failed', 'created'])
+    expect(result.items[1]).toMatchObject({ ocid: 'bad', error: { code: 'API_RESPONSE_INVALID' } })
+    expect(characters.list()).toHaveLength(2)
+  })
+  it('stops on shared API failure and reports the remaining selections as unattempted', async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      const ocid = new URL(String(url)).searchParams.get('ocid')!
+      return ocid === 'limit'
+        ? response({ error: { name: 'OPENAPI00007', message: 'private diagnostic' } }, 429)
+        : response(basic)
+    })
+    const { characters, service } = fixture(transport)
+    const result = await service.registerMany(['first', 'limit', 'last'])
+    expect(result.items.map((item) => item.status)).toEqual(['created', 'failed', 'notAttempted'])
+    expect(result.items[2]).toMatchObject({ ocid: 'last', error: { code: 'API_RATE_LIMITED' } })
+    expect(JSON.stringify(result)).not.toContain('private diagnostic')
+    expect(transport).toHaveBeenCalledTimes(2)
+    expect(characters.list()).toHaveLength(1)
   })
 })

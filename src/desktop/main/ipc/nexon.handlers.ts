@@ -8,6 +8,7 @@ export function registerNexonHandlers(window: BrowserWindow, services: Services)
     [IPC_CHANNELS.nexonStatus, () => services.nexon.status()],
     [IPC_CHANNELS.nexonList, () => services.nexon.list()],
     [IPC_CHANNELS.nexonBasic, (input) => services.nexon.basic(input)],
-    [IPC_CHANNELS.nexonRegister, (input) => services.nexon.register(input)]
+    [IPC_CHANNELS.nexonRegister, (input) => services.nexon.register(input)],
+    [IPC_CHANNELS.nexonRegisterMany, (input) => services.nexon.registerMany(input)]
   ])
 }

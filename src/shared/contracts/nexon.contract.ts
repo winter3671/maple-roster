@@ -1,5 +1,5 @@
 import type { Character } from './character.contract'
-import { AppError } from '../errors'
+import { AppError, type ErrorCode } from '../errors'
 
 export interface NexonCharacter {
   ocid: string
@@ -19,6 +19,18 @@ export interface NexonStatus {
 export interface NexonRegistration {
   character: Character
   alreadyRegistered: boolean
+}
+export type NexonBatchItem =
+  | { ocid: string; status: 'created' | 'existing'; character: Character }
+  | { ocid: string; status: 'failed' | 'notAttempted'; error: { code: ErrorCode; message: string } }
+export interface NexonBatchResult {
+  items: NexonBatchItem[]
+}
+
+export function readOcidSelection(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 500)
+    throw new AppError('VALIDATION_ERROR', '등록할 캐릭터를 1~500개 선택해 주세요.')
+  return [...new Set(value.map(readOcid))]
 }
 
 export function readOcid(value: unknown): string {

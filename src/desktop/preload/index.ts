@@ -7,7 +7,8 @@ const api: AppApi = {
     status: () => ipcRenderer.invoke(IPC_CHANNELS.nexonStatus),
     list: () => ipcRenderer.invoke(IPC_CHANNELS.nexonList),
     basic: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonBasic, ocid),
-    register: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonRegister, ocid)
+    register: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonRegister, ocid),
+    registerMany: (ocids) => ipcRenderer.invoke(IPC_CHANNELS.nexonRegisterMany, ocids)
   },
   system: { getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.systemGetInfo) },
   characters: {
