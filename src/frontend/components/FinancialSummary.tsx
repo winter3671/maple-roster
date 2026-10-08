@@ -14,13 +14,13 @@ export function FinancialSummary({
     {
       label: `${prefix} 실제 수입`,
       value: summary?.income,
-      detail: '직접 획득한 메소',
+      detail: '장부에 확정된 수입',
       color: 'text-brand'
     },
     {
       label: `${prefix} 지출`,
       value: summary?.expense,
-      detail: '사냥에 사용한 비용',
+      detail: '장부에 기록된 지출',
       color: 'text-expense'
     },
     {

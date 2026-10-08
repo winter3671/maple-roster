@@ -41,7 +41,7 @@ export function SettingsPage() {
               {error
                 ? '앱 정보를 불러오지 못했습니다'
                 : info
-                  ? '캐릭터·사냥 장부·API 조회 사용 가능'
+                  ? '캐릭터·보스·사냥 장부·API 조회 사용 가능'
                   : '확인 중'}
             </dd>
           </div>

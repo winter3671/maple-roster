@@ -6,7 +6,7 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## 적용된 마이그레이션
 
-`001_characters.sql`과 `002_hunting_ledger.sql`을 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 1번 버전 DB는 캐릭터 정보를 유지하면서 2번 버전으로 갱신한다.
+`001_characters.sql`, `002_hunting_ledger.sql`, `003_bosses.sql`을 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 1·2번 버전 DB는 캐릭터·사냥·거래 정보를 유지하면서 3번 버전으로 갱신한다.
 
 ## characters
 
@@ -46,7 +46,8 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 | 컬럼 | 타입 | 의미 |
 | --- | --- | --- |
 | id | TEXT, PK | 거래 UUID |
-| hunting_session_id | TEXT, FK | 사냥 회차 ID, ON DELETE CASCADE |
+| hunting_session_id | TEXT, FK, NULL 가능 | 사냥 회차 ID, ON DELETE CASCADE |
+| crystal_settlement_id | TEXT, UNIQUE, FK, NULL 가능 | 결정석 정산 ID, ON DELETE CASCADE |
 | character_id | TEXT, FK | 캐릭터 ID, ON DELETE RESTRICT |
 | world_snapshot | TEXT | 기록 당시 월드 |
 | occurred_on | TEXT | 회차 사냥 날짜 |
@@ -54,7 +55,15 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 | amount | INTEGER | 1 이상 정수 메소 |
 | created_at / updated_at | TEXT | UTC 생성 / 수정 시각 |
 
-회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 현재 거래는 사냥 회차에서만 생성되며 수동 거래와 판매 정산은 후속 단계다.
+회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 결정석 정산은 정산당 수입 하나만 생성하고 `crystal_settlement_id`를 UNIQUE로 보호한다. 두 원본 외래 키 중 정확히 하나만 값이 있어야 하며 결정석 거래는 income만 허용한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 수동 거래와 드랍 판매 정산은 후속 단계다.
+
+## boss_presets / boss_runs / crystal_settlements
+
+- `boss_presets`: 캐릭터 FK(RESTRICT), 보스 키·이름, 난이도, 파티 인원(1~6명), 결정석 전체 가격과 생성·수정 시각. 캐릭터·보스 키를 UNIQUE로 보호한다.
+- `boss_runs`: 캐릭터 FK(RESTRICT), 기록 당시 월드, 보스·난이도·파티 인원·가격 스냅샷, 목요일 기준 `period_start`, 수동 클리어 상태와 메모. 캐릭터·보스 키·주차를 UNIQUE로 보호한다. 프리셋 삭제가 과거 기록을 지우지 않도록 프리셋 FK는 두지 않는다.
+- `crystal_settlements`: 보스 기록 FK(CASCADE, UNIQUE), 판매일, 실제 수령액, 생성·수정 시각. 보스 기록당 하나의 정산만 허용하고 0 메소도 판매 상태로 저장한다.
+
+3번 마이그레이션에서 장부 테이블을 확장할 때 기존 사냥 거래의 ID·날짜·금액·생성 시각을 그대로 복사한다. 정산과 장부 변경은 함께 트랜잭션으로 처리한다. 구체적인 동작은 [보스 장부](boss-ledger.md)를 참고한다.
 
 금액은 JavaScript의 안전한 정수 범위까지 허용한다. 합계와 시간당 계산의 중간 연산은 BigInt를 사용하고, 반환값이 안전한 범위를 넘으면 오류로 처리한다. 날짜·캐릭터별 조회를 위해 사냥 날짜와 거래 날짜에 인덱스를 둔다.
 

@@ -9,7 +9,9 @@ export interface RecordQuery {
 }
 export interface LedgerEntry {
   id: string
-  huntingSessionId: string
+  huntingSessionId: string | null
+  crystalSettlementId: string | null
+  source: 'hunting' | 'crystal'
   characterId: string
   characterName: string
   characterWorld: string

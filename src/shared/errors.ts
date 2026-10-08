@@ -14,6 +14,9 @@ export type ErrorCode =
   | 'API_UNAVAILABLE'
   | 'API_NETWORK_ERROR'
   | 'API_RESPONSE_INVALID'
+  | 'BOSS_NOT_FOUND'
+  | 'DUPLICATE_BOSS'
+  | 'BOSS_ALREADY_SETTLED'
 
 export class AppError extends Error {
   constructor(

@@ -1,7 +1,14 @@
 import { getKstDate } from '../../shared/dates'
-import type { RecordQuery } from '../../shared/contracts/ledger.contract'
+import type { RecordQuery, LedgerEntry } from '../../shared/contracts/ledger.contract'
 
 export const formatMeso = (value: number) => value.toLocaleString('ko-KR')
+export function ledgerLabel(entry: LedgerEntry): string {
+  return entry.source === 'crystal'
+    ? '결정석 판매'
+    : entry.direction === 'income'
+      ? '사냥 획득'
+      : '사냥 소모 비용'
+}
 export function formatMinutes(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const remaining = minutes % 60

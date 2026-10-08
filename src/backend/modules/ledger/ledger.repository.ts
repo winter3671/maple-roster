@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
 import type { LedgerEntry, RecordQuery } from '../../../shared/contracts/ledger.contract'
+import type { BossRun } from '../../../shared/contracts/boss.contract'
 
 export class LedgerRepository {
   constructor(private readonly database: DatabaseSync) {}
@@ -46,7 +47,10 @@ export class LedgerRepository {
       .all(query.from, query.to, ...(query.characterId ? [query.characterId] : []))
       .map((row) => ({
         id: String(row.id),
-        huntingSessionId: String(row.hunting_session_id),
+        huntingSessionId: row.hunting_session_id === null ? null : String(row.hunting_session_id),
+        crystalSettlementId:
+          row.crystal_settlement_id === null ? null : String(row.crystal_settlement_id),
+        source: row.crystal_settlement_id === null ? 'hunting' : 'crystal',
         characterId: String(row.character_id),
         characterName: String(row.character_name),
         characterWorld: String(row.world_snapshot),
@@ -54,5 +58,28 @@ export class LedgerRepository {
         direction: row.direction as 'income' | 'expense',
         amount: Number(row.amount)
       }))
+  }
+  syncCrystal(run: BossRun, timestamp: string): void {
+    const settlement = run.settlement!
+    if (settlement.amount === 0) {
+      this.database
+        .prepare('DELETE FROM ledger_entries WHERE crystal_settlement_id = ?')
+        .run(settlement.id)
+      return
+    }
+    this.database
+      .prepare(
+        `INSERT INTO ledger_entries (id, crystal_settlement_id, character_id, world_snapshot, occurred_on, direction, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'income', ?, ?, ?) ON CONFLICT(crystal_settlement_id) DO UPDATE SET occurred_on = excluded.occurred_on, amount = excluded.amount, updated_at = excluded.updated_at`
+      )
+      .run(
+        randomUUID(),
+        settlement.id,
+        run.characterId,
+        run.characterWorld,
+        settlement.date,
+        settlement.amount,
+        timestamp,
+        timestamp
+      )
   }
 }

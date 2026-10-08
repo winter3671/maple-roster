@@ -4,7 +4,7 @@ import { Icon, type IconName } from '../../components/ui/Icon'
 import { useState } from 'react'
 import { FinancialSummary } from '../../components/FinancialSummary'
 import { Button } from '../../components/ui/Button'
-import { formatMeso, thisMonthQuery } from '../../lib/format'
+import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
 import { useLedger } from '../ledger/useLedger'
 
 const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }[] = [
@@ -38,18 +38,18 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         <div>
           <p className="text-sm font-semibold text-brand">나의 기록장을 시작해 볼까요?</p>
           <p className="mt-1.5 text-xs leading-5 text-muted">
-            캐릭터를 등록한 뒤 사냥 장부에 첫 회차를 기록해 보세요. 수입과 지출이 자동으로 모입니다.
+            사냥 회차와 결정석 판매를 기록해 보세요. 수입과 지출이 자동으로 모입니다.
           </p>
         </div>
         <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">
-          사냥 장부 사용 가능
+          보스·사냥 장부 사용 가능
         </span>
       </section>
       <FinancialSummary summary={state.data?.summary} loading={state.loading} prefix="이번 달" />
       <div className="grid grid-cols-[1.4fr_1fr] gap-5">
         <section className="rounded-2xl border border-line bg-surface">
           <div className="flex items-center justify-between border-b border-line px-6 py-5">
-            <h2 className="text-sm font-semibold">최근 사냥 거래</h2>
+            <h2 className="text-sm font-semibold">최근 거래</h2>
             <span className="text-[11px] text-muted">
               {query.from} ~ {query.to}
             </span>
@@ -65,7 +65,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
                   <div>
                     <p className="break-all text-xs font-semibold">{entry.characterName}</p>
                     <p className="mt-2 text-[11px] text-muted">
-                      {entry.date} · {entry.direction === 'income' ? '사냥 획득' : '사냥 소모 비용'}
+                      {entry.date} · {ledgerLabel(entry)}
                     </p>
                   </div>
                   <p
@@ -81,7 +81,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
             <EmptyState
               icon="ledger"
               title="아직 이번 달 거래가 없어요"
-              description="사냥 장부에 획득 메소와 비용을 기록하면 이곳에 실제 수입과 지출이 표시됩니다."
+              description="사냥 회차와 결정석 판매를 기록하면 이곳에 실제 수입과 지출이 표시됩니다."
             />
           )}
         </section>

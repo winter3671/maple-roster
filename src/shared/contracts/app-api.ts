@@ -8,6 +8,16 @@ import type { ApiResult } from '../errors'
 import type { HuntingCreate, HuntingUpdate, HuntingSession, HuntingList } from './hunting.contract'
 import type { LedgerList, RecordQuery } from './ledger.contract'
 import type {
+  BossList,
+  BossPreset,
+  BossPresetInput,
+  BossPresetUpdate,
+  BossQuery,
+  BossRun,
+  BossRunUpdate,
+  CrystalInput
+} from './boss.contract'
+import type {
   NexonStatus,
   NexonCharacter,
   NexonProfile,
@@ -22,6 +32,19 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  bosses: {
+    presets: (characterId?: string) => Promise<ApiResult<BossPreset[]>>
+    createPreset: (input: BossPresetInput) => Promise<ApiResult<BossPreset>>
+    updatePreset: (input: BossPresetUpdate) => Promise<ApiResult<BossPreset>>
+    removePreset: (id: string) => Promise<ApiResult<null>>
+    list: (query: BossQuery) => Promise<ApiResult<BossList>>
+    generate: (query: BossQuery) => Promise<ApiResult<BossList>>
+    setClear: (input: { id: string; isCleared: boolean }) => Promise<ApiResult<BossRun>>
+    updateRun: (input: BossRunUpdate) => Promise<ApiResult<BossRun>>
+    settle: (input: CrystalInput) => Promise<ApiResult<BossRun>>
+    cancelSale: (id: string) => Promise<ApiResult<null>>
+    removeRun: (id: string) => Promise<ApiResult<null>>
+  }
   nexon: {
     status: () => Promise<ApiResult<NexonStatus>>
     list: () => Promise<ApiResult<NexonCharacter[]>>

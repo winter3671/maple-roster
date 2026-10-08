@@ -3,7 +3,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { FinancialSummary } from '../../components/FinancialSummary'
 import { RecordFilters } from '../../components/RecordFilters'
-import { formatMeso, thisMonthQuery } from '../../lib/format'
+import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
 import { useCharacters } from '../characters/useCharacters'
 import { useLedger } from './useLedger'
 
@@ -30,7 +30,7 @@ export function LedgerPage() {
           <div>
             <h2 className="text-sm font-semibold">수입과 지출</h2>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              사냥 회차에서 자동 생성된 거래입니다. 수정·삭제는 사냥 장부에서 진행하세요.
+              사냥·결정석 판매에서 생성된 거래입니다. 수정·취소는 원본 장부에서 진행하세요.
             </p>
           </div>
           <Button variant="secondary" disabled={state.loading} onClick={state.reload}>
@@ -63,9 +63,7 @@ export function LedgerPage() {
                         {entry.characterWorld}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      {entry.direction === 'income' ? '사냥 획득' : '사냥 소모 비용'}
-                    </td>
+                    <td className="px-6 py-4">{ledgerLabel(entry)}</td>
                     <td
                       className={`px-6 py-4 font-semibold tabular-nums ${entry.direction === 'income' ? 'text-brand' : 'text-expense'}`}
                     >
@@ -81,7 +79,7 @@ export function LedgerPage() {
           <EmptyState
             icon="ledger"
             title="조회 기간에 거래 내역이 없어요"
-            description="사냥 회차를 저장하면 획득 메소와 소모 비용이 이곳에 표시됩니다. 아이템 획득 수량은 메소 수입에 포함하지 않습니다."
+            description="사냥 회차나 결정석 판매를 저장하면 이곳에 표시됩니다. 미판매 아이템과 미판매 결정석은 실제 수입에 포함하지 않습니다."
           />
         )}
       </section>

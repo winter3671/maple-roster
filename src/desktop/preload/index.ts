@@ -3,6 +3,19 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  bosses: {
+    presets: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesPresets, id),
+    createPreset: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesCreatePreset, input),
+    updatePreset: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesUpdatePreset, input),
+    removePreset: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesRemovePreset, id),
+    list: (query) => ipcRenderer.invoke(IPC_CHANNELS.bossesList, query),
+    generate: (query) => ipcRenderer.invoke(IPC_CHANNELS.bossesGenerate, query),
+    setClear: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSetClear, input),
+    updateRun: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesUpdateRun, input),
+    settle: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSettle, input),
+    cancelSale: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesCancelSale, id),
+    removeRun: (id) => ipcRenderer.invoke(IPC_CHANNELS.bossesRemoveRun, id)
+  },
   nexon: {
     status: () => ipcRenderer.invoke(IPC_CHANNELS.nexonStatus),
     list: () => ipcRenderer.invoke(IPC_CHANNELS.nexonList),

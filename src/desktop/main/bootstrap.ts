@@ -10,6 +10,8 @@ import { UnitOfWork } from '../../backend/database/unit-of-work'
 import type { NexonKeyConfig } from '../../backend/config/nexon-key'
 import { NexonClient } from '../../backend/integrations/nexon/nexon.client'
 import { NexonService } from '../../backend/modules/nexon/nexon.service'
+import { BossRepository } from '../../backend/modules/bosses/boss.repository'
+import { BossService } from '../../backend/modules/bosses/boss.service'
 
 export function createServices(
   version: string,
@@ -23,6 +25,12 @@ export function createServices(
   return {
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,
+    bosses: new BossService(
+      new BossRepository(database),
+      characters,
+      ledger,
+      new UnitOfWork(database)
+    ),
     nexon: new NexonService(
       new NexonClient(() => nexonKey.key),
       nexonKey,

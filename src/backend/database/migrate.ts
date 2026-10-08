@@ -1,10 +1,12 @@
 import type { DatabaseSync } from 'node:sqlite'
 import charactersSql from './migrations/001_characters.sql?raw'
 import huntingSql from './migrations/002_hunting_ledger.sql?raw'
+import bossesSql from './migrations/003_bosses.sql?raw'
 
 const migrations = [
   { version: 1, name: 'characters', sql: charactersSql },
-  { version: 2, name: 'hunting_ledger', sql: huntingSql }
+  { version: 2, name: 'hunting_ledger', sql: huntingSql },
+  { version: 3, name: 'bosses', sql: bossesSql }
 ]
 
 export function migrate(database: DatabaseSync): void {

@@ -4,11 +4,13 @@ import type { Services } from '../bootstrap'
 import { registerCharacterHandlers } from './character.handlers'
 import { registerHuntingHandlers } from './hunting.handlers'
 import { registerNexonHandlers } from './nexon.handlers'
+import { registerBossHandlers } from './boss.handlers'
 
 export function registerHandlers(window: BrowserWindow, services: Services): void {
   const disposeCharacters = registerCharacterHandlers(window, services)
   const disposeHunting = registerHuntingHandlers(window, services)
   const disposeNexon = registerNexonHandlers(window, services)
+  const disposeBosses = registerBossHandlers(window, services)
   ipcMain.handle(IPC_CHANNELS.systemGetInfo, (event) => {
     if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) {
       throw new Error('허용되지 않은 요청입니다.')
@@ -20,5 +22,6 @@ export function registerHandlers(window: BrowserWindow, services: Services): voi
     disposeCharacters()
     disposeHunting()
     disposeNexon()
+    disposeBosses()
   })
 }
