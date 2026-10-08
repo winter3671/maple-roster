@@ -78,6 +78,112 @@ describe('주간 보스와 결정석 장부', () => {
   }
 
   it.each([
+    ['스우', '익스트림', 2],
+    ['림보', '노멀', 3],
+    ['최초의 대적자', '익스트림', 3],
+    ['벨로나', '하드', 3],
+    ['찬란한 흉성', '하드', 3],
+    ['발드릭스', '하드', 3],
+    ['유피테르', '하드', 3],
+    ['카링', '익스트림', 6]
+  ])('%s %s 인원 상한 %i명을 검증한다', (bossName, difficulty, maximum) => {
+    expect(() => preset({ bossName, difficulty, partySize: maximum + 1 })).toThrow()
+    expect(preset({ bossName, difficulty, partySize: maximum }).partySize).toBe(maximum)
+  })
+  it('난이도 변경과 직접 IPC 수정에서도 인원 상한을 검증한다', () => {
+    const p = preset({ partySize: 6 })
+    const record = bosses.generate(query).runs[0]
+    expect(() => bosses.updatePreset({ ...p, difficulty: '익스트림' })).toThrow('최대 2명')
+    expect(() => bosses.updateRun({ ...record, difficulty: '익스트림' })).toThrow('최대 2명')
+    expect(
+      bosses.updateRun({ ...record, difficulty: '익스트림', partySize: 2 }).expectedShare
+    ).toBe(272500000)
+  })
+  it('기존 상한 초과 기록은 유지하되 새 초과 인원으로 수정하지 못한다', () => {
+    const p = preset({ difficulty: '익스트림', partySize: 2 })
+    database.prepare('UPDATE boss_presets SET party_size = 6 WHERE id = ?').run(p.id)
+    const legacy = bosses.presets()[0]
+    expect(bosses.updatePreset(legacy).partySize).toBe(6)
+    expect(() => bosses.updatePreset({ ...legacy, partySize: 5 })).toThrow('최대 2명')
+    const record = bosses.generate(query).runs[0]
+    expect(bosses.updateRun({ ...record, notes: '기존 인원 유지' }).partySize).toBe(6)
+    expect(bosses.updateRun({ ...record, partySize: 2 }).partySize).toBe(2)
+  })
+  it('입력 가격 대신 공식 가격을 적용하고 주차별 가격 변경을 구분한다', () => {
+    expect(preset().crystalPrice).toBe(8350000)
+    expect(bosses.generate({ date: '2026-09-10' }).runs[0].crystalPrice).toBe(16700000)
+    expect(bosses.generate({ date: '2026-09-17' }).runs[0].crystalPrice).toBe(8350000)
+    expect(() => bosses.generate({ date: '2026-06-11' })).toThrow('가격표')
+  })
+  it('가격표 이전 기존 주차는 반복 생성·메모 수정에서도 가격을 보존한다', () => {
+    const record = run()
+    database
+      .prepare('UPDATE boss_runs SET period_start = ?, crystal_price = ? WHERE id = ?')
+      .run('2026-06-11', 101, record.id)
+    const oldQuery = { date: '2026-06-11' }
+    const legacy = bosses.generate(oldQuery).runs[0]
+    expect(bosses.updateRun({ ...legacy, notes: '과거 가격 유지' }).crystalPrice).toBe(101)
+    expect(() => bosses.updateRun({ ...legacy, difficulty: '하드' })).toThrow('가격표')
+  })
+
+  it.each([
+    { bossName: '스우', difficulty: '카오스' },
+    { bossName: '데미안', difficulty: '익스트림' },
+    { bossName: '감시자 칼로스', difficulty: '하드' },
+    { bossName: '자쿰', difficulty: '노멀' },
+    { bossName: '검은 마법사', difficulty: '하드' },
+    { bossName: '없는 보스', difficulty: '노멀' }
+  ])('목록에 없는 주간 보스·난이도 등록을 거부한다: %j', (selection) => {
+    expect(() => preset(selection)).toThrow('목록에서 선택')
+    expect(bosses.presets()).toHaveLength(0)
+  })
+  it('익스트림 스우와 카오스 칼로스를 선택해 저장하고 주차를 생성한다', () => {
+    preset({ difficulty: '익스트림', partySize: 2 })
+    preset({ bossName: '감시자 칼로스', difficulty: '카오스' })
+    expect(
+      bosses
+        .generate(query)
+        .runs.map((row) => `${row.bossName}:${row.difficulty}`)
+        .sort()
+    ).toEqual(['감시자 칼로스:카오스', '스우:익스트림'])
+  })
+  it('프리셋·주차 난이도 수정에서도 보스별 선택지를 검증한다', () => {
+    const p = preset()
+    const record = bosses.generate(query).runs[0]
+    expect(() => bosses.updatePreset({ ...p, difficulty: '카오스' })).toThrow('난이도')
+    expect(() => bosses.updateRun({ ...record, difficulty: '이지' })).toThrow('난이도')
+    expect(bosses.presets()[0].difficulty).toBe('노멀')
+    expect(bosses.list(query).runs[0].difficulty).toBe('노멀')
+    bosses.updateRun({ ...record, difficulty: '익스트림', partySize: 2 })
+    expect(bosses.list(query).runs[0].difficulty).toBe('익스트림')
+  })
+  it.each([
+    ['스우', '노말'],
+    ['기존수동보스', '기존난이도']
+  ])('기존 자유 입력 %s:%s를 유지하며 금액·메모를 수정할 수 있다', (bossName, difficulty) => {
+    const original = preset()
+    database
+      .prepare('UPDATE boss_presets SET boss_name = ?, boss_key = ?, difficulty = ? WHERE id = ?')
+      .run(bossName, bossName, difficulty, original.id)
+    const legacy = bosses.presets()[0]
+    bosses.updatePreset({ ...legacy, crystalPrice: 500 })
+    const record = bosses.generate(query).runs[0]
+    bosses.updateRun({ ...record, notes: '기존 기록 유지', crystalPrice: original.crystalPrice })
+    expect(bosses.list(query).runs[0]).toMatchObject({
+      bossName,
+      difficulty,
+      notes: '기존 기록 유지',
+      crystalPrice: original.crystalPrice
+    })
+    expect(() => bosses.updatePreset({ ...legacy, difficulty: '임의 난이도' })).toThrow(
+      '목록에서 선택'
+    )
+    bosses.setClear({ id: record.id, isCleared: true })
+    bosses.settle({ runId: record.id, date: '2026-10-13', amount: 60 })
+    expect(ledger.list(month).summary.income).toBe(60)
+  })
+
+  it.each([
     ['2026-10-07', '2026-10-01'],
     ['2026-10-08', '2026-10-08'],
     ['2026-09-30', '2026-09-24'],
@@ -113,14 +219,14 @@ describe('주간 보스와 결정석 장부', () => {
     expect(bosses.generate(query).runs[0]).toMatchObject({
       id: first.id,
       difficulty: '노멀',
-      crystalPrice: 101,
+      crystalPrice: 8350000,
       partySize: 3,
       characterName: '이름변경',
       characterWorld: '스카니아'
     })
     expect(bosses.generate({ date: '2026-10-15' }).runs[0]).toMatchObject({
       difficulty: '하드',
-      crystalPrice: 500,
+      crystalPrice: 48900000,
       partySize: 1,
       characterWorld: '루나'
     })
@@ -131,7 +237,7 @@ describe('주간 보스와 결정석 장부', () => {
     expect(bosses.list(query).summary).toMatchObject({
       cleared: 1,
       sold: 0,
-      clearedUnsold: 33,
+      clearedUnsold: 2783333,
       settled: 0
     })
   })
@@ -182,7 +288,7 @@ describe('주간 보스와 결정석 장부', () => {
     expect(ledger.list(month).entries).toHaveLength(0)
     expect(bosses.list(query).runs[0].isCleared).toBe(true)
     bosses.updateRun({ ...record, partySize: 1, crystalPrice: 90, notes: '수정' })
-    expect(bosses.list(query).runs[0].expectedShare).toBe(90)
+    expect(bosses.list(query).runs[0].expectedShare).toBe(8350000)
     bosses.setClear({ id: record.id, isCleared: false })
     bosses.removeRun(record.id)
     expect(bosses.list(query).runs).toHaveLength(0)

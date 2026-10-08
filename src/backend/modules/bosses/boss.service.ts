@@ -12,6 +12,12 @@ import { AppError } from '../../../shared/errors'
 import { readId, readObject, readText } from '../../../shared/validation'
 import { getKstDate } from '../../../shared/dates'
 import { bossWeek } from '../../../shared/boss-period'
+import {
+  validateBossSelection,
+  validateBossDifficultyChange,
+  validateBossParty
+} from '../../../shared/boss-catalog'
+import { findCrystalPrice, requireCrystalPrice } from '../../../shared/crystal-prices'
 import { summarizeBosses } from '../../domain/boss-profit'
 import { UnitOfWork } from '../../database/unit-of-work'
 import { CharacterRepository } from '../characters/character.repository'
@@ -33,6 +39,8 @@ export class BossService {
   }
   createPreset(value: unknown): BossPreset {
     const input = parseBossPreset(value)
+    validateBossSelection(input.bossName, input.difficulty)
+    validateBossParty(input.bossName, input.difficulty, input.partySize)
     return this.transaction.run(() => {
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
@@ -47,6 +55,7 @@ export class BossService {
       const timestamp = this.now().toISOString()
       const preset = {
         ...input,
+        crystalPrice: requireCrystalPrice(input.bossName, input.difficulty, getKstDate(this.now())),
         id: randomUUID(),
         bossKey,
         characterName: character.name,
@@ -64,7 +73,16 @@ export class BossService {
     const current = this.findPreset(readId(raw.id))
     if (input.characterId !== current.characterId || input.bossName !== current.bossName)
       throw new AppError('VALIDATION_ERROR', '보스와 캐릭터를 바꾸려면 새 프리셋을 추가해 주세요.')
-    const preset = { ...current, ...input, updatedAt: this.now().toISOString() }
+    validateBossDifficultyChange(current.bossName, input.difficulty, current.difficulty)
+    validateBossParty(current.bossName, input.difficulty, input.partySize, current)
+    const preset = {
+      ...current,
+      ...input,
+      crystalPrice:
+        findCrystalPrice(input.bossName, input.difficulty, getKstDate(this.now()))?.amount ??
+        current.crystalPrice,
+      updatedAt: this.now().toISOString()
+    }
     this.repository.savePreset(preset)
     return preset
   }
@@ -87,11 +105,23 @@ export class BossService {
       throw new AppError('VALIDATION_ERROR', '미래 주차는 생성할 수 없습니다.')
     return this.transaction.run(() => {
       const timestamp = this.now().toISOString()
+      const existing = new Set(
+        this.repository
+          .list(week, query.characterId)
+          .map((run) => `${run.characterId}:${run.bossKey}`)
+      )
       for (const preset of this.repository.presets(query.characterId)) {
         const character = this.characters.find(preset.characterId)!
         if (character.isHidden) continue
+        if (existing.has(`${preset.characterId}:${preset.bossKey}`)) continue
         this.repository.insertRun({
           ...preset,
+          crystalPrice: this.priceForRun(
+            preset.bossName,
+            preset.difficulty,
+            week,
+            preset.crystalPrice
+          ),
           id: randomUUID(),
           week,
           isCleared: false,
@@ -129,6 +159,12 @@ export class BossService {
       notes: readText(raw.notes ?? '', '메모', 500, false, true),
       updatedAt: this.now().toISOString()
     }
+    validateBossDifficultyChange(current.bossName, run.difficulty, current.difficulty)
+    validateBossParty(current.bossName, run.difficulty, run.partySize, current)
+    run.crystalPrice =
+      run.difficulty === current.difficulty
+        ? current.crystalPrice
+        : this.priceForRun(current.bossName, run.difficulty, current.week, current.crystalPrice)
     this.repository.updateRun(run)
     return this.findRun(run.id)
   }
@@ -172,6 +208,18 @@ export class BossService {
     if (!preset)
       throw new AppError('BOSS_NOT_FOUND', '보스 프리셋을 찾을 수 없습니다. 새로고침해 주세요.')
     return preset
+  }
+  private priceForRun(name: string, difficulty: string, week: string, previous: number): number {
+    const price = findCrystalPrice(name, difficulty, week)
+    if (price) return price.amount
+    // Unknown historical names/difficulties keep their stored price. Known selections
+    // before the supported price history cannot use today's price silently.
+    try {
+      validateBossSelection(name, difficulty)
+    } catch {
+      return previous
+    }
+    return requireCrystalPrice(name, difficulty, week)
   }
   private findRun(id: string): BossRun {
     const run = this.repository.find(id)

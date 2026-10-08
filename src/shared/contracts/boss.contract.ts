@@ -8,9 +8,10 @@ export interface BossPresetInput {
   bossName: string
   difficulty: string
   partySize: number
-  crystalPrice: number
+  crystalPrice?: number
 }
 export interface BossPreset extends BossPresetInput {
+  crystalPrice: number
   id: string
   bossKey: string
   characterName: string
@@ -36,6 +37,7 @@ export interface CrystalSettlement {
   amount: number
 }
 export interface BossRun extends BossPresetInput {
+  crystalPrice: number
   id: string
   bossKey: string
   characterName: string
@@ -52,7 +54,7 @@ export interface BossRunUpdate {
   id: string
   difficulty: string
   partySize: number
-  crystalPrice: number
+  crystalPrice?: number
   notes: string
 }
 export interface BossList {
@@ -75,7 +77,7 @@ export function parseBossDetails(value: unknown) {
   return {
     difficulty: readText(input.difficulty, '난이도', 40),
     partySize,
-    crystalPrice: readInteger(input.crystalPrice, '결정석 가격')
+    crystalPrice: readInteger(input.crystalPrice ?? 0, '결정석 가격')
   }
 }
 export function parseBossPreset(value: unknown): BossPresetInput {

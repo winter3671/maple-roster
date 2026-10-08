@@ -7,6 +7,7 @@ import {
   type CrystalInput
 } from '../../../shared/contracts/boss.contract'
 import { getKstDate } from '../../../shared/dates'
+import { clampBossParty } from '../../../shared/boss-catalog'
 import { readText } from '../../../shared/validation'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
@@ -27,12 +28,19 @@ export function BossRunForm({
   const [draft, setDraft] = useState({
     difficulty: run.difficulty,
     partySize: String(run.partySize),
-    crystalPrice: String(run.crystalPrice),
     notes: run.notes
   })
   const [error, setError] = useState('')
   const change = (key: keyof typeof draft, value: string) =>
-    setDraft((current) => ({ ...current, [key]: value }))
+    setDraft((current) =>
+      key === 'difficulty'
+        ? {
+            ...current,
+            difficulty: value,
+            partySize: clampBossParty(run.bossName, value, current.partySize)
+          }
+        : { ...current, [key]: value }
+    )
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
@@ -41,8 +49,7 @@ export function BossRunForm({
         id: run.id,
         ...parseBossDetails({
           ...draft,
-          partySize: parseDigits(draft.partySize),
-          crystalPrice: parseDigits(draft.crystalPrice)
+          partySize: parseDigits(draft.partySize)
         }),
         notes: readText(draft.notes, '메모', 500, false, true)
       })
@@ -58,7 +65,18 @@ export function BossRunForm({
       <p className="text-xs leading-5 text-muted">
         이 주차의 기록만 수정합니다. 프리셋과 다른 주차에는 반영하지 않습니다.
       </p>
-      <BossDetailsFields id={id} draft={draft} busy={busy} change={change} />
+      <BossDetailsFields
+        id={id}
+        draft={draft}
+        bossName={run.bossName}
+        legacyDifficulty={run.difficulty}
+        legacyPartySize={run.partySize}
+        preserveStoredPrice
+        priceDate={run.week}
+        storedPrice={run.crystalPrice}
+        busy={busy}
+        change={change}
+      />
       <div>
         <label htmlFor={`${id}-notes`} className="text-xs font-semibold">
           보스 기록 메모

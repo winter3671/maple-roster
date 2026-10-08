@@ -1,9 +1,7 @@
 import type { BossRun } from '../../shared/contracts/boss.contract'
 import { sumIntegers } from './money'
 
-export function crystalShare(price: number, partySize: number): number {
-  return Number(BigInt(price) / BigInt(partySize))
-}
+export { crystalShare } from '../../shared/crystal-prices'
 export function summarizeBosses(runs: BossRun[]) {
   return {
     count: runs.length,

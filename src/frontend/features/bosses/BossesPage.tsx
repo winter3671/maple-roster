@@ -139,7 +139,7 @@ export function BossesPage() {
           {
             title: '클리어 후 미판매 예상',
             value: summary ? `${formatMeso(summary.clearedUnsold)} 메소` : '—',
-            detail: '프리셋 가격과 파티 인원으로 계산'
+            detail: '주차에 저장된 결정석 가격과 클리어 인원으로 계산'
           },
           {
             title: '이 주차 판매 확정',
@@ -352,8 +352,9 @@ export function BossesPage() {
           </div>
           <div className="space-y-3">
             <p className="text-xs leading-5 text-muted">
-              주간 보스 이름을 일관되게 입력하세요. 같은 캐릭터·보스는 난이도별로 중복 추가할 수
-              없습니다. 프리셋 수정·삭제는 이미 생성한 주차 기록에 영향을 주지 않습니다.
+              보스를 선택하면 해당 보스의 주간 난이도만 표시됩니다. 같은 캐릭터·보스는 난이도별로
+              중복 추가할 수 없습니다. 프리셋 수정·삭제는 이미 생성한 주차 기록에 영향을 주지
+              않습니다.
             </p>
             {state.presets.map((preset) => (
               <article key={preset.id} className="rounded-xl border border-line p-4">
