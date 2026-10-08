@@ -16,6 +16,10 @@ export interface DropLotInput {
 export interface DropLotCreate extends DropLotInput {
   requestId: string
 }
+export interface BossDropBatchCreate {
+  source: { kind: 'boss'; id: string }
+  items: (Omit<DropLotInput, 'source'> & { requestId: string })[]
+}
 export interface DropLotUpdate {
   id: string
   quantity: number
@@ -61,6 +65,7 @@ export interface DropSale extends DropSaleInput {
   updatedAt: string
 }
 export interface DropList {
+  boss?: { name: string; difficulty: string }
   lots: DropLot[]
   sales: DropSale[]
   summary: { remainingQuantity: number; estimatedValue: number; saleIncome: number }

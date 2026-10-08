@@ -12,6 +12,7 @@ import { Dialog } from '../../components/ui/Dialog'
 import { formatMeso } from '../../lib/format'
 
 import { DropEditor, type Editor } from './DropEditor'
+import { BossDropForm } from './BossDropForm'
 
 export function DropManager({
   source,
@@ -30,6 +31,7 @@ export function DropManager({
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState<Editor>()
+  const [bossAdding, setBossAdding] = useState(false)
   const [confirmation, setConfirmation] = useState<{
     text: string
     action: () => Promise<ApiResult<unknown>>
@@ -60,7 +62,10 @@ export function DropManager({
       if (alive.current && version === loadVersion.current) setLoading(false)
     }
   }
-  async function mutate(action: () => Promise<ApiResult<unknown>>): Promise<boolean> {
+  async function mutate(
+    action: () => Promise<ApiResult<unknown>>,
+    message = '저장했습니다. 판매 수량과 연결 수입을 반영했습니다.'
+  ): Promise<boolean> {
     if (lock.current) return false
     lock.current = true
     setBusy(true)
@@ -74,8 +79,9 @@ export function DropManager({
       }
       retry.current = null
       setEditor(undefined)
+      setBossAdding(false)
       setConfirmation(undefined)
-      setNotice('저장했습니다. 판매 수량과 연결 수입을 반영했습니다.')
+      setNotice(message)
       await load()
       try {
         await onChanged()
@@ -181,9 +187,31 @@ export function DropManager({
               )
             }}
           />
+        ) : bossAdding && source.kind === 'boss' && data?.boss ? (
+          <BossDropForm
+            boss={data.boss}
+            source={{ kind: 'boss', id: source.id }}
+            busy={busy}
+            onCancel={() => setBossAdding(false)}
+            onSave={(input) =>
+              mutate(
+                () => window.maple.drops.createBossLots(input),
+                '획득 아이템을 저장했습니다. 판매 기록을 추가하면 수익에 반영됩니다.'
+              )
+            }
+          />
         ) : (
           <div className="flex gap-2">
-            <Button disabled={busy || loading || !data} onClick={() => edit({ kind: 'lot' })}>
+            <Button
+              disabled={busy || loading || !data}
+              onClick={() => {
+                if (source.kind === 'boss' && data?.boss) {
+                  setError('')
+                  setNotice('')
+                  setBossAdding(true)
+                } else edit({ kind: 'lot' })
+              }}
+            >
               획득 아이템 추가
             </Button>
             <Button
@@ -205,7 +233,9 @@ export function DropManager({
         )}
         {data?.lots.length === 0 && (
           <p className="py-4 text-center text-xs text-muted">
-            획득 아이템이 없습니다. 사냥 조각·젬스톤은 회차에 입력한 수량으로 자동 등록됩니다.
+            {source.kind === 'boss'
+              ? '획득 아이템이 없습니다. 획득 아이템 추가에서 실제 드랍을 선택하세요.'
+              : '획득 아이템이 없습니다. 사냥 조각·젬스톤은 회차에 입력한 수량으로 자동 등록됩니다.'}
           </p>
         )}
         {data?.lots.map((lot) => (
@@ -223,14 +253,14 @@ export function DropManager({
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 variant="secondary"
-                disabled={busy || !!editor || !!confirmation || !lot.remaining}
+                disabled={busy || bossAdding || !!editor || !!confirmation || !lot.remaining}
                 onClick={() => edit({ kind: 'sale', lot })}
               >
                 판매 기록
               </Button>
               <Button
                 variant="secondary"
-                disabled={busy || !!editor || !!confirmation}
+                disabled={busy || bossAdding || !!editor || !!confirmation}
                 onClick={() => edit({ kind: 'lot', lot })}
               >
                 획득 수정
@@ -238,7 +268,9 @@ export function DropManager({
               {!lot.managedKind && (
                 <Button
                   variant="secondary"
-                  disabled={busy || !!editor || !!confirmation || lot.soldQuantity > 0}
+                  disabled={
+                    busy || bossAdding || !!editor || !!confirmation || lot.soldQuantity > 0
+                  }
                   onClick={() =>
                     setConfirmation({
                       text: `${lot.itemName} 획득 묶음을 삭제합니다.`,
@@ -286,14 +318,14 @@ export function DropManager({
                   <div className="mt-2 flex gap-2">
                     <Button
                       variant="secondary"
-                      disabled={busy || !!editor || !!confirmation}
+                      disabled={busy || bossAdding || !!editor || !!confirmation}
                       onClick={() => edit({ kind: 'sale', lot, sale })}
                     >
                       판매 수정
                     </Button>
                     <Button
                       variant="secondary"
-                      disabled={busy || !!editor || !!confirmation}
+                      disabled={busy || bossAdding || !!editor || !!confirmation}
                       onClick={() =>
                         setConfirmation({
                           text: '판매 기록과 연결 수입을 취소합니다. 판매 수량은 미판매 재고로 돌아갑니다.',

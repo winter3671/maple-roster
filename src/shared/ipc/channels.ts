@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  dropsCreateBossLots: 'drops:create-boss-lots',
   ledgerCreateExpense: 'ledger:create-expense',
   ledgerUpdateExpense: 'ledger:update-expense',
   ledgerRemoveExpense: 'ledger:remove-expense',

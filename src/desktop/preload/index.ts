@@ -18,6 +18,7 @@ const api: AppApi = {
     cancel: () => ipcRenderer.invoke(IPC_CHANNELS.backupCancel)
   },
   drops: {
+    createBossLots: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsCreateBossLots, input),
     list: (source) => ipcRenderer.invoke(IPC_CHANNELS.dropsList, source),
     createLot: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsCreateLot, input),
     updateLot: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsUpdateLot, input),

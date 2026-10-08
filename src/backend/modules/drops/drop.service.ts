@@ -3,6 +3,7 @@ import {
   parseDropSale,
   parseDropSource,
   positiveQuantity,
+  type DropLotInput,
   type DropList,
   type DropLot,
   type DropSale,
@@ -32,7 +33,9 @@ export class DropService {
     const source = parseDropSource(value)
     this.parent(source)
     const lots = this.repository.lots(source)
+    const boss = source.kind === 'boss' ? this.bosses.find(source.id)! : undefined
     return {
+      ...(boss ? { boss: { name: boss.bossName, difficulty: boss.difficulty } } : {}),
       lots,
       sales: lots.flatMap((lot) => this.repository.salesForLot(lot.id)),
       summary: {
@@ -46,51 +49,73 @@ export class DropService {
     const raw = readObject(value)
     const input = parseDropLot(raw)
     const id = readId(raw.requestId)
-    return this.transaction.run(() => {
-      const existing = this.repository.findLot(id)
-      if (existing) {
-        if (
-          existing.source.kind === input.source.kind &&
-          existing.source.id === input.source.id &&
-          existing.itemName === input.itemName &&
-          existing.quantity === input.quantity &&
-          existing.estimatedUnitPrice === input.estimatedUnitPrice &&
-          existing.notes === input.notes
-        )
-          return existing
-        throw new AppError(
-          'REQUEST_CONFLICT',
-          '같은 획득 요청의 내용이 변경되었습니다. 다시 확인해 주세요.'
-        )
-      }
-      const parent = this.parent(input.source)
-      if (
-        input.source.kind === 'hunting' &&
-        ['솔 에르다 조각', '코어 젬스톤'].includes(input.itemName)
+    return this.transaction.run(() => this.insertLot(input, id))
+  }
+  createBossLots(value: unknown): DropLot[] {
+    const raw = readObject(value),
+      source = parseDropSource(raw.source)
+    if (source.kind !== 'boss')
+      throw new AppError('VALIDATION_ERROR', '보스 드랍만 일괄 등록할 수 있습니다.')
+    if (!Array.isArray(raw.items) || raw.items.length < 1 || raw.items.length > 20)
+      throw new AppError(
+        'VALIDATION_ERROR',
+        '획득 아이템은 1~20종류까지 한 번에 등록할 수 있습니다.'
       )
-        throw new AppError(
-          'VALIDATION_ERROR',
-          '조각·젬스톤 수량은 사냥 회차에서 입력하고 자동 생성된 묶음을 사용해 주세요.'
-        )
-      if (input.source.kind === 'boss' && !this.bosses.find(input.source.id)!.isCleared)
-        throw new AppError('VALIDATION_ERROR', '보스 클리어 체크 후 드랍을 추가해 주세요.')
-      const timestamp = this.now().toISOString()
-      const lot: DropLot = {
-        ...input,
-        ...parent,
-        id,
-        managedKind: null,
-        soldQuantity: 0,
-        remaining: input.quantity,
-        estimatedValue: estimatedDropValue(input.quantity, input.estimatedUnitPrice),
-        saleIncome: 0,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      }
-      this.repository.saveLot(lot)
-      this.list(lot.source)
-      return lot
+    const items = raw.items.map((value) => {
+      const item = readObject(value)
+      return { input: parseDropLot({ ...item, source }), id: readId(item.requestId) }
     })
+    if (
+      new Set(items.map((item) => item.id)).size !== items.length ||
+      new Set(items.map((item) => item.input.itemName)).size !== items.length
+    )
+      throw new AppError('VALIDATION_ERROR', '같은 아이템은 한 줄에서 수량을 늘려 기록해 주세요.')
+    return this.transaction.run(() => items.map((item) => this.insertLot(item.input, item.id)))
+  }
+  private insertLot(input: DropLotInput, id: string): DropLot {
+    const existing = this.repository.findLot(id)
+    if (existing) {
+      if (
+        existing.source.kind === input.source.kind &&
+        existing.source.id === input.source.id &&
+        existing.itemName === input.itemName &&
+        existing.quantity === input.quantity &&
+        existing.estimatedUnitPrice === input.estimatedUnitPrice &&
+        existing.notes === input.notes
+      )
+        return existing
+      throw new AppError(
+        'REQUEST_CONFLICT',
+        '같은 획득 요청의 내용이 변경되었습니다. 다시 확인해 주세요.'
+      )
+    }
+    const parent = this.parent(input.source)
+    if (
+      input.source.kind === 'hunting' &&
+      ['솔 에르다 조각', '코어 젬스톤'].includes(input.itemName)
+    )
+      throw new AppError(
+        'VALIDATION_ERROR',
+        '조각·젬스톤 수량은 사냥 회차에서 입력하고 자동 생성된 묶음을 사용해 주세요.'
+      )
+    if (input.source.kind === 'boss' && !this.bosses.find(input.source.id)!.isCleared)
+      throw new AppError('VALIDATION_ERROR', '보스 클리어 체크 후 드랍을 추가해 주세요.')
+    const timestamp = this.now().toISOString()
+    const lot: DropLot = {
+      ...input,
+      ...parent,
+      id,
+      managedKind: null,
+      soldQuantity: 0,
+      remaining: input.quantity,
+      estimatedValue: estimatedDropValue(input.quantity, input.estimatedUnitPrice),
+      saleIncome: 0,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    }
+    this.repository.saveLot(lot)
+    this.list(lot.source)
+    return lot
   }
   updateLot(value: unknown): DropLot {
     const raw = readObject(value)

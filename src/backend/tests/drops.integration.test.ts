@@ -87,6 +87,92 @@ describe('획득 묶음과 드랍 부분 판매', () => {
       count: 1
     })
   })
+  function bossBatch(cleared = true) {
+    const run = bosses.createRun({
+      characterId,
+      date: '2026-10-08',
+      bossName: '스우',
+      difficulty: '익스트림',
+      partySize: 2
+    })
+    if (cleared) bosses.setClear({ id: run.id, isCleared: true })
+    return {
+      source: { kind: 'boss' as const, id: run.id },
+      items: ['루즈 컨트롤 머신 마크', '컴플리트 언더컨트롤'].map((itemName) => ({
+        requestId: randomUUID(),
+        itemName,
+        quantity: 2,
+        estimatedUnitPrice: 1000,
+        notes: '실제 획득'
+      }))
+    }
+  }
+  it('보스 드랍 여러 종류를 수량과 함께 저장하고 판매 후에만 분배 수익을 반영한다', () => {
+    const batch = bossBatch(),
+      income = ledger.list(month).summary.income
+    const lots = drops.createBossLots(batch)
+    expect(lots).toHaveLength(2)
+    expect(lots.every((row) => row.partySize === 2 && row.quantity === 2)).toBe(true)
+    expect(drops.list(batch.source)).toMatchObject({
+      boss: { name: '스우', difficulty: '익스트림' },
+      summary: { remainingQuantity: 4, estimatedValue: 4000, saleIncome: 0 }
+    })
+    expect(ledger.list(month).summary.income).toBe(income)
+    const sold = drops.createSale({
+      requestId: randomUUID(),
+      lotId: lots[0].id,
+      date: '2026-10-15',
+      quantity: 1,
+      grossAmount: 1000,
+      feeAmount: 100,
+      partySize: lots[0].partySize,
+      shareMode: 'equal',
+      manualShare: null
+    })
+    expect(sold.netShare).toBe(450)
+    expect(ledger.list(month).summary.income).toBe(income + 450)
+    expect(drops.list(batch.source).summary.remainingQuantity).toBe(3)
+  })
+  it('같은 보스 드랍 저장 재시도는 중복을 만들지 않으며 변경된 재시도는 충돌한다', () => {
+    const batch = bossBatch()
+    const first = drops.createBossLots(batch)
+    expect(drops.createBossLots(batch)).toEqual(first)
+    expect(() =>
+      drops.createBossLots({
+        ...batch,
+        items: [batch.items[0], { ...batch.items[1], quantity: 3 }]
+      })
+    ).toThrow('내용이 변경')
+    expect(drops.list(batch.source).lots).toHaveLength(2)
+  })
+  it('뒤쪽 아이템 저장이 실패하면 앞쪽 아이템도 롤백하며 재시도는 모두 저장한다', () => {
+    const batch = bossBatch()
+    database.exec(
+      "CREATE TRIGGER fail_second_drop BEFORE INSERT ON drop_lots WHEN NEW.item_name = '컴플리트 언더컨트롤' BEGIN SELECT RAISE(ABORT, 'forced failure'); END;"
+    )
+    expect(() => drops.createBossLots(batch)).toThrow('forced failure')
+    expect(drops.list(batch.source).lots).toHaveLength(0)
+    database.exec('DROP TRIGGER fail_second_drop')
+    expect(drops.createBossLots(batch)).toHaveLength(2)
+  })
+  it('보스 드랍 중복 이름·요청 ID·빈 목록·초과 목록·잘못된 수량을 저장 전에 거부한다', () => {
+    const batch = bossBatch()
+    const invalid = [
+      [],
+      Array.from({ length: 21 }, () => batch.items[0]),
+      [batch.items[0], { ...batch.items[1], itemName: ` ${batch.items[0].itemName} ` }],
+      [batch.items[0], { ...batch.items[1], requestId: batch.items[0].requestId }],
+      [batch.items[0], { ...batch.items[1], quantity: 0 }]
+    ]
+    for (const items of invalid) expect(() => drops.createBossLots({ ...batch, items })).toThrow()
+    expect(drops.list(batch.source).lots).toHaveLength(0)
+  })
+  it('보스 클리어 전과 사냥 출처에는 보스 드랍 일괄 등록을 허용하지 않는다', () => {
+    const batch = bossBatch(false)
+    expect(() => drops.createBossLots(batch)).toThrow('클리어 체크')
+    expect(() => drops.createBossLots({ ...batch, source: lot.source })).toThrow('보스 드랍만')
+    expect(drops.list(batch.source).lots).toHaveLength(0)
+  })
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'maple-drop-test-'))
     database = openDatabase(join(directory, 'data.sqlite'))
