@@ -14,6 +14,8 @@ import { getKstDate, readDate } from '../../../shared/dates'
 import { bossWeek } from '../../../shared/boss-period'
 import {
   validateBossSelection,
+  WEEKLY_BOSSES,
+  bossPartyLimit,
   validateBossDifficultyChange,
   validateBossParty
 } from '../../../shared/boss-catalog'
@@ -258,7 +260,8 @@ export class BossService {
     characterId: string,
     week: string,
     members: { bossName: string; difficulty: string; partySize: number }[],
-    date: string
+    date: string,
+    preservedRunIds: string[] = []
   ): { applied: number; alreadyCleared: number; added: number; removed: number } {
     const incomeDate = readDate(date)
     if (incomeDate < week || incomeDate > getKstDate(this.now()))
@@ -296,7 +299,16 @@ export class BossService {
           'REQUEST_CONFLICT',
           '조회 이후 주차 기록이 변경되었습니다. 다시 조회해 주세요.'
         )
-      const conflicts = this.apiReplacementConflicts(current, members)
+      const preserved = current.filter((run) => preservedRunIds.includes(run.id))
+      if (preserved.length !== preservedRunIds.length || preserved.length + members.length > 12)
+        throw new AppError(
+          'REQUEST_CONFLICT',
+          '수동 기록을 보존하면 주간 보스 12개를 초과합니다. 기록을 확인해 주세요.'
+        )
+      const conflicts = this.apiReplacementConflicts(
+        current.filter((run) => !preservedRunIds.includes(run.id)),
+        members
+      )
       if (conflicts.length) throw new AppError('REQUEST_CONFLICT', conflicts.join('\n'))
       const timestamp = this.now().toISOString()
       const targets = members.map((member) => {
@@ -323,7 +335,9 @@ export class BossService {
       if (new Set(members.map((row) => key(row.bossName))).size !== members.length)
         throw new AppError('DUPLICATE_BOSS', '중복 보스는 반영할 수 없습니다.')
       const removed = current.filter(
-        (run) => !targets.some((target) => target.existing?.id === run.id)
+        (run) =>
+          !preservedRunIds.includes(run.id) &&
+          !targets.some((target) => target.existing?.id === run.id)
       )
       for (const run of removed) this.repository.removeRun(run.id)
       let applied = 0,
@@ -369,6 +383,68 @@ export class BossService {
       }
       return { applied, alreadyCleared, added, removed: removed.length }
     })
+  }
+  syncApiClears(
+    snapshots: BossRun[],
+    characterId: string,
+    week: string,
+    completed: { bossName: string; difficulty: string }[],
+    incomeDate: string
+  ): { applied: number; alreadyCleared: number; added: number; removed: number } {
+    if (!completed.length) return { applied: 0, alreadyCleared: 0, added: 0, removed: 0 }
+    if (completed.length > 12)
+      throw new AppError(
+        'VALIDATION_ERROR',
+        'API 완료 보스가 12개를 초과해 자동 반영할 수 없습니다.'
+      )
+    const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
+    const members = completed.map((boss) => {
+      const catalog = WEEKLY_BOSSES.find((row) => key(row.name) === key(boss.bossName))
+      if (!catalog)
+        throw new AppError(
+          'VALIDATION_ERROR',
+          '지원하지 않는 API 완료 보스가 있습니다. 목록을 확인해 주세요.'
+        )
+      validateBossSelection(catalog.name, boss.difficulty)
+      const existing = snapshots.find((run) => key(run.bossName) === key(catalog.name))
+      return {
+        bossName: catalog.name,
+        difficulty: boss.difficulty,
+        partySize:
+          existing?.difficulty === boss.difficulty
+            ? existing.partySize
+            : Math.min(existing?.partySize ?? 1, bossPartyLimit(catalog.name, boss.difficulty))
+      }
+    })
+    const unmatched = snapshots.filter(
+      (run) => !members.some((row) => key(row.bossName) === key(run.bossName))
+    )
+    // Keep manual income, drops and notes, and retain planned bosses whenever there is room.
+    const protectedRuns = unmatched.filter(
+      (run) =>
+        run.isCleared ||
+        run.settlement ||
+        run.notes.trim() ||
+        this.drops.hasLots({ kind: 'boss', id: run.id })
+    )
+    if (members.length + protectedRuns.length > 12)
+      throw new AppError(
+        'REQUEST_CONFLICT',
+        '기존 클리어·메모·드랍을 보존하면 12개를 초과합니다. 수동 기록을 확인해 주세요.'
+      )
+    const planned = unmatched.filter((run) => !protectedRuns.some((row) => row.id === run.id))
+    const preserved = [
+      ...protectedRuns,
+      ...planned.slice(0, 12 - members.length - protectedRuns.length)
+    ]
+    return this.replaceApiClears(
+      snapshots,
+      characterId,
+      week,
+      members,
+      incomeDate,
+      preserved.map((row) => row.id)
+    )
   }
   updateRun(value: unknown): BossRun {
     const raw = readObject(value)

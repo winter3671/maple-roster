@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import type { BossRun } from '../../../shared/contracts/boss.contract'
 import { parseBossQuery } from '../../../shared/contracts/boss.contract'
-import type { BossSyncPreview } from '../../../shared/contracts/boss-sync.contract'
+import type {
+  BossSyncPreview,
+  BossBatchSyncResult
+} from '../../../shared/contracts/boss-sync.contract'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { compareBossProgression } from '../../../shared/boss-order'
 import { bossWeek, shiftDate } from '../../../shared/boss-period'
@@ -14,6 +17,7 @@ import { WEEKLY_BOSSES, bossPartyLimit, validateBossSelection } from '../../../s
 import { crystalShare, findCrystalPrice } from '../../../shared/crystal-prices'
 
 export class BossSyncService {
+  private batchRunning = false
   private readonly previews = new Map<
     string,
     { preview: BossSyncPreview; snapshots: BossRun[]; characterId: string; ocid: string }
@@ -24,6 +28,90 @@ export class BossSyncService {
     private readonly bosses: BossService,
     private readonly now = () => new Date()
   ) {}
+  async syncAll(value: unknown): Promise<BossBatchSyncResult> {
+    if (this.batchRunning)
+      throw new AppError(
+        'REQUEST_CONFLICT',
+        'API 일괄 확인이 진행 중입니다. 완료 후 다시 시도해 주세요.'
+      )
+    const input = readObject(value)
+    const today = getKstDate(this.now()),
+      week = bossWeek(readDate(input.date))
+    if (week > bossWeek(today))
+      throw new AppError('VALIDATION_ERROR', '미래 주차는 조회할 수 없습니다.')
+    const queriedDate = week === bossWeek(today) ? today : shiftDate(week, 6)
+    if (queriedDate < shiftDate(today, -14))
+      throw new AppError('VALIDATION_ERROR', '스케줄러 조회 범위인 최근 14일을 벗어난 주차입니다.')
+    const result: BossBatchSyncResult = {
+      week,
+      queriedDate,
+      incomeDate: week === bossWeek(today) ? today : week,
+      items: []
+    }
+    const characters = this.characters.list()
+    let interruption: { code: AppError['code']; message: string } | undefined
+    this.batchRunning = true
+    try {
+      for (const character of characters) {
+        const identity = {
+          characterId: character.id,
+          characterName: character.name,
+          characterWorld: character.world
+        }
+        if (!character.nexon) {
+          result.items.push({ ...identity, status: 'unlinked' })
+          continue
+        }
+        if (interruption) {
+          result.items.push({ ...identity, status: 'notAttempted', error: interruption })
+          continue
+        }
+        try {
+          const snapshots = this.bosses.list({ date: week, characterId: character.id }).runs
+          const state = await this.client.scheduler(character.nexon.ocid, queriedDate, today)
+          if (this.characters.find(character.id)?.nexon?.ocid !== character.nexon.ocid)
+            throw new AppError(
+              'REQUEST_CONFLICT',
+              '조회 중 API 연결이 변경되었습니다. 다시 확인해 주세요.'
+            )
+          if (week === bossWeek(today) && bossWeek(getKstDate(this.now())) !== week)
+            throw new AppError(
+              'REQUEST_CONFLICT',
+              '목요일 00시가 지나 주차가 바뀌었습니다. 이번 주로 이동해 다시 확인하세요.'
+            )
+          const applied = this.bosses.syncApiClears(
+            snapshots,
+            character.id,
+            week,
+            state.bosses.filter((boss) => boss.isCleared),
+            result.incomeDate
+          )
+          result.items.push({ ...identity, status: 'synced', ...applied })
+        } catch (caught) {
+          const error =
+            caught instanceof AppError
+              ? { code: caught.code, message: caught.message }
+              : {
+                  code: 'DATABASE_ERROR' as const,
+                  message: '보스 기록을 저장하지 못했습니다. 이 캐릭터의 기존 기록은 유지됩니다.'
+                }
+          result.items.push({ ...identity, status: 'failed', error })
+          if (
+            [
+              'API_KEY_MISSING',
+              'API_KEY_INVALID',
+              'API_RATE_LIMITED',
+              'API_NETWORK_ERROR'
+            ].includes(error.code)
+          )
+            interruption = error
+        }
+      }
+      return result
+    } finally {
+      this.batchRunning = false
+    }
+  }
   async preview(value: unknown): Promise<BossSyncPreview> {
     const query = parseBossQuery(value)
     const characterId = readId(query.characterId)

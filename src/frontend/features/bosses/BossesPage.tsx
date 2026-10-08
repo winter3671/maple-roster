@@ -13,7 +13,10 @@ import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
 import { BossClearPreview } from './BossClearPreview'
-import type { BossSyncPreview } from '../../../shared/contracts/boss-sync.contract'
+import type {
+  BossSyncPreview,
+  BossBatchSyncResult
+} from '../../../shared/contracts/boss-sync.contract'
 import { getKstDate } from '../../../shared/dates'
 import type { Character } from '../../../shared/contracts/character.contract'
 import { bossesApi } from './bosses.api'
@@ -39,8 +42,10 @@ export function BossesPage() {
   const [apiPreview, setApiPreview] = useState<BossSyncPreview | null>(null)
   const [apiBusy, setApiBusy] = useState(false)
   const [apiError, setApiError] = useState('')
+  const [batchResult, setBatchResult] = useState<BossBatchSyncResult | null>(null)
   const apiLock = useRef(false),
-    mounted = useRef(true)
+    mounted = useRef(true),
+    liveWeek = useRef(currentBossWeek())
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -51,6 +56,35 @@ export function BossesPage() {
   const week = bossWeek(query.date)
   const summary = state.data?.summary
   const modal = Boolean(editingRun || addingCharacter || confirmation || apiPreview)
+  const canSyncApi = week <= currentBossWeek() && shiftDate(week, 6) >= shiftDate(getKstDate(), -14)
+  async function refreshAll() {
+    if (apiLock.current) return
+    const targetWeek = week === liveWeek.current ? currentBossWeek() : week
+    liveWeek.current = currentBossWeek()
+    apiLock.current = true
+    setApiBusy(true)
+    setApiError('')
+    setBatchResult(null)
+    state.clearFeedback()
+    try {
+      if (
+        targetWeek <= currentBossWeek() &&
+        shiftDate(targetWeek, 6) >= shiftDate(getKstDate(), -14)
+      ) {
+        const result = await bossesApi.syncClears(targetWeek)
+        if (mounted.current) setBatchResult(result)
+      }
+    } catch (caught) {
+      if (mounted.current)
+        setApiError(caught instanceof Error ? caught.message : 'API 일괄 확인에 실패했습니다.')
+    } finally {
+      if (targetWeek !== week) {
+        if (mounted.current) setQuery({ ...query, date: targetWeek })
+      } else await state.reload()
+      apiLock.current = false
+      if (mounted.current) setApiBusy(false)
+    }
+  }
   async function queryApi(character: Character) {
     if (apiLock.current) return
     apiLock.current = true
@@ -76,13 +110,42 @@ export function BossesPage() {
     <div className="space-y-5">
       {apiBusy && (
         <p role="status" className="rounded-xl bg-brand-soft p-4 text-xs text-brand">
-          API 보스 클리어를 조회하고 있습니다…
+          API 보스 클리어를 조회하고 있습니다. 일괄 확인은 캐릭터별로 순서대로 반영합니다…
         </p>
       )}
       {apiError && (
         <p role="alert" className="rounded-xl bg-expense/5 p-4 text-xs text-expense">
           {apiError}
         </p>
+      )}
+      {batchResult && (
+        <section
+          aria-label="API 일괄 확인 결과"
+          className="space-y-2 rounded-xl border border-line bg-surface p-4 text-xs leading-6"
+        >
+          <p role="status" className="font-semibold text-brand">
+            {batchResult.week} 주차 · 확인{' '}
+            {batchResult.items.filter((item) => item.status === 'synced').length}명 · 새 클리어{' '}
+            {batchResult.items.reduce((sum, item) => sum + (item.applied ?? 0), 0)}개 · 실패{' '}
+            {batchResult.items.filter((item) => item.status === 'failed').length}명 · 미처리{' '}
+            {batchResult.items.filter((item) => item.status === 'notAttempted').length}명 · API
+            미연결 {batchResult.items.filter((item) => item.status === 'unlinked').length}명
+          </p>
+          <p className="text-muted">
+            수익 반영일 {batchResult.incomeDate} · API에 클리어 인원이 없어 새 보스는 1인 기준으로
+            등록합니다. 다인 파티였다면 보스명·난이도·인원을 눌러 수정하세요. 기존 인원과 수동
+            수익은 유지합니다.
+          </p>
+          {batchResult.items
+            .filter((item) => item.error || item.removed)
+            .map((item) => (
+              <p key={item.characterId} className={item.error ? 'text-expense' : 'text-muted'}>
+                {item.characterName} · {item.characterWorld}:{' '}
+                {item.error?.message ??
+                  `완료 보스를 추가하기 위해 메모·수익·드랍이 없는 미클리어 보스 ${item.removed}개를 제외했습니다.`}
+              </p>
+            ))}
+        </section>
       )}
       {state.notice && (
         <p role="status" className="rounded-xl bg-brand-soft p-4 text-xs text-brand">
@@ -158,11 +221,21 @@ export function BossesPage() {
         >
           이번 주
         </Button>
-        <Button variant="secondary" disabled={disabled} onClick={() => void state.reload()}>
+        <Button variant="secondary" disabled={disabled} onClick={() => void refreshAll()}>
           새로고침
         </Button>
+        <Button
+          disabled={disabled || !canSyncApi || !state.characters.some((row) => row.nexon)}
+          onClick={() => void refreshAll()}
+        >
+          API 클리어 일괄 확인
+        </Button>
         <p className="basis-full text-[11px] leading-5 text-muted">
-          {week} ~ {shiftDate(week, 6)} · 목요일 0시(KST) 기준 · 주간 보스를 직접 등록해 기록합니다.
+          {week} ~ {shiftDate(week, 6)} · 목요일 00시(KST) 기준 · 새로고침하면 등록된 전체 API 연결
+          캐릭터의 클리어와 수익을 자동 반영합니다.{' '}
+          {canSyncApi
+            ? '캐릭터 필터와 관계없이 숨긴 캐릭터도 확인합니다.'
+            : '최근 14일 범위 밖은 저장된 기록만 새로고침합니다.'}
         </p>
       </section>
       {periodError && (

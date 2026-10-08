@@ -5,7 +5,12 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
-import type { BossSyncPreview, BossSyncApply, BossSyncApplyResult } from './boss-sync.contract'
+import type {
+  BossSyncPreview,
+  BossSyncApply,
+  BossSyncApplyResult,
+  BossBatchSyncResult
+} from './boss-sync.contract'
 import type {
   BossMember,
   BossRosterState,
@@ -61,6 +66,7 @@ export interface AppApi {
     cancelSale: (id: string) => Promise<ApiResult<null>>
   }
   bosses: {
+    syncClears: (input: { date: string }) => Promise<ApiResult<BossBatchSyncResult>>
     previewClears: (input: {
       date: string
       characterId: string

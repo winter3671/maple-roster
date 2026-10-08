@@ -86,6 +86,273 @@ describe('API 보스 클리어 미리보기와 반영', () => {
       })),
       incomeDate: result.incomeDate
     })
+  const linkedCharacter = (name: string, ocid?: string) => {
+    const character = new CharacterService(characters).create({ name, world: '루나', notes: '' })
+    characters.saveProfile(character.id, {
+      ocid: ocid ?? `fake-${character.id}`,
+      name,
+      world: character.world,
+      level: 280,
+      job: '아크',
+      guild: '',
+      fetchedAt: now.toISOString()
+    })
+    database
+      .prepare('UPDATE characters SET created_at=? WHERE id=?')
+      .run(
+        new Date(Date.parse(characters.find(characterId)!.createdAt) + 1000).toISOString(),
+        character.id
+      )
+    return character
+  }
+  it('빈 주차의 등록 캐릭터만 일괄 조회하고 새 보스를 1인으로 등록하며 반복 수익을 만들지 않는다', async () => {
+    const second = linkedCharacter('두번째')
+    new CharacterService(characters).setHidden({ id: second.id, isHidden: true })
+    const unlinked = new CharacterService(characters).create({
+      name: '수동캐릭터',
+      world: '루나',
+      notes: ''
+    })
+    bosses.createPreset({ characterId, bossName: '스우', difficulty: '노멀', partySize: 3 })
+    const first = await sync.syncAll(query)
+    expect(first.items.filter((item) => item.status === 'synced')).toHaveLength(2)
+    expect(first.items.find((item) => item.characterId === unlinked.id)?.status).toBe('unlinked')
+    expect(transport).toHaveBeenCalledTimes(2)
+    expect(
+      transport.mock.calls.map(([url]) => new URL(String(url)).searchParams.get('ocid')).sort()
+    ).toEqual(['fake-ocid', characters.find(second.id)!.nexon!.ocid].sort())
+    expect(bosses.list(query).runs).toHaveLength(2)
+    expect(bosses.list(query).runs.every((row) => row.partySize === 1 && row.isCleared)).toBe(true)
+    expect(bosses.list(query).runs.some((row) => row.characterId === second.id)).toBe(true)
+    expect(bosses.presets(characterId)[0].partySize).toBe(3)
+    const entries = ledger.list(month).entries
+    const again = await sync.syncAll(query)
+    expect(
+      again.items
+        .filter((item) => item.status === 'synced')
+        .every((item) => item.applied === 0 && item.alreadyCleared === 1)
+    ).toBe(true)
+    expect(ledger.list(month).entries).toEqual(entries)
+  })
+  it('기존 인원·수동 수익과 API 밖의 수동 클리어·메모·예정 보스를 보존한다', async () => {
+    const sw = run(),
+      damien = run('데미안'),
+      lucid = run('루시드', '노멀'),
+      will = run('윌', '이지')
+    bosses.setClear({ id: damien.id, isCleared: true })
+    bosses.settle({ runId: damien.id, date: query.date, amount: 60 })
+    bosses.updateRun({ ...lucid, notes: '수동 메모' })
+    const original = ledger.list(month).entries[0]
+    const result = await sync.syncAll(query)
+    expect(result.items[0]).toMatchObject({ status: 'synced', applied: 1, removed: 0 })
+    expect(bosses.list(query).runs.find((row) => row.id === sw.id)).toMatchObject({
+      partySize: 3,
+      isCleared: true
+    })
+    expect(bosses.list(query).runs.find((row) => row.id === will.id)?.isCleared).toBe(false)
+    expect(bosses.list(query).runs.find((row) => row.id === lucid.id)?.notes).toBe('수동 메모')
+    expect(ledger.list(month).entries).toContainEqual(original)
+    const updated = bosses.list(query).runs.find((row) => row.id === sw.id)!
+    bosses.updateRun({ ...updated, partySize: 2 })
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs.find((row) => row.id === sw.id)?.partySize).toBe(2)
+    contents[0].complete_flag = 'false'
+    const entries = ledger.list(month).entries
+    await sync.syncAll(query)
+    expect(ledger.list(month).entries).toEqual(entries)
+  })
+  it('일괄 확인도 루시드가 빠진 12개 구성을 실제 12개로 맞춘다', async () => {
+    const initial = WEEKLY_BOSSES.filter((boss) => boss.name !== '루시드')
+      .slice(0, 12)
+      .map((boss) => run(boss.name, boss.difficulties[0]))
+    contents = [
+      ...initial.slice(1).map((row) => ({
+        content_name: row.bossName,
+        difficulty: row.difficulty,
+        cycle: 'bossWeekly',
+        complete_flag: 'true'
+      })),
+      { content_name: '루시드', difficulty: 'normal', cycle: 'bossWeekly', complete_flag: 'true' }
+    ]
+    const result = await sync.syncAll(query)
+    expect(result.items[0]).toMatchObject({ status: 'synced', applied: 12, added: 1, removed: 1 })
+    expect(bosses.list(query).runs).toHaveLength(12)
+    expect(bosses.list(query).runs.find((row) => row.bossName === '루시드')).toMatchObject({
+      isCleared: true,
+      partySize: 1
+    })
+    expect(bosses.list(query).runs.some((row) => row.id === initial[0].id)).toBe(false)
+  })
+  it('목요일 00시(KST) 전후 주차를 분리하고 지난주 클리어와 수익을 유지한다', async () => {
+    now = new Date('2026-10-14T14:59:59Z')
+    responseDate = '2026-10-14'
+    await sync.syncAll({ date: '2026-10-14' })
+    const lastWeek = bosses.list({ date: '2026-10-14' }).runs
+    const previousIncome = ledger.list(month).entries
+    expect(lastWeek[0].week).toBe('2026-10-08')
+    now = new Date('2026-10-14T15:00:00Z')
+    responseDate = '2026-10-15'
+    contents = []
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs).toEqual([])
+    contents = [
+      { content_name: '스우', difficulty: 'normal', cycle: 'bossWeekly', complete_flag: 'true' }
+    ]
+    await sync.syncAll(query)
+    expect(bosses.list(query).runs[0]).toMatchObject({
+      week: '2026-10-15',
+      isCleared: true,
+      settlement: { date: '2026-10-15' }
+    })
+    expect(bosses.list({ date: '2026-10-14' }).runs).toEqual(lastWeek)
+    expect(ledger.list(month).entries).toEqual(expect.arrayContaining(previousIncome))
+  })
+  it('개별 API 오류는 기존 기록을 지키고 다음 캐릭터를 계속 확인한다', async () => {
+    linkedCharacter('계속확인')
+    const sw = run()
+    transport.mockResolvedValueOnce(
+      new Response('{"error":{"name":"OPENAPI00003"}}', { status: 400 })
+    )
+    const result = await sync.syncAll(query)
+    expect(result.items.map((item) => item.status)).toEqual(['failed', 'synced'])
+    expect(bosses.list(query).runs.find((row) => row.id === sw.id)?.isCleared).toBe(false)
+    expect(ledger.list(month).entries).toHaveLength(1)
+  })
+  it('호출 제한이면 이후 캐릭터는 미처리로 표시하고 다시 시도할 수 있다', async () => {
+    linkedCharacter('미처리')
+    transport.mockResolvedValueOnce(
+      new Response('{"error":{"name":"OPENAPI00007"}}', { status: 429 })
+    )
+    const result = await sync.syncAll(query)
+    expect(result.items.map((item) => item.status)).toEqual(['failed', 'notAttempted'])
+    expect(transport).toHaveBeenCalledTimes(1)
+    expect(bosses.list(query).runs).toEqual([])
+    // A new client avoids the real API client's required 5-second rate-limit backoff in this test.
+    sync = new BossSyncService(
+      new NexonClient(() => 'fake-key', transport, 0),
+      characters,
+      bosses,
+      () => now
+    )
+    expect((await sync.syncAll(query)).items.every((item) => item.status === 'synced')).toBe(true)
+  })
+  it('조회 중 기록 변경과 연결 해제는 덮어쓰지 않으며 중복 일괄 요청을 막는다', async () => {
+    const sw = run()
+    let release!: (response: Response) => void
+    transport.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve
+        })
+    )
+    const pending = sync.syncAll(query)
+    await vi.waitFor(() => expect(transport).toHaveBeenCalledTimes(1))
+    await expect(sync.syncAll(query)).rejects.toThrow('진행 중')
+    bosses.updateRun({ ...sw, partySize: 2 })
+    release(new Response(JSON.stringify({ date: responseDate, boss_contents: contents })))
+    expect((await pending).items[0]).toMatchObject({
+      status: 'failed',
+      error: { code: 'REQUEST_CONFLICT' }
+    })
+    expect(bosses.list(query).runs[0]).toMatchObject({ partySize: 2, isCleared: false })
+    transport.mockImplementationOnce(async () => {
+      characters.unlink(characterId)
+      return new Response(JSON.stringify({ date: responseDate, boss_contents: contents }))
+    })
+    expect((await sync.syncAll(query)).items[0]).toMatchObject({
+      status: 'failed',
+      error: { code: 'REQUEST_CONFLICT' }
+    })
+    expect(ledger.list(month).entries).toEqual([])
+  })
+  it('저장 오류나 보호된 난이도 충돌은 캐릭터 단위로 클리어·수익을 롤백한다', async () => {
+    const sw = run()
+    contents.push({
+      content_name: '루시드',
+      difficulty: 'normal',
+      cycle: 'bossWeekly',
+      complete_flag: 'true'
+    })
+    database.exec(
+      "CREATE TRIGGER reject_batch_income BEFORE INSERT ON ledger_entries BEGIN SELECT RAISE(ABORT,'private failure'); END"
+    )
+    expect((await sync.syncAll(query)).items[0]).toMatchObject({
+      status: 'failed',
+      error: { code: 'DATABASE_ERROR' }
+    })
+    expect(bosses.list(query).runs).toEqual([sw])
+    expect(ledger.list(month).entries).toEqual([])
+    database.exec('DROP TRIGGER reject_batch_income')
+    bosses.setClear({ id: sw.id, isCleared: true })
+    contents[0].difficulty = 'extreme'
+    expect((await sync.syncAll(query)).items[0]).toMatchObject({
+      status: 'failed',
+      error: { code: 'REQUEST_CONFLICT' }
+    })
+    expect(bosses.list(query).runs).toHaveLength(1)
+  })
+  it('자동 조회는 범위 밖과 미래를 차단하며 과거 수익은 주차 시작일로 기록한다', async () => {
+    await expect(sync.syncAll({ date: '2026-10-22' })).rejects.toThrow('미래')
+    await expect(sync.syncAll({ date: '2026-09-24' })).rejects.toThrow('최근 14일')
+    expect(transport).not.toHaveBeenCalled()
+    responseDate = '2026-10-14'
+    const result = await sync.syncAll({ date: '2026-10-08' })
+    expect(result).toMatchObject({
+      week: '2026-10-08',
+      queriedDate: '2026-10-14',
+      incomeDate: '2026-10-08'
+    })
+    expect(new URL(String(transport.mock.calls[0][0])).searchParams.get('date')).toBe('2026-10-14')
+    expect(bosses.list({ date: '2026-10-08' }).runs[0].settlement?.date).toBe('2026-10-08')
+  })
+  it('확인 도중 목요일 00시가 지나면 이전 주차에 새 클리어를 저장하지 않는다', async () => {
+    now = new Date('2026-10-14T14:59:59Z')
+    transport.mockImplementationOnce(async () => {
+      now = new Date('2026-10-14T15:00:00Z')
+      return new Response(JSON.stringify({ date: '2026-10-14', boss_contents: contents }))
+    })
+    const result = await sync.syncAll({ date: '2026-10-14' })
+    expect(result.items[0]).toMatchObject({ status: 'failed', error: { code: 'REQUEST_CONFLICT' } })
+    expect(ledger.list(month).entries).toEqual([])
+  })
+  it('자동 등록도 미지원·중복·13개 완료와 보존 기록으로 인한 12개 초과를 저장하지 않는다', async () => {
+    contents = [
+      {
+        content_name: '미지원 보스',
+        difficulty: 'normal',
+        cycle: 'bossWeekly',
+        complete_flag: 'true'
+      }
+    ]
+    expect((await sync.syncAll(query)).items[0].status).toBe('failed')
+    contents = WEEKLY_BOSSES.slice(0, 13).map((boss) => ({
+      content_name: boss.name,
+      difficulty: boss.difficulties[0],
+      cycle: 'bossWeekly',
+      complete_flag: 'true'
+    }))
+    expect((await sync.syncAll(query)).items[0].status).toBe('failed')
+    contents = [
+      { content_name: '스우', difficulty: 'normal', cycle: 'bossWeekly', complete_flag: 'true' },
+      { content_name: '스우', difficulty: 'hard', cycle: 'bossWeekly', complete_flag: 'true' }
+    ]
+    expect((await sync.syncAll(query)).items[0].status).toBe('failed')
+    const manual = run('진 힐라', '하드')
+    bosses.updateRun({ ...manual, notes: '보존할 수동 메모' })
+    contents = WEEKLY_BOSSES.filter((boss) => boss.name !== '진 힐라')
+      .slice(0, 12)
+      .map((boss) => ({
+        content_name: boss.name,
+        difficulty: boss.difficulties[0],
+        cycle: 'bossWeekly',
+        complete_flag: 'true'
+      }))
+    const result = await sync.syncAll(query)
+    expect(result.items[0]).toMatchObject({ status: 'failed', error: { code: 'REQUEST_CONFLICT' } })
+    expect(bosses.list(query).runs).toHaveLength(1)
+    expect(bosses.list(query).runs[0].notes).toBe('보존할 수동 메모')
+    expect(ledger.list(month).entries).toEqual([])
+  })
   it('루시드가 빠진 12개 구성을 실제 완료한 12개로 맞추고 기존 11개 기록과 수익을 유지한다', async () => {
     const initial = WEEKLY_BOSSES.filter((boss) => boss.name !== '루시드')
       .slice(0, 12)

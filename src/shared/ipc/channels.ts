@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  bossesSyncClears: 'bosses:sync-clears',
   bossesPreviewClears: 'bosses:preview-clears',
   bossesApplyClears: 'bosses:apply-clears',
   nexonSyncProfiles: 'nexon:sync-profiles',

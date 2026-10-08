@@ -11,6 +11,7 @@ import type {
 } from '../../../shared/contracts/boss.contract'
 
 export const bossesApi = {
+  syncClears: (date: string) => unwrap(getBridge().bosses.syncClears({ date })),
   replaceClears: (
     previewId: string,
     members: { bossName: string; difficulty: string; partySize: number }[],

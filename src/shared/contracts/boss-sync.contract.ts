@@ -43,3 +43,21 @@ export interface BossSyncPreview {
     blockedReasons: string[]
   }
 }
+import type { ErrorCode } from '../errors'
+
+export interface BossBatchSyncResult {
+  week: string
+  queriedDate: string
+  incomeDate: string
+  items: {
+    characterId: string
+    characterName: string
+    characterWorld: string
+    status: 'synced' | 'unlinked' | 'failed' | 'notAttempted'
+    applied?: number
+    alreadyCleared?: number
+    added?: number
+    removed?: number
+    error?: { code: ErrorCode; message: string }
+  }[]
+}
