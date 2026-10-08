@@ -5,6 +5,7 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type { DashboardStats } from './dashboard.contract'
 import type { CsvSaved } from './csv.contract'
 import type { BackupPreview, BackupSaved, BackupRestored } from './backup.contract'
 import type {
@@ -58,6 +59,7 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  dashboard: { summary: (query: RecordQuery) => Promise<ApiResult<DashboardStats>> }
   backup: {
     exportFile: () => Promise<ApiResult<BackupSaved | null>>
     selectFile: () => Promise<ApiResult<BackupPreview | null>>

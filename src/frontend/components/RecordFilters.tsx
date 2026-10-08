@@ -9,11 +9,18 @@ interface Props {
   characters: Character[]
   busy: boolean
   onApply: (query: RecordQuery) => void
+  showMonthShortcut?: boolean
 }
 const fieldClass =
   'rounded-lg border border-line bg-surface px-3 py-2 text-xs focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:opacity-50'
 
-export function RecordFilters({ initial, characters, busy, onApply }: Props) {
+export function RecordFilters({
+  initial,
+  characters,
+  busy,
+  onApply,
+  showMonthShortcut = true
+}: Props) {
   const [draft, setDraft] = useState(initial)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,18 +85,20 @@ export function RecordFilters({ initial, characters, busy, onApply }: Props) {
         <Button type="submit" disabled={busy}>
           조회
         </Button>
-        <Button
-          variant="secondary"
-          disabled={busy}
-          onClick={() => {
-            const query = thisMonthQuery()
-            setDraft(query)
-            setError(null)
-            onApply(query)
-          }}
-        >
-          이번 달
-        </Button>
+        {showMonthShortcut && (
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              const query = thisMonthQuery()
+              setDraft(query)
+              setError(null)
+              onApply(query)
+            }}
+          >
+            이번 달
+          </Button>
+        )}
       </div>
       {error && (
         <p role="alert" className="mt-3 text-xs text-expense">

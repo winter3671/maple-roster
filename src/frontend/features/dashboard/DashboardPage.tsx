@@ -5,7 +5,12 @@ import { useState } from 'react'
 import { FinancialSummary } from '../../components/FinancialSummary'
 import { Button } from '../../components/ui/Button'
 import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
-import { useLedger } from '../ledger/useLedger'
+import { useDashboard } from './useDashboard'
+import { DashboardBreakdown } from './DashboardBreakdown'
+import { RecordFilters } from '../../components/RecordFilters'
+import { useCharacters } from '../characters/useCharacters'
+import { bossWeek, shiftDate } from '../../../shared/boss-period'
+import { getKstDate } from '../../../shared/dates'
 
 const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }[] = [
   {
@@ -14,15 +19,67 @@ const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }
     title: '캐릭터 관리',
     detail: '기록할 캐릭터를 모아보세요'
   },
-  { page: 'bosses', icon: 'boss', title: '보스 장부', detail: '클리어부터 판매 정산까지' },
+  { page: 'bosses', icon: 'boss', title: '보스 장부', detail: '주간 클리어와 결정석 수익' },
   { page: 'hunting', icon: 'hunting', title: '사냥 장부', detail: '오늘의 사냥을 한 회차씩' }
 ]
 
 export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => void }) {
-  const [query] = useState(thisMonthQuery)
-  const state = useLedger(query)
+  const [query, setQuery] = useState(thisMonthQuery)
+  const state = useDashboard(query)
+  const characters = useCharacters()
+  function quickPeriod(period: 'week' | 'lastWeek' | 'month' | 'lastMonth') {
+    const today = getKstDate(),
+      week = bossWeek(today)
+    const previous = new Date(`${today.slice(0, 7)}-01T00:00:00Z`)
+    previous.setUTCDate(0)
+    const last = previous.toISOString().slice(0, 10)
+    const dates =
+      period === 'week'
+        ? { from: week, to: today }
+        : period === 'lastWeek'
+          ? { from: shiftDate(week, -7), to: shiftDate(week, -1) }
+          : period === 'month'
+            ? thisMonthQuery()
+            : { from: last.slice(0, 7) + '-01', to: last }
+    setQuery({ ...dates, ...(query.characterId ? { characterId: query.characterId } : {}) })
+  }
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {(['week', 'lastWeek', 'month', 'lastMonth'] as const).map((period, index) => (
+          <Button
+            key={period}
+            variant="secondary"
+            disabled={state.loading}
+            onClick={() => quickPeriod(period)}
+          >
+            {['이번 주', '지난주', '이번 달', '지난달'][index]}
+          </Button>
+        ))}
+        <Button
+          variant="secondary"
+          disabled={state.loading || characters.loading}
+          onClick={() => {
+            state.reload()
+            void characters.reload()
+          }}
+        >
+          새로고침
+        </Button>
+      </div>
+      <RecordFilters
+        key={`filters:${query.from}:${query.to}:${query.characterId ?? ''}`}
+        initial={query}
+        characters={characters.characters}
+        busy={state.loading || characters.loading}
+        onApply={setQuery}
+        showMonthShortcut={false}
+      />
+      {characters.error && (
+        <p role="alert" className="text-xs text-expense">
+          {characters.error}
+        </p>
+      )}
       {state.error && (
         <div
           role="alert"
@@ -36,17 +93,24 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
       )}
       <section className="flex items-center justify-between gap-6 rounded-2xl border border-brand/10 bg-brand-soft px-6 py-5">
         <div>
-          <p className="text-sm font-semibold text-brand">나의 기록장을 시작해 볼까요?</p>
+          <p className="text-sm font-semibold text-brand">기간별 장부 수익을 확인하세요</p>
           <p className="mt-1.5 text-xs leading-5 text-muted">
-            사냥 회차와 결정석·드랍 판매를 기록해 보세요. 수입과 지출이 실제 판매일 기준으로
-            모입니다.
+            사냥·결정석·드랍 거래를 수익·지출 반영일 기준으로 집계합니다. 주간 조회는 목요일
+            00시(KST) 기준이며 숨긴 캐릭터의 기록도 포함합니다.
           </p>
         </div>
         <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">
           보스·사냥 장부 사용 가능
         </span>
       </section>
-      <FinancialSummary summary={state.data?.summary} loading={state.loading} prefix="이번 달" />
+      <FinancialSummary summary={state.data?.summary} loading={state.loading} prefix="조회 기간" />
+      {state.data && (
+        <DashboardBreakdown
+          key={`breakdown:${query.from}:${query.to}:${query.characterId ?? ''}`}
+          data={state.data}
+          onCharacter={(id) => setQuery({ ...query, characterId: id })}
+        />
+      )}
       <div className="grid grid-cols-[1.4fr_1fr] gap-5">
         <section className="rounded-2xl border border-line bg-surface">
           <div className="flex items-center justify-between border-b border-line px-6 py-5">
@@ -59,14 +123,14 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
             <p role="status" className="p-10 text-center text-sm text-muted">
               수익을 불러오는 중…
             </p>
-          ) : state.data?.entries.length ? (
+          ) : state.data?.recent.length ? (
             <div className="divide-y divide-line px-6">
-              {state.data.entries.slice(0, 5).map((entry) => (
+              {state.data.recent.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between gap-4 py-5">
                   <div>
                     <p className="break-all text-xs font-semibold">{entry.characterName}</p>
                     <p className="mt-2 text-[11px] text-muted">
-                      {entry.date} · {ledgerLabel(entry)}
+                      {entry.date} · {entry.characterWorld} · {ledgerLabel(entry)}
                     </p>
                   </div>
                   <p
@@ -81,8 +145,8 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
           ) : (
             <EmptyState
               icon="ledger"
-              title="아직 이번 달 거래가 없어요"
-              description="사냥 회차와 결정석 판매를 기록하면 이곳에 실제 수입과 지출이 표시됩니다."
+              title="조회 기간에 거래가 없어요"
+              description="사냥 기록·보스 클리어·드랍 판매를 저장하면 실제 수입과 지출이 표시됩니다."
             />
           )}
         </section>

@@ -101,4 +101,18 @@ describe('조회 조건을 반영하는 거래 CSV', () => {
     ).toThrow()
     expect(ledger.exportCsv({ from: '2026-08-01', to: '2026-08-31' })).toMatchObject({ count: 0 })
   })
+  it('대시보드도 같은 기간·캐릭터 필터와 수익일을 사용하고 원본 장부를 보존한다', () => {
+    const query = { from: '2026-10-01', to: '2026-10-15' }
+    const all = ledger.dashboard(query),
+      single = ledger.dashboard({ ...query, characterId: first })
+    expect(all.summary).toEqual(ledger.list(query).summary)
+    expect(all.characters).toHaveLength(2)
+    expect(single.characters).toHaveLength(1)
+    expect(single.characters[0].characterId).toBe(first)
+    expect(single.sources.find((row) => row.source === 'crystal')?.income).toBe(4175000)
+    expect(single.sources.find((row) => row.source === 'drop')?.income).toBe(500)
+    expect(single.trend.find((row) => row.period === '2026-10-15')?.income).toBe(4175500)
+    expect(ledger.dashboard({ from: '2026-08-01', to: '2026-08-31' }).summary.count).toBe(0)
+    expect(() => ledger.dashboard({ from: '2026-10-16', to: '2026-10-01' })).toThrow('시작일')
+  })
 })

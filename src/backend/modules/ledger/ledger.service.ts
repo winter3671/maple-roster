@@ -2,9 +2,14 @@ import { parseRecordQuery, type LedgerList } from '../../../shared/contracts/led
 import { sumIntegers } from '../../domain/money'
 import { LedgerRepository } from './ledger.repository'
 import { ledgerCsv } from '../../domain/ledger-csv'
+import { dashboardStats } from '../../domain/dashboard'
 
 export class LedgerService {
   constructor(private readonly repository: LedgerRepository) {}
+  dashboard(value: unknown) {
+    const query = parseRecordQuery(value)
+    return dashboardStats(this.list(query), query)
+  }
   exportCsv(value: unknown) {
     const query = parseRecordQuery(value)
     const entries = this.repository.list(query)

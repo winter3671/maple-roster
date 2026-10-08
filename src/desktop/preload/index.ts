@@ -3,6 +3,7 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  dashboard: { summary: (query) => ipcRenderer.invoke(IPC_CHANNELS.dashboardSummary, query) },
   backup: {
     exportFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupExport),
     selectFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupSelect),
