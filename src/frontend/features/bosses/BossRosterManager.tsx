@@ -9,6 +9,7 @@ import type {
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { BossRosterEditor } from './BossRosterEditor'
+import { BossIcon } from './BossIcon'
 import { bossesApi } from './bosses.api'
 
 const example: BossMember[] = [
@@ -25,6 +26,28 @@ const example: BossMember[] = [
   ['가디언 엔젤 슬라임', '카오스'],
   ['더스크', '카오스']
 ].map(([bossName, difficulty]) => ({ bossName, difficulty, partySize: 1 }))
+
+function BossMemberIcons({ members }: { members: BossMember[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {members.map((member, index) => (
+        <div
+          key={`${member.bossName}-${index}`}
+          className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-2 py-1.5"
+          title={`${member.difficulty} ${member.bossName} (${member.partySize}명)`}
+        >
+          <BossIcon bossName={member.bossName} difficulty={member.difficulty} small />
+          <span className="text-[11px] leading-5">
+            <span className="block font-semibold">{member.bossName}</span>
+            <span className="text-muted">
+              {member.difficulty} · {member.partySize}명
+            </span>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function BossRosterManager({
   state,
@@ -93,7 +116,7 @@ export function BossRosterManager({
               {template.name}{' '}
               <span className="font-normal text-muted">· {template.members.length}/12개</span>
             </p>
-            <p className="text-xs leading-6 text-muted">{membersText(template.members)}</p>
+            <BossMemberIcons members={template.members} />
             <div className="flex flex-wrap gap-2">
               <Button
                 disabled={busy}
@@ -140,11 +163,15 @@ export function BossRosterManager({
                       : '미할당'}
                   </p>
                 </div>
-                <p className="mt-2 text-xs leading-6 text-muted">
-                  {assigned
-                    ? membersText(assigned.members)
-                    : '위의 묶음 프리셋에서 이 캐릭터를 선택해 할당하세요.'}
-                </p>
+                {assigned ? (
+                  <div className="mt-3">
+                    <BossMemberIcons members={assigned.members} />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs leading-6 text-muted">
+                    위의 묶음 프리셋에서 이 캐릭터를 선택해 할당하세요.
+                  </p>
+                )}
                 {assigned && (
                   <div className="mt-3 flex gap-2">
                     <Button

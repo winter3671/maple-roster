@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { BossIcon } from './BossIcon'
 import type { BossMember } from '../../../shared/contracts/boss-roster.contract'
 import { MAX_ROSTER_BOSSES, parseBossMembers } from '../../../shared/contracts/boss-roster.contract'
 import {
@@ -113,6 +114,14 @@ export function BossRosterEditor({
           const amount = findPrice(row.bossName, row.difficulty, getKstDate())?.amount
           return (
             <div key={index} className="rounded-xl border border-line p-3">
+              {row.bossName && (
+                <div className="mb-3 flex items-center gap-2">
+                  <BossIcon bossName={row.bossName} difficulty={row.difficulty} small />
+                  <span className="text-xs text-muted">
+                    {row.bossName} · {row.difficulty}
+                  </span>
+                </div>
+              )}
               <div className="grid grid-cols-[1fr_100px_85px_auto] items-end gap-2">
                 <label className="text-xs">
                   보스 {index + 1}
