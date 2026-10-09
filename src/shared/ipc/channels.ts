@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  weeklyList: 'weekly:list',
+  weeklySync: 'weekly:sync',
   charactersAvatar: 'characters:avatar',
   updatesStatus: 'updates:status',
   updatesCheck: 'updates:check',

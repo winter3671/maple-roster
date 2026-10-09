@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/errors'
 import { characterImageUrl } from '../../../shared/character-image'
+import type { WeeklyContent } from '../../../shared/contracts/weekly.contract'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { shiftDate } from '../../../shared/boss-period'
 import type { SchedulerBoss } from '../../../shared/contracts/boss-sync.contract'
@@ -136,6 +137,31 @@ export class NexonClient {
     return { date, bosses }
   }
 
+  async weeklyContents(value: unknown, today = getKstDate()): Promise<WeeklyContent[]> {
+    const row = object(await this.request('scheduler/character-state', { ocid: readOcid(value) }))
+    const date = text(row.date, 40)
+    if (
+      !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?\+09:00)?$/.test(date) ||
+      date.slice(0, 10) !== today ||
+      !Array.isArray(row.weekly_contents)
+    )
+      return invalid()
+    const seen = new Set<string>()
+    return row.weekly_contents.map((entry) => {
+      const content = object(entry),
+        name = text(content.content_name, 150).normalize('NFC')
+      if (
+        seen.has(name) ||
+        !Number.isSafeInteger(content.now_count) ||
+        Number(content.now_count) < 0 ||
+        !Number.isSafeInteger(content.max_count) ||
+        Number(content.max_count) < 0
+      )
+        return invalid()
+      seen.add(name)
+      return { name, count: Number(content.now_count), maximum: Number(content.max_count) }
+    })
+  }
   private request(
     endpoint: 'character/list' | 'character/basic' | 'scheduler/character-state',
     params: Record<string, string> = {}

@@ -18,6 +18,8 @@ export function registerHandlers(
   avatars: CharacterAvatarService
 ): void {
   const disposeUpdates = registerRoutes(window, [
+    [IPC_CHANNELS.weeklyList, () => services.weekly.list()],
+    [IPC_CHANNELS.weeklySync, () => services.weekly.sync()],
     [IPC_CHANNELS.charactersAvatar, (id) => avatars.get(id)],
     [IPC_CHANNELS.updatesStatus, () => updates.status()],
     [IPC_CHANNELS.updatesCheck, () => updates.check()],

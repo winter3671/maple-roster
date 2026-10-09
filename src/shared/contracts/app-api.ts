@@ -5,6 +5,7 @@ import type {
   CharacterVisibility
 } from './character.contract'
 import type { ApiResult } from '../errors'
+import type { WeeklyOverview } from './weekly.contract'
 import type { DashboardStats } from './dashboard.contract'
 import type { CrystalPriceEntry, CrystalPriceInput } from './crystal-price.contract'
 import type { CsvSaved } from './csv.contract'
@@ -90,6 +91,10 @@ export interface AppApi {
     selectFile: () => Promise<ApiResult<BackupPreview | null>>
     restore: (previewId: string) => Promise<ApiResult<BackupRestored>>
     cancel: () => Promise<ApiResult<null>>
+  }
+  weekly: {
+    list: () => Promise<ApiResult<WeeklyOverview>>
+    sync: () => Promise<ApiResult<WeeklyOverview>>
   }
   drops: {
     setHuntingSale: (input: HuntingDropSaleState) => Promise<ApiResult<DropSale | null>>

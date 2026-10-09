@@ -7,11 +7,13 @@ import { HuntingPage } from '../features/hunting/HuntingPage'
 import { LedgerPage } from '../features/ledger/LedgerPage'
 import { CharactersPage } from '../features/characters/CharactersPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { WeeklyPage } from '../features/weekly/WeeklyPage'
 
 export function App() {
   const [page, setPage] = useState<PageId>('dashboard')
   const pages = {
     dashboard: <DashboardPage onNavigate={setPage} />,
+    weekly: <WeeklyPage />,
     bosses: <BossesPage />,
     hunting: <HuntingPage />,
     ledger: <LedgerPage />,

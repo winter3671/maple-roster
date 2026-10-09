@@ -1,6 +1,7 @@
 import type { IconName } from '../components/ui/Icon'
 
-export type PageId = 'dashboard' | 'bosses' | 'hunting' | 'ledger' | 'characters' | 'settings'
+export type PageId =
+  'dashboard' | 'weekly' | 'bosses' | 'hunting' | 'ledger' | 'characters' | 'settings'
 
 export const navigation: { id: PageId; label: string; icon: IconName; description: string }[] = [
   {
@@ -8,6 +9,12 @@ export const navigation: { id: PageId; label: string; icon: IconName; descriptio
     label: '대시보드',
     icon: 'home',
     description: '캐릭터들의 수익 흐름을 한눈에 확인하세요.'
+  },
+  {
+    id: 'weekly',
+    label: '주간 콘텐츠',
+    icon: 'weekly',
+    description: '캐릭터별 이번 주 참여 기록과 점수를 확인하세요.'
   },
   {
     id: 'bosses',

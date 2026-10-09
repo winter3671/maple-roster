@@ -24,6 +24,7 @@ import { AutomaticBackupService } from '../../backend/modules/backup/automatic-b
 import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.service'
 
 import { ExpenseService } from '../../backend/modules/ledger/expense.service'
+import { WeeklyService } from '../../backend/modules/weekly/weekly.service'
 
 export function createServices(
   version: string,
@@ -60,6 +61,7 @@ export function createServices(
       () => backup.export()
     ),
     prices,
+    weekly: new WeeklyService(nexonClient, characters),
     backup,
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,

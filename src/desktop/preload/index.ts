@@ -23,6 +23,10 @@ const api: AppApi = {
     restore: (previewId) => ipcRenderer.invoke(IPC_CHANNELS.backupRestore, { previewId }),
     cancel: () => ipcRenderer.invoke(IPC_CHANNELS.backupCancel)
   },
+  weekly: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.weeklyList),
+    sync: () => ipcRenderer.invoke(IPC_CHANNELS.weeklySync)
+  },
   drops: {
     setHuntingSale: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsSetHuntingSale, input),
     createBossLots: (input) => ipcRenderer.invoke(IPC_CHANNELS.dropsCreateBossLots, input),

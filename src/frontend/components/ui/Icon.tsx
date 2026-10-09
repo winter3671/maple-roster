@@ -1,7 +1,9 @@
 export type IconName =
-  'home' | 'boss' | 'hunting' | 'ledger' | 'characters' | 'settings' | 'arrow' | 'leaf'
+  'home' | 'weekly' | 'boss' | 'hunting' | 'ledger' | 'characters' | 'settings' | 'arrow' | 'leaf'
 
 const paths: Record<IconName, string> = {
+  weekly:
+    'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm3 12 3 3 5-6',
   home: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z',
   boss: 'm3 6 4 4 5-6 5 6 4-4-2 12H5L3 6Zm3 15h12',
   hunting: 'M20 4C9 3 3 8 5 15c2 7 13 5 15-11ZM4 21 16 9M9 16v-5m0 5h5',
