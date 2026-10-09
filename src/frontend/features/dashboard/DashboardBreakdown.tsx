@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DashboardStats } from '../../../shared/contracts/dashboard.contract'
 import { formatMeso } from '../../lib/format'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 
 const sourceNames = { hunting: '사냥', crystal: '결정석', drop: '드랍 판매', manual: '직접 지출' }
 export function DashboardBreakdown({
@@ -70,11 +71,12 @@ export function DashboardBreakdown({
           <article key={row.source} className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="text-xs font-semibold">{sourceNames[row.source]}</h2>
             <p
-              className={`my-3 break-all text-lg font-semibold tabular-nums ${row.net < 0 ? 'text-expense' : 'text-brand'}`}
+              className={`mb-1 mt-3 break-all text-lg font-semibold tabular-nums ${row.net < 0 ? 'text-expense' : 'text-brand'}`}
             >
               {formatMeso(row.net)} 메소
             </p>
-            <p className="text-[11px] leading-6 text-muted">
+            <MesoAmountHint value={row.net} />
+            <p className="mt-3 text-[11px] leading-6 text-muted">
               수입 {formatMeso(row.income)} · 지출 {formatMeso(row.expense)} · {row.count}건
             </p>
           </article>
