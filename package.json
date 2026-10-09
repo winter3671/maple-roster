@@ -10,6 +10,7 @@
     "start": "electron-vite preview",
     "typecheck": "tsc -b --pretty",
     "test": "vitest run",
+    "release:notes": "node scripts/release-notes.mjs",
     "build": "npm run typecheck && electron-vite build",
     "package:win": "npm run build && electron-builder --config electron-builder.yml --win --x64 --dir --publish never",
     "dist:win": "npm run build && electron-builder --config electron-builder.yml --win nsis --x64 --publish never",

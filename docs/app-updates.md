@@ -18,6 +18,8 @@ npm run dist:win
 
 ## 새 버전을 게시하는 방법
 
+**설정 → 업데이트 내역**에는 앱에 포함된 릴리스 노트가 표시된다. 다음 버전을 배포할 때 `src/shared/release-notes.json`에 해당 버전·배포 날짜·사용자용 변경 사항을 먼저 추가한다. 앱과 GitHub Releases는 같은 파일을 사용하며, 노트가 없거나 형식이 잘못되면 배포를 중단한다. 작성 방법과 브랜치 운영은 [릴리스 노트](release-notes.md)를 참고한다.
+
 앱 안의 업데이트 확인은 개발 코드나 Git 커밋을 직접 받는 기능이 아니다. 새로운 버전 번호와 설치 파일을 Releases에 게시해야 한다. `.github/workflows/release.yml`은 `v*` 태그가 원격 저장소에 올라오면 Windows에서 의존성 설치·테스트·타입 검사·빌드·패키징을 수행한다. 태그가 `package.json` 버전과 다르거나 사전 배포 번호이면 중단한다.
 
 최초 v0.2.0은 변경 사항을 커밋하고 푸시한 뒤 다음을 실행한다.
@@ -27,10 +29,12 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-다음 기능 배포 예시는 다음과 같다. 이미 게시한 버전 번호와 태그는 재사용하지 않는다.
+다음 기능 배포 예시는 다음과 같다. 버전을 올리고 해당 버전의 노트를 작성한 뒤 미리 보기 검사를 실행한다. 이미 게시한 버전 번호와 태그는 재사용하지 않는다.
 
 ```bash
 npm version patch --no-git-tag-version
+# src/shared/release-notes.json에 v0.2.1 내역을 먼저 작성
+npm run release:notes
 git add .
 git commit -m "chore: 앱 패치 버전 갱신"
 git push

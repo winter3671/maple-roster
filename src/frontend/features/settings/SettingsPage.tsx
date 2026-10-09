@@ -6,6 +6,7 @@ import { BackupManager } from './BackupManager'
 import { AutomaticBackupManager } from './AutomaticBackupManager'
 import { CrystalPriceManager } from './CrystalPriceManager'
 import { UpdateManager } from './UpdateManager'
+import { ReleaseNotes } from './ReleaseNotes'
 
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null)
@@ -52,6 +53,7 @@ export function SettingsPage() {
         </dl>
       </section>
       <UpdateManager />
+      <ReleaseNotes currentVersion={info?.version} />
       <NexonConnection />
       <CrystalPriceManager />
       <AutomaticBackupManager />

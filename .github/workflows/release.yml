@@ -29,6 +29,12 @@ jobs:
           if ($env:GITHUB_REF_NAME -ne "v$taskVersion") { throw 'Tag must match package.json version' }
           if ($taskVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Only stable releases are supported' }
       - run: npm ci
+      - name: Prepare authored release notes
+        shell: pwsh
+        run: |
+          $taskNotes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          node scripts/release-notes.mjs --output $taskNotes
+          if ($LASTEXITCODE -ne 0) { throw 'Release notes are required before publishing' }
       - run: npm test
       - run: npm run dist:win
       - name: Publish complete release
@@ -38,7 +44,8 @@ jobs:
         run: |
           $taskVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $taskInstaller = "release/Maple-Roster-Setup-$taskVersion-x64.exe"
-          gh release create $env:GITHUB_REF_NAME $taskInstaller "$taskInstaller.blockmap" release/latest.yml --draft --verify-tag --title "Maple Roster v$taskVersion" --generate-notes
+          $taskNotes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          gh release create $env:GITHUB_REF_NAME $taskInstaller "$taskInstaller.blockmap" release/latest.yml --draft --verify-tag --title "Maple Roster v$taskVersion" --notes-file $taskNotes
           if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
           gh release edit $env:GITHUB_REF_NAME --draft=false --latest
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
