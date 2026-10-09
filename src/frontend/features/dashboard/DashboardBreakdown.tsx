@@ -1,17 +1,13 @@
 import { useState } from 'react'
 import type { DashboardStats } from '../../../shared/contracts/dashboard.contract'
 import { formatMeso } from '../../lib/format'
-import type { Character } from '../../../shared/contracts/character.contract'
-import { CharacterAvatar } from '../../components/CharacterAvatar'
 
 const sourceNames = { hunting: '사냥', crystal: '결정석', drop: '드랍 판매', manual: '직접 지출' }
 export function DashboardBreakdown({
   data,
-  characters,
   onCharacter
 }: {
   data: DashboardStats
-  characters: Character[]
   onCharacter: (id: string) => void
 }) {
   const [selected, setSelected] = useState('')
@@ -103,12 +99,6 @@ export function DashboardBreakdown({
                   <tr key={row.characterId} className="border-t border-line">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <CharacterAvatar
-                          character={characters.find(
-                            (character) => character.id === row.characterId
-                          )}
-                          name={row.name}
-                        />
                         <div>
                           <button
                             type="button"

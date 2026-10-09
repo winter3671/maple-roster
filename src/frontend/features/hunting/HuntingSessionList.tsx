@@ -1,19 +1,15 @@
 import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
 import { formatMeso, formatMinutes } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
-import type { Character } from '../../../shared/contracts/character.contract'
-import { CharacterAvatar } from '../../components/CharacterAvatar'
 
 export function HuntingSessionList({
   sessions,
-  characters,
   busy,
   onEdit,
   onDrops,
   onRemove
 }: {
   sessions: HuntingSession[]
-  characters: Character[]
   busy: boolean
   onEdit: (session: HuntingSession) => void
   onDrops: (session: HuntingSession) => void
@@ -29,10 +25,6 @@ export function HuntingSessionList({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <CharacterAvatar
-                character={characters.find((row) => row.id === session.characterId)}
-                name={session.characterName}
-              />
               <div>
                 <h3 className="break-all text-sm font-semibold">
                   {session.characterName}

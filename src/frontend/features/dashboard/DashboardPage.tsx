@@ -9,7 +9,6 @@ import { useDashboard } from './useDashboard'
 import { DashboardBreakdown } from './DashboardBreakdown'
 import { RecordFilters } from '../../components/RecordFilters'
 import { useCharacters } from '../characters/useCharacters'
-import { CharacterAvatar } from '../../components/CharacterAvatar'
 import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import { getKstDate } from '../../../shared/dates'
 
@@ -69,9 +68,9 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         </Button>
       </div>
       <RecordFilters
+        characters={characters.characters}
         key={`filters:${query.from}:${query.to}:${query.characterId ?? ''}`}
         initial={query}
-        characters={characters.characters}
         busy={state.loading || characters.loading}
         onApply={setQuery}
         showMonthShortcut={false}
@@ -111,7 +110,6 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         <DashboardBreakdown
           key={`breakdown:${query.from}:${query.to}:${query.characterId ?? ''}`}
           data={state.data}
-          characters={characters.characters}
           onCharacter={(id) => setQuery({ ...query, characterId: id })}
         />
       )}
@@ -132,10 +130,6 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
               {state.data.recent.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between gap-4 py-5">
                   <div className="flex items-center gap-3">
-                    <CharacterAvatar
-                      character={characters.characters.find((row) => row.id === entry.characterId)}
-                      name={entry.characterName}
-                    />
                     <div>
                       <p className="break-all text-xs font-semibold">{entry.characterName}</p>
                       <p className="mt-2 text-[11px] text-muted">

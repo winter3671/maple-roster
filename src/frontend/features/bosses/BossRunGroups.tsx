@@ -4,7 +4,6 @@ import { compareBossProgression } from '../../../shared/boss-order'
 import { formatMeso } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { BossIcon } from './BossIcon'
-import { CharacterAvatar } from '../../components/CharacterAvatar'
 
 export function BossRunGroups({
   runs,
@@ -81,7 +80,6 @@ export function BossRunGroups({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-canvas px-4 py-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <CharacterAvatar character={group.character} />
                       <h4 className="text-sm font-semibold">
                         {group.character.name}
                         {group.character.isHidden ? ' (숨김)' : ''}
