@@ -4,6 +4,12 @@ import { formatMeso } from '../../lib/format'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
 
 const sourceNames = { hunting: '사냥', crystal: '결정석', drop: '드랍 판매', manual: '직접 지출' }
+const sourceDetails = {
+  hunting: '획득 메소와 솔 에르다 조각 등 사냥 드랍 판매 포함',
+  crystal: '보스 클리어 결정석 수익',
+  drop: '보스 드랍 아이템 판매 수익',
+  manual: '직접 기록한 지출'
+}
 export function DashboardBreakdown({
   data,
   onCharacter
@@ -70,6 +76,7 @@ export function DashboardBreakdown({
         {data.sources.map((row) => (
           <article key={row.source} className="rounded-2xl border border-line bg-surface p-5">
             <h2 className="text-xs font-semibold">{sourceNames[row.source]}</h2>
+            <p className="mt-2 text-[11px] leading-5 text-muted">{sourceDetails[row.source]}</p>
             <p
               className={`mb-1 mt-3 break-all text-lg font-semibold tabular-nums ${row.net < 0 ? 'text-expense' : 'text-brand'}`}
             >

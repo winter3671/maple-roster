@@ -41,7 +41,9 @@ export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardS
     if (!character.worlds.includes(entry.characterWorld))
       character.worlds.push(entry.characterWorld)
     const period = granularity === 'day' ? entry.date : entry.date.slice(0, 7)
-    for (const total of [character, sources.get(entry.source)!, trend.get(period)!]) {
+    const source =
+      entry.source === 'drop' && entry.activity === 'hunting' ? 'hunting' : entry.source
+    for (const total of [character, sources.get(source)!, trend.get(period)!]) {
       total[entry.direction] = sumIntegers([total[entry.direction], entry.amount])
       total.net = sumIntegers([total.income, -total.expense])
       total.count++

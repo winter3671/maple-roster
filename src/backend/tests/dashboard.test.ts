@@ -39,7 +39,7 @@ describe('대시보드 수익 집계', () => {
         entry(),
         entry({ direction: 'expense', amount: 200 }),
         entry({ date: '2026-10-10', source: 'crystal', amount: 300 }),
-        entry({ date: '2026-10-10', source: 'drop', amount: 50 })
+        entry({ date: '2026-10-10', source: 'drop', activity: 'boss', amount: 50 })
       ]),
       { from: '2026-10-08', to: '2026-10-10' }
     )
@@ -50,6 +50,53 @@ describe('대시보드 수익 집계', () => {
       { period: '2026-10-10', income: 350, expense: 0, net: 350, count: 2 }
     ])
     expect(stats.sources.map((row) => row.net)).toEqual([-100, 300, 50, 0])
+  })
+  it('사냥 드랍 판매는 사냥에 합산하고 보스 드랍만 드랍 판매로 집계한다', () => {
+    const records = list([
+      entry({ id: 'mesos', amount: 100 }),
+      entry({
+        id: 'fragment-sale',
+        source: 'drop',
+        dropSaleId: 'fragment',
+        huntingSessionId: null,
+        amount: 40
+      }),
+      entry({
+        id: 'gem-sale',
+        source: 'drop',
+        dropSaleId: 'gem',
+        huntingSessionId: null,
+        amount: 10
+      }),
+      entry({
+        id: 'boss-sale',
+        source: 'drop',
+        activity: 'boss',
+        dropSaleId: 'equipment',
+        amount: 300
+      }),
+      entry({ id: 'crystal', source: 'crystal', activity: 'boss', amount: 200 }),
+      entry({
+        id: 'expense',
+        source: 'manual',
+        activity: 'expense',
+        direction: 'expense',
+        amount: 25
+      })
+    ])
+    const original = structuredClone(records)
+    const stats = dashboardStats(records, { from: '2026-10-08', to: '2026-10-08' })
+    expect(stats.sources).toEqual([
+      { source: 'hunting', income: 150, expense: 0, net: 150, count: 3 },
+      { source: 'crystal', income: 200, expense: 0, net: 200, count: 1 },
+      { source: 'drop', income: 300, expense: 0, net: 300, count: 1 },
+      { source: 'manual', income: 0, expense: 25, net: -25, count: 1 }
+    ])
+    expect(stats.summary).toEqual({ income: 650, expense: 25, net: 625, count: 6 })
+    expect(stats.characters[0]).toMatchObject({ income: 650, expense: 25, net: 625, count: 6 })
+    expect(stats.trend[0]).toMatchObject({ income: 650, expense: 25, net: 625, count: 6 })
+    expect(stats.recent).toEqual(records.entries.slice(0, 5))
+    expect(records).toEqual(original)
   })
   it('캐릭터 ID로 합치되 과거 서버는 함께 표시하고 순수익순으로 비교한다', () => {
     const stats = dashboardStats(
