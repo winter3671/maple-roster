@@ -209,8 +209,8 @@ export function LedgerPage() {
           <div>
             <h2 className="text-sm font-semibold">지출 내역</h2>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              장비 구매·강화 등 사용한 메소를 직접 기록하세요. 이전 사냥 비용은 사냥 장부에서
-              관리합니다.
+              장비 구매·강화 등 사용한 메소나 메이플포인트를 직접 기록하세요. 포인트는 입력한
+              환전비로 메소에 합산합니다. 이전 사냥 비용은 사냥 장부에서 관리합니다.
             </p>
             <p className="mt-2 text-[11px] leading-5 text-muted">
               CSV는 조회 조건에 맞는 수입·지출 원본 거래 전체를 저장합니다. 엑셀에서 15자리 초과
@@ -293,6 +293,13 @@ export function LedgerPage() {
                     >
                       {entry.direction === 'income' ? '+' : '−'}
                       {formatMeso(entry.amount)} 메소
+                      {entry.expenseCurrency === 'maplePoint' && (
+                        <p className="mt-2 text-[11px] font-normal leading-5 text-muted">
+                          {formatMeso(entry.pointAmount!)} 메이플포인트
+                          <br />
+                          1억 메소 = {formatMeso(entry.pointsPer100m!)} 포인트
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {entry.source === 'manual' ? (

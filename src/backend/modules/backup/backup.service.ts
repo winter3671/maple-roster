@@ -8,6 +8,7 @@ import { readDate } from '../../../shared/dates'
 import { bossWeek } from '../../../shared/boss-period'
 import { validateBossSelection } from '../../../shared/boss-catalog'
 import { parseBossMembers } from '../../../shared/contracts/boss-roster.contract'
+import { parseExpenseInput } from '../../../shared/contracts/expense.contract'
 import { readOcid } from '../../../shared/contracts/nexon.contract'
 import { characterImageUrl, MAX_CHARACTER_IMAGE_URL_LENGTH } from '../../../shared/character-image'
 import type {
@@ -213,6 +214,20 @@ function validateRelations(database: DatabaseSync, tables: Tables): void {
     add(`drop:${row.id}:income`, lot, row.sold_on, row.net_share)
   }
   for (const row of tables.manual_expenses) {
+    const expense = parseExpenseInput(
+      {
+        characterId: row.character_id,
+        date: row.occurred_on,
+        category: row.category,
+        amount: row.amount,
+        notes: row.notes,
+        currency: row.currency,
+        pointAmount: row.point_amount,
+        pointsPer100m: row.points_per_100m
+      },
+      '9999-12-31'
+    )
+    if (expense.amount !== row.amount) invalid()
     add(`manual:${row.id}:expense`, row, row.occurred_on, row.amount)
   }
   for (const row of tables.ledger_entries) {
@@ -271,7 +286,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, 10, 11, schemaVersion(this.database)].includes(raw.schemaVersion as number)
+        ![7, 8, 9, 10, 11, 12, schemaVersion(this.database)].includes(raw.schemaVersion as number)
       )
         throw new AppError(
           'VALIDATION_ERROR',
@@ -286,6 +301,7 @@ export class BackupService {
       const older = raw.schemaVersion === 7 || raw.schemaVersion === 8
       const legacyExpense = Number(raw.schemaVersion) < 10
       const legacyImages = Number(raw.schemaVersion) < 11
+      const legacyPoints = Number(raw.schemaVersion) < 13
       const expectedTables = TABLES.filter(
         (table) =>
           !(older && table === 'crystal_price_history') &&
@@ -308,10 +324,16 @@ export class BackupService {
         if (!Array.isArray(rows) || (total += rows.length) > 200000) invalid()
         for (const entry of rows as unknown[]) {
           const row = readObject(entry)
-          const schemaNames =
+          const baseNames =
             legacyImages && table === 'characters'
               ? names.filter((name) => name !== 'nexon_image_url')
               : names
+          const schemaNames =
+            legacyPoints && table === 'manual_expenses'
+              ? baseNames.filter(
+                  (name) => !['currency', 'point_amount', 'points_per_100m'].includes(name)
+                )
+              : baseNames
           const expectedNames =
             raw.schemaVersion === 7 && table === 'boss_runs'
               ? schemaNames.filter((name) => name !== 'party_size_needs_review')
@@ -322,6 +344,11 @@ export class BackupService {
           if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
           if (legacyExpense && table === 'ledger_entries') row.manual_expense_id = null
           if (legacyImages && table === 'characters') row.nexon_image_url = null
+          if (legacyPoints && table === 'manual_expenses') {
+            row.currency = 'meso'
+            row.point_amount = null
+            row.points_per_100m = null
+          }
           for (const [name, value] of Object.entries(row)) {
             if (value === null) continue
             if (types.get(name) === 'INTEGER' && typeof value !== 'number') invalid()

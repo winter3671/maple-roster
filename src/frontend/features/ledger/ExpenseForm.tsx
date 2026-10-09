@@ -7,7 +7,8 @@ import {
   type ExpenseInput
 } from '../../../shared/contracts/expense.contract'
 import { getKstDate } from '../../../shared/dates'
-import { parseDigits } from '../../lib/format'
+import { parseDigits, formatMeso } from '../../lib/format'
+import { pointsToMesos } from '../../../shared/expense-currency'
 import { Button } from '../../components/ui/Button'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
 
@@ -39,12 +40,24 @@ export function ExpenseForm({
       '',
     date: initial?.date ?? getKstDate(),
     category: initial?.expenseCategory ?? '기타',
-    amount: initial ? String(initial.amount) : '',
+    currency: initial?.expenseCurrency ?? 'meso',
+    amount: initial
+      ? String(initial.expenseCurrency === 'maplePoint' ? initial.pointAmount : initial.amount)
+      : '',
+    pointsPer100m: initial?.pointsPer100m ? String(initial.pointsPer100m) : '',
     notes: initial?.notes ?? ''
   }))
   const [error, setError] = useState('')
   const retry = useRef({ fingerprint: '', id: '' })
   const id = useId()
+  let converted: number | undefined
+  if (draft.currency === 'maplePoint') {
+    try {
+      converted = pointsToMesos(parseDigits(draft.amount), parseDigits(draft.pointsPer100m))
+    } catch {
+      /* Show validation on save. */
+    }
+  }
   const change = (key: keyof typeof draft, value: string) =>
     setDraft((current) => ({ ...current, [key]: value }))
   async function submit(event: FormEvent) {
@@ -52,7 +65,15 @@ export function ExpenseForm({
     if (busy) return
     setError('')
     try {
-      const input = parseExpenseInput({ ...draft, amount: parseDigits(draft.amount) }, getKstDate())
+      const input = parseExpenseInput(
+        {
+          ...draft,
+          amount: parseDigits(draft.amount),
+          pointAmount: parseDigits(draft.amount),
+          pointsPer100m: parseDigits(draft.pointsPer100m)
+        },
+        getKstDate()
+      )
       const fingerprint = JSON.stringify(input)
       if (retry.current.fingerprint !== fingerprint)
         retry.current = { fingerprint, id: crypto.randomUUID() }
@@ -126,8 +147,29 @@ export function ExpenseForm({
             </select>
           </div>
           <div>
+            <label htmlFor={`${id}-currency`} className="text-xs font-semibold">
+              지출 통화
+            </label>
+            <select
+              id={`${id}-currency`}
+              value={draft.currency}
+              disabled={busy}
+              className={fieldClass}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  currency: event.target.value as 'meso' | 'maplePoint',
+                  amount: ''
+                }))
+              }
+            >
+              <option value="meso">메소</option>
+              <option value="maplePoint">메이플포인트</option>
+            </select>
+          </div>
+          <div>
             <label htmlFor={`${id}-amount`} className="text-xs font-semibold">
-              지출 금액 (메소)
+              {draft.currency === 'maplePoint' ? '사용한 메이플포인트' : '지출 금액 (메소)'}
             </label>
             <input
               id={`${id}-amount`}
@@ -138,7 +180,37 @@ export function ExpenseForm({
               disabled={busy}
               className={fieldClass}
             />
-            <MesoAmountHint value={draft.amount} />
+            {draft.currency === 'meso' ? (
+              <MesoAmountHint value={draft.amount} />
+            ) : (
+              <div className="mt-3">
+                <label htmlFor={`${id}-rate`} className="text-xs font-semibold">
+                  1억 메소당 메이플포인트
+                </label>
+                <input
+                  id={`${id}-rate`}
+                  inputMode="numeric"
+                  value={draft.pointsPer100m}
+                  onChange={(event) => change('pointsPer100m', event.target.value)}
+                  required
+                  disabled={busy}
+                  placeholder="예: 2,000"
+                  className={fieldClass}
+                />
+                <p className="mt-2 text-[11px] leading-5 text-muted">
+                  메소마켓 환전비를 직접 입력하세요. 사용 포인트 ÷ 환전비 × 1억 메소로 계산하며
+                  1메소 미만은 버립니다.
+                </p>
+                {converted !== undefined && (
+                  <div aria-live="polite" className="mt-3 rounded-lg bg-brand-soft p-3">
+                    <p className="text-xs font-semibold text-brand">
+                      환산 지출 {formatMeso(converted)} 메소
+                    </p>
+                    <MesoAmountHint value={converted} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div>

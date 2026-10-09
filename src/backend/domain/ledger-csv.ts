@@ -20,7 +20,10 @@ export function ledgerCsv(entries: LedgerEntry[]): string {
     '순수익 변동(메소)',
     '거래 ID',
     '원본 기록 ID',
-    '메모'
+    '메모',
+    '지출 통화',
+    '사용 메이플포인트',
+    '1억 메소당 메이플포인트'
   ]
   const lines = [headings.map(cell).join(',')]
   for (const entry of entries) {
@@ -49,7 +52,14 @@ export function ledgerCsv(entries: LedgerEntry[]): string {
           entry.dropSaleId ??
           entry.manualExpenseId ??
           '',
-        entry.notes ?? ''
+        entry.notes ?? '',
+        entry.source === 'manual'
+          ? entry.expenseCurrency === 'maplePoint'
+            ? '메이플포인트'
+            : '메소'
+          : '',
+        entry.pointAmount ?? '',
+        entry.pointsPer100m ?? ''
       ]
         .map(cell)
         .join(',')

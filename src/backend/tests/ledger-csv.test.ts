@@ -24,7 +24,7 @@ describe('거래 내역 CSV 형식', () => {
     ])
     expect(content.charCodeAt(0)).toBe(0xfeff)
     expect(content).toContain(
-      '"2026-10-08","캐릭터","루나","사냥 메소","수입","123456789","123456789","transaction-id","activity-id",""\r\n'
+      '"2026-10-08","캐릭터","루나","사냥 메소","수입","123456789","123456789","transaction-id","activity-id","","","",""\r\n'
     )
     expect(content).toContain('"사냥 비용","지출","1000","-1000"')
     expect(content).not.toContain('123,456,789')

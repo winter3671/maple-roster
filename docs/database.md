@@ -116,6 +116,8 @@ UI 자동 확인은 `MAPLE_ROSTER_DATA_DIR`로 일반 사용자 데이터와 분
 
 ## manual_expenses
 
+13번 마이그레이션은 `currency`(meso/maplePoint), `point_amount`, `points_per_100m`을 추가한다. 메소 기록에는 포인트 필드를 NULL로 두고, 포인트 기록은 양의 정수 원본과 환전비를 함께 보관한다. `amount`와 연결 거래 금액은 환산 메소를 사용한다. 기존 지출은 메소로 유지한다. 계산·복원 규칙은 [메이플포인트 지출](expense-maple-points.md)을 참고한다.
+
 10번 마이그레이션은 직접 지출 원본을 저장하는 `manual_expenses`를 추가한다. 캐릭터 FK(RESTRICT), 거래 당시 서버, 지출 날짜, 분류, 양의 정수 금액, 메모와 생성·수정 시각을 보관한다. `ledger_entries`에는 UNIQUE FK `manual_expense_id`(CASCADE)를 추가한다. 사냥·결정석·드랍·직접 지출 출처 중 정확히 하나만 연결할 수 있으며 직접 지출의 방향은 expense다.
 
 기존 거래의 ID·금액·날짜·생성·수정 시각을 보존하며 장부 테이블을 확장한다. 직접 지출과 거래의 저장·수정은 한 트랜잭션이며 삭제는 연결 거래도 제거한다. 요청 UUID로 재시도 중복을 막는다. [거래 내역](ledger-view.md)과 [백업](backup.md)에 상세 규칙이 있다.

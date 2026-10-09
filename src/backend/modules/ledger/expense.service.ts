@@ -29,6 +29,9 @@ export class ExpenseService {
           date: String(row.occurred_on),
           category: row.category as ExpenseCategory,
           amount: Number(row.amount),
+          currency: row.currency as 'meso' | 'maplePoint',
+          pointAmount: row.point_amount == null ? null : Number(row.point_amount),
+          pointsPer100m: row.points_per_100m == null ? null : Number(row.points_per_100m),
           notes: String(row.notes),
           createdAt: String(row.created_at),
           updatedAt: String(row.updated_at)
@@ -83,9 +86,10 @@ export class ExpenseService {
       }
       this.database
         .prepare(
-          `INSERT INTO manual_expenses (id, character_id, world_snapshot, occurred_on, category, amount, notes, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET character_id=excluded.character_id, world_snapshot=excluded.world_snapshot,
-        occurred_on=excluded.occurred_on, category=excluded.category, amount=excluded.amount, notes=excluded.notes, updated_at=excluded.updated_at`
+          `INSERT INTO manual_expenses (id, character_id, world_snapshot, occurred_on, category, amount, notes, created_at, updated_at, currency, point_amount, points_per_100m)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET character_id=excluded.character_id, world_snapshot=excluded.world_snapshot,
+        occurred_on=excluded.occurred_on, category=excluded.category, amount=excluded.amount, notes=excluded.notes, updated_at=excluded.updated_at,
+        currency=excluded.currency, point_amount=excluded.point_amount, points_per_100m=excluded.points_per_100m`
         )
         .run(
           id,
@@ -96,7 +100,10 @@ export class ExpenseService {
           expense.amount,
           expense.notes,
           expense.createdAt,
-          timestamp
+          timestamp,
+          expense.currency ?? 'meso',
+          expense.pointAmount ?? null,
+          expense.pointsPer100m ?? null
         )
       this.ledger.syncExpense(expense)
       return expense

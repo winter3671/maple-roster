@@ -14,6 +14,9 @@ export interface LedgerEntry {
   dropSaleId: string | null
   manualExpenseId?: string | null
   expenseCategory?: string
+  expenseCurrency?: 'meso' | 'maplePoint'
+  pointAmount?: number | null
+  pointsPer100m?: number | null
   notes?: string
   source: 'hunting' | 'crystal' | 'drop' | 'manual'
   activity: 'boss' | 'hunting' | 'expense'

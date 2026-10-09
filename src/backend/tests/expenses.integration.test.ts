@@ -10,6 +10,8 @@ import { LedgerService } from '../modules/ledger/ledger.service'
 import { ExpenseService } from '../modules/ledger/expense.service'
 import { BackupService } from '../modules/backup/backup.service'
 import { groupLedgerIncome } from '../../shared/ledger-income'
+import { migrate } from '../database/migrate'
+import { pointsToMesos } from '../../shared/expense-currency'
 
 describe('직접 지출 장부', () => {
   let db: DatabaseSync,
@@ -46,6 +48,106 @@ describe('직접 지출 장부', () => {
       ...patch
     }
   }
+  it('포인트·환전비로 메소를 계산하고 수정·통화 변경에 같은 거래를 갱신한다', () => {
+    const request = input({
+      currency: 'maplePoint',
+      pointAmount: 5000,
+      pointsPer100m: 2000,
+      amount: 1
+    })
+    const saved = expenses.create(request)
+    expect(saved).toMatchObject({
+      currency: 'maplePoint',
+      pointAmount: 5000,
+      pointsPer100m: 2000,
+      amount: 250000000
+    })
+    expect(expenses.create(request)).toEqual(saved)
+    const original = ledger.list(query).entries[0]
+    expect(original).toMatchObject({
+      expenseCurrency: 'maplePoint',
+      pointAmount: 5000,
+      pointsPer100m: 2000,
+      amount: 250000000
+    })
+    expect(ledger.dashboard(query).summary.expense).toBe(250000000)
+    expect(ledger.exportCsv(query).content).toContain('"메이플포인트","5000","2000"')
+    expenses.update({ ...saved, pointsPer100m: 2500 })
+    expect(ledger.list(query).entries[0]).toMatchObject({
+      id: original.id,
+      amount: 200000000,
+      pointsPer100m: 2500
+    })
+    expenses.update({ ...saved, currency: 'meso', amount: 123 })
+    expect(ledger.list(query).entries[0]).toMatchObject({
+      id: original.id,
+      amount: 123,
+      expenseCurrency: 'meso',
+      pointAmount: null,
+      pointsPer100m: null
+    })
+  })
+  it('정수로 정확히 환산하며 잘못된 포인트·환전비는 장부를 변경하지 않는다', () => {
+    expect(pointsToMesos(1, 3)).toBe(33333333)
+    expect(pointsToMesos(Number.MAX_SAFE_INTEGER, 100000000)).toBe(Number.MAX_SAFE_INTEGER)
+    for (const patch of [
+      { pointAmount: 0 },
+      { pointsPer100m: 0 },
+      { pointsPer100m: -1 },
+      { pointAmount: 1.5 },
+      { pointsPer100m: 2.5 },
+      { currency: 'wrong' },
+      { pointAmount: Number.MAX_SAFE_INTEGER, pointsPer100m: 1 },
+      { pointAmount: 1, pointsPer100m: 100000001 }
+    ]) {
+      expect(() =>
+        expenses.create(
+          input({ currency: 'maplePoint', pointAmount: 5000, pointsPer100m: 2000, ...patch })
+        )
+      ).toThrow()
+    }
+    expect(ledger.list(query).entries).toEqual([])
+  })
+  it('포인트 원본과 환전비를 백업·복원하고 환산 금액 변조를 거부한다', () => {
+    expenses.create(input({ currency: 'maplePoint', pointAmount: 5000, pointsPer100m: 2000 }))
+    const content = backup.export()
+    backup.restore({ previewId: backup.prepare(content, '포인트.json').id })
+    expect(ledger.list(query).entries[0]).toMatchObject({
+      pointAmount: 5000,
+      pointsPer100m: 2000,
+      amount: 250000000
+    })
+    const altered = JSON.parse(content)
+    altered.tables.manual_expenses[0].points_per_100m = 2500
+    expect(() => backup.prepare(JSON.stringify(altered), '변조.json')).toThrow()
+    expect(ledger.list(query).summary.expense).toBe(250000000)
+  })
+  it('12번 장부를 업그레이드하고 이전 메소 지출 백업을 금액 변경 없이 복원한다', () => {
+    const saved = expenses.create(input())
+    const legacy = JSON.parse(backup.export())
+    legacy.schemaVersion = 12
+    for (const row of legacy.tables.manual_expenses) {
+      delete row.currency
+      delete row.point_amount
+      delete row.points_per_100m
+    }
+    db.exec(
+      'ALTER TABLE manual_expenses DROP COLUMN points_per_100m; ALTER TABLE manual_expenses DROP COLUMN point_amount; ALTER TABLE manual_expenses DROP COLUMN currency; DELETE FROM schema_migrations WHERE version=13;'
+    )
+    migrate(db)
+    expect(ledger.list(query).entries[0]).toMatchObject({
+      manualExpenseId: saved.id,
+      amount: saved.amount,
+      expenseCurrency: 'meso'
+    })
+    backup.restore({ previewId: backup.prepare(JSON.stringify(legacy), '이전12.json').id })
+    expect(ledger.list(query).entries[0]).toMatchObject({
+      manualExpenseId: saved.id,
+      amount: saved.amount,
+      expenseCurrency: 'meso',
+      pointAmount: null
+    })
+  })
   it('지출과 거래를 한 번 저장하고 조회·대시보드·CSV에 반영한다', () => {
     const request = input(),
       result = expenses.create(request)

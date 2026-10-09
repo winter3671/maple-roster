@@ -75,7 +75,7 @@ describe('캐릭터 로컬 저장', () => {
     database = openDatabase(path)
     service = new CharacterService(new CharacterRepository(database))
     expect(service.list()).toEqual([created])
-    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(12)
+    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(13)
   })
 
   it('앞뒤 공백과 Unicode 표현을 정규화한다', () => {

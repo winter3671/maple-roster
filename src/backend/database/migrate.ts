@@ -12,6 +12,7 @@ import priceHistorySql from './migrations/009_crystal_price_history.sql?raw'
 import expensesSql from './migrations/010_manual_expenses.sql?raw'
 import imagesSql from './migrations/011_character_images.sql?raw'
 import imageLengthSql from './migrations/012_character_image_url_length.sql?raw'
+import expensePointsSql from './migrations/013_expense_maple_points.sql?raw'
 
 const migrations = [
   { version: 1, name: 'characters', sql: charactersSql },
@@ -25,7 +26,8 @@ const migrations = [
   { version: 9, name: 'crystal_price_history', sql: priceHistorySql },
   { version: 10, name: 'manual_expenses', sql: expensesSql },
   { version: 11, name: 'character_images', sql: imagesSql },
-  { version: 12, name: 'character_image_url_length', sql: imageLengthSql }
+  { version: 12, name: 'character_image_url_length', sql: imageLengthSql },
+  { version: 13, name: 'expense_maple_points', sql: expensePointsSql }
 ]
 
 export function migrate(database: DatabaseSync): void {
