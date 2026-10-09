@@ -61,6 +61,7 @@ import type {
 } from './nexon.contract'
 
 import type { Expense, ExpenseCreate, ExpenseUpdate } from './expense.contract'
+import type { UpdateStatus } from './update.contract'
 
 export interface AppInfo {
   name: string
@@ -69,6 +70,12 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  updates: {
+    status: () => Promise<ApiResult<UpdateStatus>>
+    check: () => Promise<ApiResult<UpdateStatus>>
+    download: () => Promise<ApiResult<UpdateStatus>>
+    install: () => Promise<ApiResult<UpdateStatus>>
+  }
   prices: {
     list: () => Promise<ApiResult<CrystalPriceEntry[]>>
     save: (input: CrystalPriceInput) => Promise<ApiResult<CrystalPriceEntry[]>>

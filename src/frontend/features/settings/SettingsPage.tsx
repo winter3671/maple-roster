@@ -5,6 +5,7 @@ import { NexonConnection } from '../nexon/NexonConnection'
 import { BackupManager } from './BackupManager'
 import { AutomaticBackupManager } from './AutomaticBackupManager'
 import { CrystalPriceManager } from './CrystalPriceManager'
+import { UpdateManager } from './UpdateManager'
 
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null)
@@ -50,6 +51,7 @@ export function SettingsPage() {
           </div>
         </dl>
       </section>
+      <UpdateManager />
       <NexonConnection />
       <CrystalPriceManager />
       <AutomaticBackupManager />

@@ -1,6 +1,6 @@
 # Windows 설치 파일
 
-Windows x64용 NSIS 설치 파일을 electron-builder로 생성합니다. 현재는 개인용 무서명 빌드이며 Electron 기본 아이콘을 사용합니다. 자동 업데이트와 외부 배포는 후속 작업입니다.
+Windows x64용 NSIS 설치 파일을 electron-builder로 생성합니다. 현재는 개인용 무서명 빌드이며 Electron 기본 아이콘을 사용합니다. v0.2.0부터 설정에서 GitHub Releases 기반 업데이트 확인·다운로드·재시작 적용을 지원합니다. 배포 절차는 [앱 업데이트](app-updates.md)를 참고하세요.
 
 ## 만들기
 
@@ -18,7 +18,7 @@ npm run package:win
 
 | 결과                     | 위치                                       |
 | ------------------------ | ------------------------------------------ |
-| 설치 파일                | `release/Maple-Roster-Setup-0.1.0-x64.exe` |
+| 설치 파일                | `release/Maple-Roster-Setup-0.2.0-x64.exe` |
 | 설치 전 확인용 실행 파일 | `release/win-unpacked/Maple Roster.exe`    |
 
 설치 파일 이름은 `package.json`의 버전에 따라 바뀝니다. 실행 폴더를 다른 곳으로 옮길 때는 EXE만 복사하지 말고 `win-unpacked` 전체를 옮겨야 합니다. `release`는 Git에서 제외합니다.

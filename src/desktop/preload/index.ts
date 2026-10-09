@@ -3,6 +3,12 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  updates: {
+    status: () => ipcRenderer.invoke(IPC_CHANNELS.updatesStatus),
+    check: () => ipcRenderer.invoke(IPC_CHANNELS.updatesCheck),
+    download: () => ipcRenderer.invoke(IPC_CHANNELS.updatesDownload),
+    install: () => ipcRenderer.invoke(IPC_CHANNELS.updatesInstall)
+  },
   prices: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.pricesList),
     save: (input) => ipcRenderer.invoke(IPC_CHANNELS.pricesSave, input),

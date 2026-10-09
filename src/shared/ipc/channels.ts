@@ -1,4 +1,8 @@
 export const IPC_CHANNELS = {
+  updatesStatus: 'updates:status',
+  updatesCheck: 'updates:check',
+  updatesDownload: 'updates:download',
+  updatesInstall: 'updates:install',
   dropsCreateBossLots: 'drops:create-boss-lots',
   ledgerCreateExpense: 'ledger:create-expense',
   ledgerUpdateExpense: 'ledger:update-expense',

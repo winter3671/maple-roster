@@ -3,6 +3,13 @@ import { AppError, type ApiResult } from '../../../shared/errors'
 
 type Route = readonly [channel: string, handle: (input: unknown) => unknown]
 let activeRequests = 0
+export function requireIdleUpdate(): void {
+  if (activeRequests > 1)
+    throw new AppError(
+      'REQUEST_CONFLICT',
+      'API 조회나 다른 작업이 진행 중입니다. 완료 후 업데이트를 적용해 주세요.'
+    )
+}
 export function requireIdleRestore(): void {
   if (activeRequests > 1)
     throw new AppError(

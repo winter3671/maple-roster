@@ -8,8 +8,19 @@ import { registerBossHandlers } from './boss.handlers'
 import { registerRoutes } from './register-routes'
 import { registerBackupHandlers } from './backup.handlers'
 import { registerLedgerHandlers } from './ledger.handlers'
+import type { UpdateService } from '../update.service'
 
-export function registerHandlers(window: BrowserWindow, services: Services): void {
+export function registerHandlers(
+  window: BrowserWindow,
+  services: Services,
+  updates: UpdateService
+): void {
+  const disposeUpdates = registerRoutes(window, [
+    [IPC_CHANNELS.updatesStatus, () => updates.status()],
+    [IPC_CHANNELS.updatesCheck, () => updates.check()],
+    [IPC_CHANNELS.updatesDownload, () => updates.download()],
+    [IPC_CHANNELS.updatesInstall, () => updates.install()]
+  ])
   const disposeCharacters = registerCharacterHandlers(window, services)
   const disposeHunting = registerHuntingHandlers(window, services)
   const disposeNexon = registerNexonHandlers(window, services)
@@ -52,6 +63,7 @@ export function registerHandlers(window: BrowserWindow, services: Services): voi
     return services.system.getInfo()
   })
   window.once('closed', () => {
+    disposeUpdates()
     ipcMain.removeHandler(IPC_CHANNELS.systemGetInfo)
     disposeCharacters()
     disposeHunting()

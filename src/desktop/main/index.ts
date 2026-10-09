@@ -6,8 +6,13 @@ import { createWindow, loadWindow } from './window'
 import { readNexonKey } from '../../backend/config/nexon-key'
 import { NexonKeyStore } from '../../backend/config/nexon-key-store'
 import { AUTOMATIC_BACKUP_INTERVAL } from '../../backend/modules/backup/automatic-backup.service'
+import electronUpdater from 'electron-updater'
+import { UpdateService } from './update.service'
+import { requireIdleUpdate } from './ipc/register-routes'
+import { AppError } from '../../shared/errors'
 
 let services: Services | undefined
+let updates: UpdateService | undefined
 let backupTimer: ReturnType<typeof setInterval> | undefined
 
 // 테스트 실행은 일반 장부와 분리된 저장 위치를 지정할 수 있다.
@@ -26,9 +31,9 @@ app.on('second-instance', () => {
 })
 
 async function openApp(): Promise<void> {
-  if (!services) throw new Error('저장소를 준비하지 못했습니다.')
+  if (!services || !updates) throw new Error('저장소를 준비하지 못했습니다.')
   const window = createWindow()
-  registerHandlers(window, services)
+  registerHandlers(window, services, updates)
   await loadWindow(window)
 }
 
@@ -58,6 +63,19 @@ app
       keyStore
     )
     services.automaticBackup.check()
+    updates = new UpdateService(
+      app.getVersion(),
+      app.isPackaged && process.platform === 'win32' ? electronUpdater.autoUpdater : undefined,
+      () => {
+        requireIdleUpdate()
+        const backup = services!.automaticBackup.check(true)
+        if (backup.error)
+          throw new AppError(
+            'DATABASE_ERROR',
+            '업데이트 전 장부 백업을 저장하지 못했습니다. 저장 공간과 폴더 권한을 확인해 주세요.'
+          )
+      }
+    )
     backupTimer = setInterval(() => services?.automaticBackup.check(), AUTOMATIC_BACKUP_INTERVAL)
     backupTimer.unref()
     await openApp()

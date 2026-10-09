@@ -7,6 +7,11 @@ files:
   - package.json
 asar: true
 npmRebuild: false
+publish:
+  provider: github
+  owner: winter3671
+  repo: maple-roster
+  releaseType: release
 win:
   signExecutable: false
   target:
