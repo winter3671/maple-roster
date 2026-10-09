@@ -28,6 +28,7 @@ import type {
 } from './boss-roster.contract'
 import type {
   BossDropBatchCreate,
+  HuntingDropSaleState,
   DropSource,
   DropList,
   DropLot,
@@ -91,6 +92,7 @@ export interface AppApi {
     cancel: () => Promise<ApiResult<null>>
   }
   drops: {
+    setHuntingSale: (input: HuntingDropSaleState) => Promise<ApiResult<DropSale | null>>
     createBossLots: (input: BossDropBatchCreate) => Promise<ApiResult<DropLot[]>>
     list: (source: DropSource) => Promise<ApiResult<DropList>>
     createLot: (input: DropLotCreate) => Promise<ApiResult<DropLot>>

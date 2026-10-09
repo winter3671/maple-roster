@@ -57,6 +57,13 @@ export interface DropSaleCreate extends DropSaleInput {
 export interface DropSaleUpdate extends DropSaleInput {
   id: string
 }
+export interface HuntingDropSaleState {
+  lotId: string
+  sold: boolean
+  date: string
+  grossAmount: number
+  requestId: string
+}
 export interface DropSale extends DropSaleInput {
   id: string
   netShare: number

@@ -52,6 +52,7 @@ export function registerHandlers(
   const disposeDrops = registerRoutes(window, [
     [IPC_CHANNELS.dropsCreateBossLots, (input) => services.drops.createBossLots(input)],
     [IPC_CHANNELS.dropsList, (input) => services.drops.list(input)],
+    [IPC_CHANNELS.dropsSetHuntingSale, (input) => services.drops.setHuntingSale(input)],
     [IPC_CHANNELS.dropsCreateLot, (input) => services.drops.createLot(input)],
     [IPC_CHANNELS.dropsUpdateLot, (input) => services.drops.updateLot(input)],
     [IPC_CHANNELS.dropsRemoveLot, (input) => services.drops.removeLot(input)],

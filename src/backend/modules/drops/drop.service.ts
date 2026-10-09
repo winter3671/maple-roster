@@ -209,6 +209,55 @@ export class DropService {
       return null
     })
   }
+  setHuntingSale(value: unknown): DropSale | null {
+    const raw = readObject(value),
+      lotId = readId(raw.lotId)
+    if (typeof raw.sold !== 'boolean')
+      throw new AppError('VALIDATION_ERROR', '판매 상태를 선택해 주세요.')
+    return this.transaction.run(() => {
+      const lot = this.findLot(lotId)
+      if (lot.source.kind !== 'hunting')
+        throw new AppError('VALIDATION_ERROR', '사냥 드랍에만 사용할 수 있습니다.')
+      const sales = this.repository.salesForLot(lotId)
+      if (!raw.sold) {
+        for (const sale of sales) this.repository.removeSale(sale.id)
+        this.list(lot.source)
+        const session = this.hunting.find(lot.source.id)!
+        hourlyProfit(
+          sumIntegers([
+            session.mesos,
+            this.repository.huntingIncome().get(session.id) ?? 0,
+            -session.cost
+          ]),
+          session.minutes
+        )
+        return null
+      }
+      const input = parseDropSale(
+        {
+          lotId,
+          date: raw.date,
+          quantity: lot.quantity,
+          grossAmount: raw.grossAmount,
+          feeAmount: 0,
+          partySize: 1,
+          shareMode: 'equal',
+          manualShare: null
+        },
+        getKstDate(this.now())
+      )
+      const current = sales.length === 1 ? sales[0] : undefined
+      if (current) return this.saveSale(input, current.id, current)
+      const id = readId(raw.requestId)
+      if (this.repository.findSale(id))
+        throw new AppError(
+          'REQUEST_CONFLICT',
+          '다른 판매 기록과 요청이 겹쳤습니다. 다시 확인해 주세요.'
+        )
+      for (const sale of sales) this.repository.removeSale(sale.id)
+      return this.saveSale(input, id)
+    })
+  }
   private saveSale(
     input: ReturnType<typeof parseDropSale>,
     id: string,

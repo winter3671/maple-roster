@@ -13,6 +13,7 @@ import { formatMeso } from '../../lib/format'
 
 import { DropEditor, type Editor } from './DropEditor'
 import { BossDropForm } from './BossDropForm'
+import { HuntingDropCard } from './HuntingDropCard'
 
 export function DropManager({
   source,
@@ -108,13 +109,61 @@ export function DropManager({
     setNotice('')
     setEditor(value)
   }
+  if (source.kind === 'hunting')
+    return (
+      <Dialog title={`드랍 관리 · ${title}`} busy={busy} onClose={onClose}>
+        <div className="space-y-4">
+          <p className="text-xs leading-5 text-muted">
+            판매 상태를 선택하고 저장하세요. 판매완료의 총 가격이 사냥 수익에 반영됩니다.
+          </p>
+          {error && (
+            <p role="alert" className="text-xs text-expense">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="text-xs text-brand">
+              {notice}
+            </p>
+          )}
+          {loading && (
+            <p role="status" className="text-xs text-muted">
+              드랍 목록을 불러오는 중…
+            </p>
+          )}
+          {data?.lots.map((lot) => (
+            <HuntingDropCard
+              key={`${lot.id}-${JSON.stringify(data.sales.filter((sale) => sale.lotId === lot.id))}`}
+              lot={lot}
+              sales={data.sales.filter((sale) => sale.lotId === lot.id)}
+              busy={busy || loading}
+              onSave={(input) =>
+                mutate(
+                  () => window.maple.drops.setHuntingSale(input),
+                  input.sold
+                    ? '판매완료로 저장하고 사냥 수익에 반영했습니다.'
+                    : '미판매로 저장했습니다.'
+                )
+              }
+            />
+          ))}
+          {data?.lots.length === 0 && (
+            <p className="py-4 text-center text-xs text-muted">
+              획득한 드랍이 없습니다. 사냥 회차에서 조각·젬스톤 수량을 입력해 주세요.
+            </p>
+          )}
+          <Button variant="secondary" disabled={busy || loading} onClick={() => void load()}>
+            새로고침
+          </Button>
+        </div>
+      </Dialog>
+    )
   return (
     <Dialog title={`드랍 관리 · ${title}`} busy={busy} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-xs leading-5 text-muted">
-          {source.kind === 'hunting'
-            ? '솔 에르다 조각은 실제 받은 총 판매 금액을 수익으로 기록합니다. 예상 금액은 미판매 재고의 참고값입니다.'
-            : '예상 금액은 미판매 재고의 참고값입니다. 판매를 기록하면 수수료와 분배를 반영한 내 몫만 거래 장부에 수입으로 등록됩니다.'}
+          예상 금액은 미판매 재고의 참고값입니다. 판매를 기록하면 수수료와 분배를 반영한 내 몫만
+          거래 장부에 수입으로 등록됩니다.
         </p>
         {source.kind === 'boss' && (
           <p className="text-[11px] text-muted">

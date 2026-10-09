@@ -33,6 +33,7 @@ export const IPC_CHANNELS = {
   bossesAssignTemplate: 'bosses:assign-template',
   bossesSaveRoster: 'bosses:save-roster',
   dropsList: 'drops:list',
+  dropsSetHuntingSale: 'drops:set-hunting-sale',
   dropsCreateLot: 'drops:create-lot',
   dropsUpdateLot: 'drops:update-lot',
   dropsRemoveLot: 'drops:remove-lot',

@@ -33,6 +33,71 @@ describe('획득 묶음과 드랍 부분 판매', () => {
   let characterId: string, session: HuntingSession, lot: DropLot
   const clock = () => new Date('2026-10-15T00:00:00Z')
   const month = { from: '2026-10-01', to: '2026-10-15' }
+  it('사냥 판매완료·금액 수정·미판매 전환은 장부와 수익에 한 번만 반영한다', () => {
+    const input = {
+      lotId: lot.id,
+      sold: true,
+      date: '2026-10-15',
+      grossAmount: 20000,
+      requestId: randomUUID()
+    }
+    const first = drops.setHuntingSale(input)!
+    expect(first.quantity).toBe(lot.quantity)
+    expect(first.netShare).toBe(20000)
+    expect(drops.setHuntingSale(input)!.id).toBe(first.id)
+    expect(drops.list(lot.source).sales).toHaveLength(1)
+    expect(drops.setHuntingSale({ ...input, grossAmount: 30000 })!.netShare).toBe(30000)
+    expect(hunting.list(month).sessions.find((row) => row.id === session.id)?.saleIncome).toBe(
+      30000
+    )
+    expect(ledger.list(month).entries.filter((row) => row.dropSaleId)).toHaveLength(1)
+    drops.setHuntingSale({ ...input, sold: false })
+    expect(drops.list(lot.source).sales).toHaveLength(0)
+    expect(drops.list(lot.source).lots.find((row) => row.id === lot.id)?.remaining).toBe(
+      lot.quantity
+    )
+    expect(hunting.list(month).sessions.find((row) => row.id === session.id)?.saleIncome).toBe(0)
+    expect(ledger.list(month).entries.filter((row) => row.dropSaleId)).toHaveLength(0)
+  })
+  it('기존 부분 판매를 전체 판매로 정리하고 실패하면 기존 장부를 유지한다', () => {
+    sale({ quantity: 2, grossAmount: 200 })
+    sale({ quantity: 3, grossAmount: 300 })
+    const original = drops.list(lot.source)
+    const input = {
+      lotId: lot.id,
+      sold: true,
+      date: '2026-10-01',
+      grossAmount: 1000,
+      requestId: randomUUID()
+    }
+    expect(() => drops.setHuntingSale(input)).toThrow()
+    expect(drops.list(lot.source)).toEqual(original)
+    const result = drops.setHuntingSale({ ...input, date: '2026-10-15' })!
+    expect(result.quantity).toBe(lot.quantity)
+    expect(drops.list(lot.source).sales).toHaveLength(1)
+    expect(ledger.list(month).entries.filter((row) => row.dropSaleId)).toHaveLength(1)
+    expect(hunting.list(month).sessions.find((row) => row.id === session.id)?.saleIncome).toBe(1000)
+  })
+  it('보스에는 간편 판매 상태를 적용하지 않는다', () => {
+    const run = bosses.createRun({
+      characterId,
+      date: '2026-10-08',
+      bossName: '스우',
+      difficulty: '노멀',
+      partySize: 1
+    })
+    bosses.setClear({ id: run.id, isCleared: true })
+    const bossLot = drops.createLot({
+      source: { kind: 'boss', id: run.id },
+      requestId: randomUUID(),
+      itemName: '장비',
+      quantity: 1,
+      estimatedUnitPrice: 0,
+      notes: ''
+    })
+    expect(() => drops.setHuntingSale({ lotId: bossLot.id, sold: false })).toThrow('사냥 드랍')
+    expect(() => drops.setHuntingSale({ lotId: lot.id, sold: 'true' })).toThrow('판매 상태')
+  })
   it('결정석·보스 드랍은 보스 수익, 획득 메소·사냥 드랍은 사냥 수익으로 묶고 지출은 제외한다', () => {
     const huntingSale = sale()
     const run = bosses.createRun({
