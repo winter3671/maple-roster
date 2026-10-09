@@ -1,5 +1,6 @@
 import type { LedgerSummary } from '../../shared/contracts/ledger.contract'
 import { formatMeso } from '../lib/format'
+import { MesoAmountHint } from './MesoAmountHint'
 
 export function FinancialSummary({
   summary,
@@ -45,11 +46,12 @@ export function FinancialSummary({
             className="min-w-0 rounded-2xl border border-line bg-surface p-5"
           >
             <p className="text-xs text-muted">{card.label}</p>
-            <p className={`my-4 break-all text-xl font-semibold tabular-nums ${card.color}`}>
+            <p className={`mb-1 mt-4 break-all text-xl font-semibold tabular-nums ${card.color}`}>
               {loading || card.value === undefined ? '—' : formatMeso(card.value)}
               <span className="ml-2 text-[11px] font-normal text-muted">메소</span>
             </p>
-            <p className="text-[11px] text-muted">{card.detail}</p>
+            {!loading && card.value !== undefined && <MesoAmountHint value={card.value} />}
+            <p className="mt-3 text-[11px] text-muted">{card.detail}</p>
           </article>
         ))}
     </section>

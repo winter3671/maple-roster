@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatMeso } from '../../lib/format'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
@@ -261,6 +262,7 @@ export function BossesPage() {
           },
           {
             title: '이 주차 결정석 수익',
+            amount: summary?.settled,
             value: summary ? `${formatMeso(summary.settled)} 메소` : '—',
             detail: '클리어한 보스 기준 · 드랍 수익은 별도 반영'
           }
@@ -270,10 +272,11 @@ export function BossesPage() {
             className="min-w-0 rounded-2xl border border-line bg-surface p-5"
           >
             <p className="text-xs text-muted">{card.title}</p>
-            <p className="my-4 break-all text-lg font-semibold tabular-nums text-brand">
+            <p className="mb-1 mt-4 break-all text-lg font-semibold tabular-nums text-brand">
               {card.value}
             </p>
-            <p className="text-[11px] leading-5 text-muted">{card.detail}</p>
+            {!state.loading && card.amount !== undefined && <MesoAmountHint value={card.amount} />}
+            <p className="mt-3 text-[11px] leading-5 text-muted">{card.detail}</p>
           </article>
         ))}
       </div>

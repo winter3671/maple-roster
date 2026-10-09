@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { FinancialSummary } from '../../components/FinancialSummary'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { RecordFilters } from '../../components/RecordFilters'
 import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
 import { useCharacters } from '../characters/useCharacters'
@@ -195,6 +196,7 @@ export function LedgerPage() {
                 {state.loading ? '—' : formatMeso(group.amount)}{' '}
                 <span className="text-xs font-normal">메소</span>
               </p>
+              {!state.loading && <MesoAmountHint value={group.amount} />}
               <p className="mt-2 text-[11px] text-muted">
                 {state.loading ? '조회 중…' : `원본 수입 ${group.count}건 합산`}
               </p>
