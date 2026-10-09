@@ -588,6 +588,18 @@ describe('주간 보스와 결정석 장부', () => {
     expect(bosses.list({ ...query, characterId: character.id }).runs).toHaveLength(1)
     expect(() => preset({ bossName: '데미안' })).toThrow('숨김')
   })
+  it('폐기된 프리셋만 있는 캐릭터는 삭제하고 실제 주차 기록이 있으면 롤백한다', () => {
+    preset()
+    characters.remove(character.id)
+    expect(characters.list()).toHaveLength(0)
+    expect(bosses.presets()).toEqual([])
+  })
+  it('주차 기록으로 캐릭터 삭제가 막히면 폐기된 프리셋 정리도 롤백한다', () => {
+    const record = run()
+    expect(() => characters.remove(character.id)).toThrow('숨김 기능')
+    expect(bosses.presets()).toHaveLength(1)
+    expect(bosses.list(query).runs[0].id).toBe(record.id)
+  })
   it('프리셋 삭제는 과거 기록을 유지하고 참조 캐릭터 삭제를 보호한다', () => {
     const record = run()
     bosses.removePreset(bosses.presets()[0].id)

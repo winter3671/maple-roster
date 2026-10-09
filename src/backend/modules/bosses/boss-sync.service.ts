@@ -137,7 +137,6 @@ export class BossSyncService {
     const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
     const completed = state.bosses.filter((boss) => boss.isCleared)
     const blockedReasons: string[] = []
-    const presets = this.bosses.presets(characterId)
     const members = completed
       .map((boss) => {
         const catalog = WEEKLY_BOSSES.find(
@@ -150,14 +149,10 @@ export class BossSyncService {
           blockedReasons.push(`${bossName} · ${boss.difficulty}: 지원하지 않는 보스·난이도입니다.`)
         }
         const existing = snapshots.find((run) => key(run.bossName) === key(bossName))
-        const preset = presets.find((run) => key(run.bossName) === key(bossName))
         const partySize =
           existing?.isCleared && existing.difficulty === boss.difficulty
             ? existing.partySize
-            : Math.min(
-                existing?.partySize ?? preset?.partySize ?? 1,
-                bossPartyLimit(bossName, boss.difficulty)
-              )
+            : Math.min(existing?.partySize ?? 1, bossPartyLimit(bossName, boss.difficulty))
         const crystalPrice =
           existing?.difficulty === boss.difficulty
             ? existing.crystalPrice

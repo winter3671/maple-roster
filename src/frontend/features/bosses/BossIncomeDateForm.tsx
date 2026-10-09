@@ -3,7 +3,7 @@ import type { BossIncomeDateUpdate, BossRun } from '../../../shared/contracts/bo
 import { getKstDate, readDate } from '../../../shared/dates'
 import { formatMeso } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
-import { bossFieldClass } from './BossPresetForm'
+import { bossFieldClass } from './BossDetailsFields'
 
 export function BossIncomeDateForm({
   run,

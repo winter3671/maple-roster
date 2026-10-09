@@ -14,7 +14,6 @@ import { NexonService } from '../../backend/modules/nexon/nexon.service'
 import { BossRepository } from '../../backend/modules/bosses/boss.repository'
 import { BossService } from '../../backend/modules/bosses/boss.service'
 import { BossSyncService } from '../../backend/modules/bosses/boss-sync.service'
-import { BossRosterService } from '../../backend/modules/bosses/boss-roster.service'
 import { DropRepository } from '../../backend/modules/drops/drop.repository'
 import { DropService } from '../../backend/modules/drops/drop.service'
 import { dirname, join } from 'node:path'
@@ -67,14 +66,6 @@ export function createServices(
     characters: characterService,
     bosses: bossService,
     bossSync: new BossSyncService(nexonClient, characters, bossService, undefined, history),
-    bossRosters: new BossRosterService(
-      database,
-      bosses,
-      characters,
-      transactions,
-      undefined,
-      history
-    ),
     nexon: new NexonService(
       nexonClient,
       nexonKey,

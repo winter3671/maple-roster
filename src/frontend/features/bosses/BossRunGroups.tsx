@@ -233,7 +233,8 @@ export function BossRunGroups({
                     </div>
                   ) : (
                     <p className="p-5 text-xs text-muted">
-                      이번 주차의 보스가 없습니다. 보스를 추가하거나 프리셋으로 주차를 생성하세요.
+                      이번 주차의 보스가 없습니다. API 클리어를 일괄 확인하거나 보스를 직접
+                      추가하세요.
                     </p>
                   )}
                 </article>

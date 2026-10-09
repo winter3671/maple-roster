@@ -14,7 +14,7 @@ import {
 import { readText } from '../../../shared/validation'
 import { parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
-import { BossDetailsFields, bossFieldClass } from './BossPresetForm'
+import { BossDetailsFields, bossFieldClass } from './BossDetailsFields'
 
 export function BossRunForm({
   run,
@@ -109,7 +109,7 @@ export function BossRunForm({
       </label>
       <p className="text-xs leading-5 text-muted">
         {run.id ? '이 주차의 기록만 수정합니다.' : '선택한 캐릭터의 이 주차에 보스를 추가합니다.'}{' '}
-        프리셋과 다른 주차에는 반영하지 않습니다.
+        다른 주차에는 반영하지 않습니다.
       </p>
       <BossDetailsFields
         id={id}

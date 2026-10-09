@@ -10,7 +10,6 @@ import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { formatMeso } from '../../lib/format'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
-import { BossRosterManager } from './BossRosterManager'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
 import { BossIncomeDateForm } from './BossIncomeDateForm'
@@ -289,17 +288,6 @@ export function BossesPage() {
               드랍 판매는 별도로 기록합니다.
             </p>
           </div>
-          <Button
-            disabled={disabled || !state.presets.length || week > currentBossWeek()}
-            onClick={() =>
-              void state.mutate(
-                () => bossesApi.generate(query),
-                '프리셋으로 주차 기록을 생성했습니다. 기존 기록은 유지했습니다.'
-              )
-            }
-          >
-            프리셋으로 주차 생성
-          </Button>
         </div>
         {state.loading ? (
           <p role="status" className="p-10 text-center text-xs text-muted">
@@ -340,7 +328,7 @@ export function BossesPage() {
             onDelete={(run) =>
               confirm({
                 title: '보스 기록 삭제',
-                description: `${run.characterName}의 ${run.bossName} 기록과 결정석 수익을 이 주차에서 삭제합니다. 프리셋과 다른 주차는 유지됩니다.`,
+                description: `${run.characterName}의 ${run.bossName} 기록과 결정석 수익을 이 주차에서 삭제합니다. 다른 주차는 유지됩니다.`,
                 action: () => bossesApi.removeRun(run.id),
                 message: '주차 보스 기록을 삭제했습니다.'
               })
@@ -350,18 +338,10 @@ export function BossesPage() {
           <EmptyState
             icon="boss"
             title="등록된 캐릭터가 없어요"
-            description="캐릭터를 먼저 등록한 뒤 보스를 추가하거나 묶음 프리셋을 할당하세요."
+            description="캐릭터를 먼저 등록한 뒤 API 클리어를 조회하거나 보스를 직접 추가하세요."
           />
         )}
       </section>
-      <BossRosterManager
-        state={state.rosterState}
-        characters={state.characters}
-        characterId={query.characterId}
-        busy={disabled}
-        error={state.error}
-        mutate={state.mutate}
-      />
       {drops && (
         <DropManager
           source={{ kind: 'boss', id: drops.id }}

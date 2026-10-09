@@ -149,6 +149,15 @@ export class CharacterRepository {
   }
 
   remove(id: string): void {
-    this.database.prepare('DELETE FROM characters WHERE id = ?').run(id)
+    // Retired presets must not prevent deletion; ledger constraints still protect records.
+    this.database.exec('SAVEPOINT remove_character')
+    try {
+      this.database.prepare('DELETE FROM boss_presets WHERE character_id = ?').run(id)
+      this.database.prepare('DELETE FROM characters WHERE id = ?').run(id)
+      this.database.exec('RELEASE remove_character')
+    } catch (error) {
+      this.database.exec('ROLLBACK TO remove_character; RELEASE remove_character')
+      throw error
+    }
   }
 }

@@ -82,7 +82,7 @@ export function BossClearPreview({
         <div className="space-y-3">
           <p className="text-xs leading-6 text-muted">
             API에서 완료한 {members.length}개 보스로 이 주차의 목록을 맞춥니다. 일치하는 기록은
-            유지하고 새 보스를 추가합니다. 프리셋은 변경하지 않습니다. 새 보스의 인원을 확인하세요.
+            유지하고 새 보스를 추가합니다. 새 보스의 인원을 확인하세요.
           </p>
           <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full min-w-[460px] text-left text-xs">

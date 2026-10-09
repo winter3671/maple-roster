@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Character } from '../../../shared/contracts/character.contract'
-import type { BossRosterState } from '../../../shared/contracts/boss-roster.contract'
-import type { BossList, BossPreset, BossQuery } from '../../../shared/contracts/boss.contract'
+import type { BossList, BossQuery } from '../../../shared/contracts/boss.contract'
 import { charactersApi } from '../characters/characters.api'
 import { bossesApi } from './bosses.api'
 
 export function useBosses(query: BossQuery) {
   const [data, setData] = useState<BossList>()
-  const [presets, setPresets] = useState<BossPreset[]>([])
   const [characters, setCharacters] = useState<Character[]>([])
-  const [rosterState, setRosterState] = useState<BossRosterState>({ templates: [], rosters: [] })
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -18,20 +15,12 @@ export function useBosses(query: BossQuery) {
   const lock = useRef(false)
   const sequence = useRef(0)
   const load = useCallback(
-    () =>
-      Promise.all([
-        bossesApi.list(query),
-        bossesApi.presets(query.characterId),
-        charactersApi.list(),
-        bossesApi.rosterState()
-      ]),
+    () => Promise.all([bossesApi.list(query), charactersApi.list()]),
     [query]
   )
-  const apply = ([list, presetList, characterList, rosters]: Awaited<ReturnType<typeof load>>) => {
+  const apply = ([list, characterList]: Awaited<ReturnType<typeof load>>) => {
     setData(list)
-    setPresets(presetList)
     setCharacters(characterList)
-    setRosterState(rosters)
   }
   const reload = useCallback(async () => {
     const request = ++sequence.current
@@ -42,9 +31,7 @@ export function useBosses(query: BossQuery) {
       const result = await load()
       if (active.current && request === sequence.current) {
         setData(result[0])
-        setPresets(result[1])
-        setCharacters(result[2])
-        setRosterState(result[3])
+        setCharacters(result[1])
       }
     } catch (caught) {
       if (active.current && request === sequence.current)
@@ -94,9 +81,7 @@ export function useBosses(query: BossQuery) {
   }
   return {
     data,
-    presets,
     characters,
-    rosterState,
     loading,
     busy,
     error,

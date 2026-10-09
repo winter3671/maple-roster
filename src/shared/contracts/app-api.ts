@@ -22,12 +22,6 @@ import type {
   BossBatchSyncResult
 } from './boss-sync.contract'
 import type {
-  BossMember,
-  BossRosterState,
-  BossTemplate,
-  BossTemplateInput
-} from './boss-roster.contract'
-import type {
   BossDropBatchCreate,
   HuntingDropSaleState,
   DropSource,
@@ -43,9 +37,6 @@ import type { HuntingCreate, HuntingUpdate, HuntingSession, HuntingList } from '
 import type { LedgerList, RecordQuery } from './ledger.contract'
 import type {
   BossList,
-  BossPreset,
-  BossPresetInput,
-  BossPresetUpdate,
   BossQuery,
   BossRun,
   BossRunUpdate,
@@ -114,20 +105,7 @@ export interface AppApi {
       characterId: string
     }) => Promise<ApiResult<BossSyncPreview>>
     applyClears: (input: BossSyncApply) => Promise<ApiResult<BossSyncApplyResult>>
-    rosterState: () => Promise<ApiResult<BossRosterState>>
-    saveTemplate: (input: BossTemplateInput & { id?: string }) => Promise<ApiResult<BossTemplate>>
-    removeTemplate: (id: string) => Promise<ApiResult<null>>
-    assignTemplate: (input: {
-      templateId: string
-      characterIds: string[]
-    }) => Promise<ApiResult<null>>
-    saveRoster: (input: { characterId: string; members: BossMember[] }) => Promise<ApiResult<null>>
-    presets: (characterId?: string) => Promise<ApiResult<BossPreset[]>>
-    createPreset: (input: BossPresetInput) => Promise<ApiResult<BossPreset>>
-    updatePreset: (input: BossPresetUpdate) => Promise<ApiResult<BossPreset>>
-    removePreset: (id: string) => Promise<ApiResult<null>>
     list: (query: BossQuery) => Promise<ApiResult<BossList>>
-    generate: (query: BossQuery) => Promise<ApiResult<BossList>>
     setClear: (input: { id: string; isCleared: boolean }) => Promise<ApiResult<BossRun>>
     updateRun: (input: BossRunUpdate) => Promise<ApiResult<BossRun>>
     updateIncomeDate: (input: BossIncomeDateUpdate) => Promise<ApiResult<BossRun>>

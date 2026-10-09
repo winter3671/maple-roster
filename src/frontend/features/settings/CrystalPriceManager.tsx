@@ -9,7 +9,7 @@ import { unwrap } from '../../lib/api'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
-import { bossFieldClass } from '../bosses/BossPresetForm'
+import { bossFieldClass } from '../bosses/BossDetailsFields'
 
 export function CrystalPriceManager() {
   const prices = useCrystalPrices()
