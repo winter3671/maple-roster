@@ -69,6 +69,7 @@ const api: AppApi = {
   },
   system: { getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.systemGetInfo) },
   characters: {
+    avatar: (id) => ipcRenderer.invoke(IPC_CHANNELS.charactersAvatar, id),
     list: () => ipcRenderer.invoke(IPC_CHANNELS.charactersList),
     create: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersCreate, input),
     update: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersUpdate, input),

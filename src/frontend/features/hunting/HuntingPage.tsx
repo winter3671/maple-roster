@@ -121,6 +121,7 @@ export function HuntingPage() {
             </p>
           ) : state.data?.sessions.length ? (
             <HuntingSessionList
+              characters={state.characters}
               sessions={state.data.sessions}
               busy={state.busy}
               onDrops={setDrops}

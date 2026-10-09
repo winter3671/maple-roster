@@ -1,6 +1,7 @@
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import type { Character } from '../../../shared/contracts/character.contract'
 import type { NexonProfile } from '../../../shared/contracts/nexon.contract'
+import { characterImageUrl } from '../../../shared/character-image'
 
 function mapRow(row: Record<string, SQLOutputValue>): Character {
   return {
@@ -20,6 +21,7 @@ function mapRow(row: Record<string, SQLOutputValue>): Character {
                   level: Number(row.nexon_level),
                   job: String(row.nexon_job),
                   guild: String(row.nexon_guild),
+                  imageUrl: characterImageUrl(row.nexon_image_url),
                   fetchedAt: String(row.nexon_fetched_at)
                 }
               : null
@@ -35,6 +37,7 @@ export function characterIdentity(name: string, world: string): string {
 
 export class CharacterRepository {
   private readonly supportsProfiles: boolean
+  private readonly supportsImages: boolean
   constructor(
     private readonly database: DatabaseSync,
     private readonly now: () => Date = () => new Date()
@@ -43,13 +46,17 @@ export class CharacterRepository {
       .prepare('PRAGMA table_info(characters)')
       .all()
       .some((row) => row.name === 'nexon_ocid')
+    this.supportsImages = database
+      .prepare('PRAGMA table_info(characters)')
+      .all()
+      .some((row) => row.name === 'nexon_image_url')
   }
   private expireProfiles(): void {
     if (!this.supportsProfiles) return
     const before = new Date(this.now().getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
     this.database
       .prepare(
-        'UPDATE characters SET nexon_level=NULL, nexon_job=NULL, nexon_guild=NULL, nexon_fetched_at=NULL WHERE nexon_fetched_at <= ?'
+        `UPDATE characters SET nexon_level=NULL, nexon_job=NULL, nexon_guild=NULL, nexon_fetched_at=NULL${this.supportsImages ? ', nexon_image_url=NULL' : ''} WHERE nexon_fetched_at <= ?`
       )
       .run(before)
   }
@@ -83,7 +90,7 @@ export class CharacterRepository {
   saveProfile(id: string, profile: NexonProfile): void {
     this.database
       .prepare(
-        `UPDATE characters SET name=?, world=?, identity_key=?, nexon_ocid=?, nexon_level=?, nexon_job=?, nexon_guild=?, nexon_fetched_at=?, updated_at=? WHERE id=?`
+        `UPDATE characters SET name=?, world=?, identity_key=?, nexon_ocid=?, nexon_level=?, nexon_job=?, nexon_guild=?, nexon_fetched_at=?, updated_at=?${this.supportsImages ? ', nexon_image_url=?' : ''} WHERE id=?`
       )
       .run(
         profile.name,
@@ -95,13 +102,14 @@ export class CharacterRepository {
         profile.guild,
         profile.fetchedAt,
         profile.fetchedAt,
+        ...(this.supportsImages ? [characterImageUrl(profile.imageUrl)] : []),
         id
       )
   }
   unlink(id: string): void {
     this.database
       .prepare(
-        'UPDATE characters SET nexon_ocid=NULL, nexon_level=NULL, nexon_job=NULL, nexon_guild=NULL, nexon_fetched_at=NULL WHERE id=?'
+        `UPDATE characters SET nexon_ocid=NULL, nexon_level=NULL, nexon_job=NULL, nexon_guild=NULL, nexon_fetched_at=NULL${this.supportsImages ? ', nexon_image_url=NULL' : ''} WHERE id=?`
       )
       .run(id)
   }

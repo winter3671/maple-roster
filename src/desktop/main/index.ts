@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, safeStorage } from 'electron'
+import { app, BrowserWindow, dialog, safeStorage, nativeImage } from 'electron'
 import { join } from 'node:path'
 import { createServices, type Services } from './bootstrap'
 import { registerHandlers } from './ipc/register-handlers'
@@ -10,9 +10,11 @@ import electronUpdater from 'electron-updater'
 import { UpdateService } from './update.service'
 import { requireIdleUpdate } from './ipc/register-routes'
 import { AppError } from '../../shared/errors'
+import { CharacterAvatarService } from './character-avatar.service'
 
 let services: Services | undefined
 let updates: UpdateService | undefined
+let avatars: CharacterAvatarService | undefined
 let backupTimer: ReturnType<typeof setInterval> | undefined
 
 // 테스트 실행은 일반 장부와 분리된 저장 위치를 지정할 수 있다.
@@ -31,9 +33,9 @@ app.on('second-instance', () => {
 })
 
 async function openApp(): Promise<void> {
-  if (!services || !updates) throw new Error('저장소를 준비하지 못했습니다.')
+  if (!services || !updates || !avatars) throw new Error('저장소를 준비하지 못했습니다.')
   const window = createWindow()
-  registerHandlers(window, services, updates)
+  registerHandlers(window, services, updates, avatars)
   await loadWindow(window)
 }
 
@@ -63,6 +65,10 @@ app
       keyStore
     )
     services.automaticBackup.check()
+    avatars = new CharacterAvatarService(
+      (id) => services!.characters.list().find((row) => row.id === id),
+      (data) => nativeImage.createFromBuffer(data)
+    )
     updates = new UpdateService(
       app.getVersion(),
       app.isPackaged && process.platform === 'win32' ? electronUpdater.autoUpdater : undefined,

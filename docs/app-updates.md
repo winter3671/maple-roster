@@ -33,13 +33,13 @@ git push origin v0.2.0
 
 ```bash
 npm version patch --no-git-tag-version
-# src/shared/release-notes.json에 v0.2.1 내역을 먼저 작성
+# src/shared/release-notes.json에 v0.2.2 내역을 먼저 작성
 npm run release:notes
 git add .
 git commit -m "chore: 앱 패치 버전 갱신"
 git push
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 GitHub의 **Actions → Windows release**에서 성공을 확인하고 **Releases**에서 공개 정식 릴리스를 확인한다. 워크플로는 설치 EXE·EXE의 blockmap·`latest.yml`을 먼저 드래프트 릴리스에 모두 올린 뒤 공개한다. 업로드 실패 시 드래프트 상태에 남고, 공개 단계 실패 시 오류로 끝나므로 파일을 확인한 뒤 복구한다. 같은 태그의 기존 릴리스가 있으면 임의로 덮어쓰지 않는다. `GH_TOKEN`은 작업에 제공되는 GitHub 토큰만 사용하며 개인 토큰이나 넥슨 API 키를 앱에 넣지 않는다.

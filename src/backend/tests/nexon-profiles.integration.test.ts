@@ -19,6 +19,7 @@ describe('캐릭터 OCID 연결과 프로필 갱신', () => {
     character_class: string
     character_level: number
     character_guild_name: string | null
+    character_image?: string | null
   }
   beforeEach(() => {
     current = new Date('2026-10-08T00:00:00Z')
@@ -27,7 +28,11 @@ describe('캐릭터 OCID 연결과 프로필 갱신', () => {
       world_name: '루나',
       character_class: '아크',
       character_level: 280,
-      character_guild_name: '검증길드'
+      character_guild_name: '검증길드',
+      character_image:
+        'https://open.api.nexon.com/static/maplestory/character/look/' +
+        'A'.repeat(2048) +
+        '?wmotion=W00'
     }
     database = openDatabase(':memory:')
     repository = new CharacterRepository(database, () => current)
@@ -46,6 +51,29 @@ describe('캐릭터 OCID 연결과 프로필 갱신', () => {
     )
   })
   afterEach(() => database.close())
+  it('캐릭터 이미지를 등록·갱신하며 API 연결 해제 시 제거한다', async () => {
+    const first = await service.register('first-ocid')
+    expect(first.character.nexon?.profile?.imageUrl).toBe(profile.character_image)
+    profile.character_image =
+      'https://open.api.nexon.com/static/maplestory/character/look/new-avatar'
+    await service.syncProfiles({ force: true })
+    expect(repository.find(first.character.id)?.nexon?.profile?.imageUrl).toBe(
+      profile.character_image
+    )
+    repository.unlink(first.character.id)
+    expect(
+      database.prepare('SELECT nexon_image_url FROM characters WHERE id=?').get(first.character.id)
+        ?.nexon_image_url
+    ).toBeNull()
+  })
+  it('이미지 URL이 없거나 허용되지 않아도 프로필 조회는 성공하고 기본 아이콘을 사용한다', async () => {
+    profile.character_image = 'https://example.com/avatar.png'
+    const first = await service.register('first-ocid')
+    expect(first.character.nexon?.profile?.imageUrl).toBeNull()
+    delete profile.character_image
+    await service.syncProfiles({ force: true })
+    expect(repository.find(first.character.id)?.nexon?.profile?.imageUrl).toBeNull()
+  })
   it('기존 캐릭터를 연결하고 ID·메모·숨김을 유지하며 프로필을 DB에 저장한다', async () => {
     const manual = characters.create({
       name: profile.character_name,
@@ -155,9 +183,17 @@ describe('캐릭터 OCID 연결과 프로필 갱신', () => {
     })
     expect(
       database
-        .prepare('SELECT nexon_level,nexon_job,nexon_guild,nexon_fetched_at FROM characters')
+        .prepare(
+          'SELECT nexon_level,nexon_job,nexon_guild,nexon_fetched_at,nexon_image_url FROM characters'
+        )
         .get()
-    ).toEqual({ nexon_level: null, nexon_job: null, nexon_guild: null, nexon_fetched_at: null })
+    ).toEqual({
+      nexon_level: null,
+      nexon_job: null,
+      nexon_guild: null,
+      nexon_fetched_at: null,
+      nexon_image_url: null
+    })
     expect((await service.syncProfiles({ force: false })).items[0].status).toBe('updated')
     expect(repository.find(first.character.id)?.nexon?.profile?.level).toBe(280)
   })

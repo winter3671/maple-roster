@@ -9,6 +9,7 @@ export interface NexonCharacter {
   level: number
 }
 export interface NexonProfile extends NexonCharacter {
+  imageUrl?: string | null
   guild: string
   fetchedAt: string
 }

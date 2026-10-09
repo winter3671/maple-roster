@@ -9,13 +9,16 @@ import { registerRoutes } from './register-routes'
 import { registerBackupHandlers } from './backup.handlers'
 import { registerLedgerHandlers } from './ledger.handlers'
 import type { UpdateService } from '../update.service'
+import type { CharacterAvatarService } from '../character-avatar.service'
 
 export function registerHandlers(
   window: BrowserWindow,
   services: Services,
-  updates: UpdateService
+  updates: UpdateService,
+  avatars: CharacterAvatarService
 ): void {
   const disposeUpdates = registerRoutes(window, [
+    [IPC_CHANNELS.charactersAvatar, (id) => avatars.get(id)],
     [IPC_CHANNELS.updatesStatus, () => updates.status()],
     [IPC_CHANNELS.updatesCheck, () => updates.check()],
     [IPC_CHANNELS.updatesDownload, () => updates.download()],

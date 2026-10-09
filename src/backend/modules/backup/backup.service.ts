@@ -9,6 +9,7 @@ import { bossWeek } from '../../../shared/boss-period'
 import { validateBossSelection } from '../../../shared/boss-catalog'
 import { parseBossMembers } from '../../../shared/contracts/boss-roster.contract'
 import { readOcid } from '../../../shared/contracts/nexon.contract'
+import { characterImageUrl, MAX_CHARACTER_IMAGE_URL_LENGTH } from '../../../shared/character-image'
 import type {
   BackupCounts,
   BackupPreview,
@@ -126,6 +127,12 @@ function validateRelations(database: DatabaseSync, tables: Tables): void {
     )
       invalid()
     if (row.nexon_ocid !== null) readOcid(row.nexon_ocid)
+    if (
+      row.nexon_image_url !== null &&
+      (row.nexon_fetched_at === null ||
+        characterImageUrl(row.nexon_image_url) !== row.nexon_image_url)
+    )
+      invalid()
     if (
       row.nexon_fetched_at !== null &&
       (row.nexon_ocid === null ||
@@ -264,7 +271,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, schemaVersion(this.database)].includes(raw.schemaVersion as number)
+        ![7, 8, 9, 10, 11, schemaVersion(this.database)].includes(raw.schemaVersion as number)
       )
         throw new AppError(
           'VALIDATION_ERROR',
@@ -278,6 +285,7 @@ export class BackupService {
       const tables = readObject(raw.tables)
       const older = raw.schemaVersion === 7 || raw.schemaVersion === 8
       const legacyExpense = Number(raw.schemaVersion) < 10
+      const legacyImages = Number(raw.schemaVersion) < 11
       const expectedTables = TABLES.filter(
         (table) =>
           !(older && table === 'crystal_price_history') &&
@@ -300,15 +308,20 @@ export class BackupService {
         if (!Array.isArray(rows) || (total += rows.length) > 200000) invalid()
         for (const entry of rows as unknown[]) {
           const row = readObject(entry)
+          const schemaNames =
+            legacyImages && table === 'characters'
+              ? names.filter((name) => name !== 'nexon_image_url')
+              : names
           const expectedNames =
             raw.schemaVersion === 7 && table === 'boss_runs'
-              ? names.filter((name) => name !== 'party_size_needs_review')
+              ? schemaNames.filter((name) => name !== 'party_size_needs_review')
               : legacyExpense && table === 'ledger_entries'
-                ? names.filter((name) => name !== 'manual_expense_id')
-                : names
+                ? schemaNames.filter((name) => name !== 'manual_expense_id')
+                : schemaNames
           if (Object.keys(row).sort().join(',') !== [...expectedNames].sort().join(',')) invalid()
           if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
           if (legacyExpense && table === 'ledger_entries') row.manual_expense_id = null
+          if (legacyImages && table === 'characters') row.nexon_image_url = null
           for (const [name, value] of Object.entries(row)) {
             if (value === null) continue
             if (types.get(name) === 'INTEGER' && typeof value !== 'number') invalid()
@@ -319,7 +332,12 @@ export class BackupService {
             }
             if (
               typeof value !== 'string' ||
-              value.length > (name === 'members_json' ? 20000 : 1000)
+              value.length >
+                (name === 'members_json'
+                  ? 20000
+                  : name === 'nexon_image_url'
+                    ? MAX_CHARACTER_IMAGE_URL_LENGTH
+                    : 1000)
             )
               invalid()
             if (name === 'id' || name.endsWith('_id')) readId(value)

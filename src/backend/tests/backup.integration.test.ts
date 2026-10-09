@@ -48,6 +48,10 @@ describe('JSON 장부 백업과 전체 복원', () => {
       job: '아크',
       level: 280,
       guild: '길드',
+      imageUrl:
+        'https://open.api.nexon.com/static/maplestory/character/look/' +
+        'A'.repeat(2048) +
+        '/backup-avatar',
       fetchedAt: now.toISOString()
     })
     const template = rosters.saveTemplate({
@@ -94,6 +98,35 @@ describe('JSON 장부 백업과 전체 복원', () => {
     characters.setHidden({ id: characterId, isHidden: true })
   })
   afterEach(() => database.close())
+  it('이미지 URL을 백업·복원하고 이전 10번 백업은 기존 기록을 유지하며 이미지 없이 복원한다', () => {
+    const content = backup.export()
+    database.exec('UPDATE characters SET nexon_image_url=NULL')
+    backup.restore({ previewId: backup.prepare(content, '이미지.json').id })
+    expect(characters.list()[0].nexon?.profile?.imageUrl).toContain('/backup-avatar')
+    const legacy = JSON.parse(content)
+    legacy.schemaVersion = 10
+    for (const row of legacy.tables.characters) delete row.nexon_image_url
+    backup.restore({ previewId: backup.prepare(JSON.stringify(legacy), '이전10.json').id })
+    expect(characters.list()[0]).toMatchObject({
+      id: characterId,
+      notes: '보존 메모',
+      nexon: { profile: { imageUrl: null } }
+    })
+  })
+  it('백업의 임의 이미지 주소와 프로필 없는 이미지를 거부한다', () => {
+    for (const image of [
+      'https://example.com/avatar.png',
+      'javascript:alert(1)',
+      'https://open.api.nexon.com/api/avatar'
+    ]) {
+      const file = JSON.parse(backup.export())
+      file.tables.characters[0].nexon_image_url = image
+      expect(() => backup.prepare(JSON.stringify(file), '잘못된이미지.json')).toThrow()
+    }
+    const file = JSON.parse(backup.export())
+    file.tables.characters[0].nexon_fetched_at = null
+    expect(() => backup.prepare(JSON.stringify(file), '고립된이미지.json')).toThrow()
+  })
   const tables = () => JSON.parse(backup.export()).tables
   it('인원 미확인 상태를 백업·복원하고 이전 DB 버전 백업은 기존 확인 상태로 변환한다', () => {
     database.exec('UPDATE boss_runs SET party_size_needs_review=1')
@@ -105,6 +138,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     expect(bosses.list({ date: '2026-10-15' }).runs[0].partySizeNeedsReview).toBe(true)
     file.schemaVersion = 7
     delete file.tables.crystal_price_history
+    for (const row of file.tables.characters) delete row.nexon_image_url
     delete file.tables.manual_expenses
     for (const row of file.tables.ledger_entries) delete row.manual_expense_id
     for (const row of file.tables.boss_runs) delete row.party_size_needs_review

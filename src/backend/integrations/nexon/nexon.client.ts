@@ -1,4 +1,5 @@
 import { AppError } from '../../../shared/errors'
+import { characterImageUrl } from '../../../shared/character-image'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { shiftDate } from '../../../shared/boss-period'
 import type { SchedulerBoss } from '../../../shared/contracts/boss-sync.contract'
@@ -78,6 +79,7 @@ export class NexonClient {
     const row = object(await this.request('character/basic', { ocid }))
     return {
       ...character(row, ocid),
+      imageUrl: characterImageUrl(row.character_image),
       guild: row.character_guild_name === null ? '' : text(row.character_guild_name, 100, true),
       fetchedAt: new Date().toISOString()
     }

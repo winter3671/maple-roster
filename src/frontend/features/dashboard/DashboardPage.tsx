@@ -9,6 +9,7 @@ import { useDashboard } from './useDashboard'
 import { DashboardBreakdown } from './DashboardBreakdown'
 import { RecordFilters } from '../../components/RecordFilters'
 import { useCharacters } from '../characters/useCharacters'
+import { CharacterAvatar } from '../../components/CharacterAvatar'
 import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import { getKstDate } from '../../../shared/dates'
 
@@ -110,6 +111,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         <DashboardBreakdown
           key={`breakdown:${query.from}:${query.to}:${query.characterId ?? ''}`}
           data={state.data}
+          characters={characters.characters}
           onCharacter={(id) => setQuery({ ...query, characterId: id })}
         />
       )}
@@ -129,11 +131,17 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
             <div className="divide-y divide-line px-6">
               {state.data.recent.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between gap-4 py-5">
-                  <div>
-                    <p className="break-all text-xs font-semibold">{entry.characterName}</p>
-                    <p className="mt-2 text-[11px] text-muted">
-                      {entry.date} · {entry.characterWorld} · {ledgerLabel(entry)}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <CharacterAvatar
+                      character={characters.characters.find((row) => row.id === entry.characterId)}
+                      name={entry.characterName}
+                    />
+                    <div>
+                      <p className="break-all text-xs font-semibold">{entry.characterName}</p>
+                      <p className="mt-2 text-[11px] text-muted">
+                        {entry.date} · {entry.characterWorld} · {ledgerLabel(entry)}
+                      </p>
+                    </div>
                   </div>
                   <p
                     className={`shrink-0 text-xs font-semibold tabular-nums ${entry.direction === 'income' ? 'text-brand' : 'text-expense'}`}

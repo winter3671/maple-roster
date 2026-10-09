@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  charactersAvatar: 'characters:avatar',
   updatesStatus: 'updates:status',
   updatesCheck: 'updates:check',
   updatesDownload: 'updates:download',

@@ -20,6 +20,42 @@ describe('캐릭터 로컬 저장', () => {
     service = new CharacterService(new CharacterRepository(database))
   })
 
+  it('이미 적용한 11번 DB의 이미지·연결·메모를 유지하면서 긴 이미지 URL을 저장할 수 있게 업그레이드한다', () => {
+    const character = service.create({
+      name: '이전이미지캐릭터',
+      world: '루나',
+      notes: '유지할 메모'
+    })
+    const repository = new CharacterRepository(database)
+    const profile = {
+      ocid: 'image-test-ocid',
+      name: character.name,
+      world: character.world,
+      level: 280,
+      job: '아크',
+      guild: '',
+      fetchedAt: new Date().toISOString(),
+      imageUrl: 'https://open.api.nexon.com/static/maplestory/character/look/old-avatar'
+    }
+    repository.saveProfile(character.id, profile)
+    database.exec(`ALTER TABLE characters RENAME COLUMN nexon_image_url TO new_image_url;
+      ALTER TABLE characters ADD COLUMN nexon_image_url TEXT CHECK(nexon_image_url IS NULL OR length(nexon_image_url) <= 1000);
+      UPDATE characters SET nexon_image_url = new_image_url;
+      ALTER TABLE characters DROP COLUMN new_image_url;
+      DELETE FROM schema_migrations WHERE version=12;`)
+    database.close()
+    database = openDatabase(path)
+    const upgraded = new CharacterRepository(database)
+    expect(upgraded.find(character.id)).toMatchObject({
+      notes: '유지할 메모',
+      nexon: { ocid: profile.ocid, profile: { imageUrl: profile.imageUrl } }
+    })
+    const long = 'https://open.api.nexon.com/static/maplestory/character/look/' + 'A'.repeat(2048)
+    upgraded.saveProfile(character.id, { ...profile, imageUrl: long })
+    expect(upgraded.find(character.id)?.nexon?.profile?.imageUrl).toBe(long)
+    expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+  })
+
   afterEach(() => {
     if (database.isOpen) database.close()
     const target = resolve(directory)
@@ -39,7 +75,7 @@ describe('캐릭터 로컬 저장', () => {
     database = openDatabase(path)
     service = new CharacterService(new CharacterRepository(database))
     expect(service.list()).toEqual([created])
-    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(10)
+    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(12)
   })
 
   it('앞뒤 공백과 Unicode 표현을 정규화한다', () => {

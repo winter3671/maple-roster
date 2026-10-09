@@ -1,6 +1,6 @@
 {
   "name": "maple-roster",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "메이플스토리 캐릭터별 보스·사냥 수익 기록장",
   "main": "./out/main/index.js",

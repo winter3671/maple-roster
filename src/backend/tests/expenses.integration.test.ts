@@ -192,6 +192,7 @@ describe('직접 지출 장부', () => {
   it.each([7, 8, 9])('이전 %i번 백업은 빈 직접 지출로 복원한다', (version) => {
     const file = JSON.parse(backup.export())
     file.schemaVersion = version
+    for (const row of file.tables.characters) delete row.nexon_image_url
     delete file.tables.manual_expenses
     if (version < 9) delete file.tables.crystal_price_history
     for (const row of file.tables.ledger_entries) delete row.manual_expense_id

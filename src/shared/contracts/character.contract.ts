@@ -14,7 +14,13 @@ export interface Character extends CharacterInput {
   updatedAt: string
   nexon?: {
     ocid: string
-    profile: { level: number; job: string; guild: string; fetchedAt: string } | null
+    profile: {
+      level: number
+      job: string
+      guild: string
+      fetchedAt: string
+      imageUrl?: string | null
+    } | null
   }
 }
 

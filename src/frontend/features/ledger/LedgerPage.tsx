@@ -5,6 +5,7 @@ import { FinancialSummary } from '../../components/FinancialSummary'
 import { RecordFilters } from '../../components/RecordFilters'
 import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
 import { useCharacters } from '../characters/useCharacters'
+import { CharacterAvatar } from '../../components/CharacterAvatar'
 import { useLedger } from './useLedger'
 import { ledgerApi } from './ledger.api'
 import { groupLedgerIncome } from '../../../shared/ledger-income'
@@ -269,10 +270,20 @@ export function LedgerPage() {
                   <tr key={entry.id} className="border-b border-line last:border-0">
                     <td className="px-6 py-4">{entry.date}</td>
                     <td className="px-6 py-4">
-                      <span className="block font-medium">{entry.characterName}</span>
-                      <span className="mt-1 block text-[11px] text-muted">
-                        {entry.characterWorld}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <CharacterAvatar
+                          character={characters.characters.find(
+                            (row) => row.id === entry.characterId
+                          )}
+                          name={entry.characterName}
+                        />
+                        <div>
+                          <span className="block font-medium">{entry.characterName}</span>
+                          <span className="mt-1 block text-[11px] text-muted">
+                            {entry.characterWorld}
+                          </span>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span>{ledgerLabel(entry)}</span>

@@ -27,8 +27,8 @@ export default defineConfig(({ command }) => ({
         transformIndexHtml(html) {
           const policy =
             command === 'serve'
-              ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:* ws://127.0.0.1:*"
-              : "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'"
+              ? "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://open.api.nexon.com/static/maplestory/character/look/; connect-src 'self' ws://localhost:* ws://127.0.0.1:*"
+              : "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://open.api.nexon.com/static/maplestory/character/look/; connect-src 'self'"
           return html.replace('__CONTENT_SECURITY_POLICY__', policy)
         }
       }

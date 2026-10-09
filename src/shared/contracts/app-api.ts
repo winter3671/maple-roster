@@ -147,6 +147,7 @@ export interface AppApi {
     getInfo: () => Promise<AppInfo>
   }
   characters: {
+    avatar: (id: string) => Promise<ApiResult<string | null>>
     list: () => Promise<ApiResult<Character[]>>
     create: (input: CharacterInput) => Promise<ApiResult<Character>>
     update: (input: CharacterUpdate) => Promise<ApiResult<Character>>

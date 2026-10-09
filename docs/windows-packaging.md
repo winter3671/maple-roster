@@ -18,7 +18,7 @@ npm run package:win
 
 | 결과                     | 위치                                       |
 | ------------------------ | ------------------------------------------ |
-| 설치 파일                | `release/Maple-Roster-Setup-0.2.0-x64.exe` |
+| 설치 파일                | `release/Maple-Roster-Setup-0.2.1-x64.exe` |
 | 설치 전 확인용 실행 파일 | `release/win-unpacked/Maple Roster.exe`    |
 
 설치 파일 이름은 `package.json`의 버전에 따라 바뀝니다. 실행 폴더를 다른 곳으로 옮길 때는 EXE만 복사하지 말고 `win-unpacked` 전체를 옮겨야 합니다. `release`는 Git에서 제외합니다.

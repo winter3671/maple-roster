@@ -1,15 +1,19 @@
 import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
 import { formatMeso, formatMinutes } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
+import type { Character } from '../../../shared/contracts/character.contract'
+import { CharacterAvatar } from '../../components/CharacterAvatar'
 
 export function HuntingSessionList({
   sessions,
+  characters,
   busy,
   onEdit,
   onDrops,
   onRemove
 }: {
   sessions: HuntingSession[]
+  characters: Character[]
   busy: boolean
   onEdit: (session: HuntingSession) => void
   onDrops: (session: HuntingSession) => void
@@ -24,16 +28,22 @@ export function HuntingSessionList({
           className="rounded-xl border border-line p-5"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="break-all text-sm font-semibold">
-                {session.characterName}
-                <span className="ml-2 text-[11px] font-normal text-muted">
-                  {session.characterWorld}
-                </span>
-              </h3>
-              <p className="mt-2 text-xs text-muted">
-                {session.date} · {formatMinutes(session.minutes)}
-              </p>
+            <div className="flex items-center gap-3">
+              <CharacterAvatar
+                character={characters.find((row) => row.id === session.characterId)}
+                name={session.characterName}
+              />
+              <div>
+                <h3 className="break-all text-sm font-semibold">
+                  {session.characterName}
+                  <span className="ml-2 text-[11px] font-normal text-muted">
+                    {session.characterWorld}
+                  </span>
+                </h3>
+                <p className="mt-2 text-xs text-muted">
+                  {session.date} · {formatMinutes(session.minutes)}
+                </p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" disabled={busy} onClick={() => onDrops(session)}>
