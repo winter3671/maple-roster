@@ -31,17 +31,15 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
   const [error, setError] = useState<string | null>(null)
   const [recordNodestones, setRecordNodestones] = useState((initial?.nodestones ?? 0) > 0)
   const id = useId()
-  const options = characters.filter(
-    (character) => !character.isHidden || character.id === initial?.characterId
-  )
+  const options = characters
   useEffect(() => {
     if (!initial)
       setDraft((current) =>
-        characters.some((character) => !character.isHidden && character.id === current.characterId)
+        characters.some((character) => character.id === current.characterId)
           ? current
           : {
               ...current,
-              characterId: characters.find((character) => !character.isHidden)?.id ?? ''
+              characterId: characters[0]?.id ?? ''
             }
       )
   }, [characters, initial])
@@ -96,7 +94,6 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
           {options.map((character) => (
             <option key={character.id} value={character.id}>
               {character.name} · {character.world}
-              {character.isHidden ? ' (숨김)' : ''}
             </option>
           ))}
         </select>

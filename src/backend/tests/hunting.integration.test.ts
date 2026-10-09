@@ -108,15 +108,14 @@ describe('사냥 회차와 거래 장부', () => {
     hunting.update({ ...session, cost: 0 })
     expect(ledger.list(query).entries).toHaveLength(1)
   })
-  it('조회 기간과 캐릭터로 필터링하며 숨긴 캐릭터 기록도 유지한다', () => {
+  it('조회 기간과 캐릭터로 필터링하며 캐릭터 기록을 유지한다', () => {
     hunting.create(input())
     const other = characters.create({ name: '부캐', world: '루나' })
     hunting.create(input({ characterId: other.id, date: '2026-09-30' }))
-    characters.setHidden({ id: character.id, isHidden: true })
     expect(hunting.list(query).sessions).toHaveLength(1)
     expect(hunting.list({ ...query, characterId: other.id }).sessions).toHaveLength(0)
     expect(ledger.list(query).summary.net).toBe(140000000)
-    expect(() => hunting.create(input())).toThrow('다시 표시')
+    expect(hunting.create(input()).characterId).toBe(character.id)
   })
   it('이름·월드를 수정해도 이전 거래의 월드는 보존한다', () => {
     const session = hunting.create(input())
@@ -159,7 +158,7 @@ describe('사냥 회차와 거래 장부', () => {
   it('연결 캐릭터 삭제를 막고 회차 삭제 시 거래만 함께 지운다', () => {
     const first = hunting.create(input())
     hunting.create(input())
-    expect(() => characters.remove(character.id)).toThrow('숨김 기능')
+    expect(() => characters.remove(character.id)).toThrow('장부 기록')
     hunting.remove(first.id)
     expect(hunting.list(query).sessions).toHaveLength(1)
     expect(ledger.list(query).entries).toHaveLength(2)
@@ -201,7 +200,7 @@ describe('사냥 회차와 거래 장부', () => {
     const upgraded = openDatabase(legacyPath)
     try {
       expect(new CharacterRepository(upgraded).list()[0].name).toBe('기존캐릭터')
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(13)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(14)
       expect(upgraded.prepare('SELECT * FROM hunting_sessions').all()).toHaveLength(0)
     } finally {
       upgraded.close()

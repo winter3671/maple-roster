@@ -8,7 +8,6 @@ export function registerCharacterHandlers(window: BrowserWindow, services: Servi
     [IPC_CHANNELS.charactersList, () => services.characters.list()],
     [IPC_CHANNELS.charactersCreate, (input: unknown) => services.characters.create(input)],
     [IPC_CHANNELS.charactersUpdate, (input: unknown) => services.characters.update(input)],
-    [IPC_CHANNELS.charactersSetHidden, (input: unknown) => services.characters.setHidden(input)],
     [IPC_CHANNELS.charactersRemove, (input: unknown) => services.characters.remove(input)]
   ] as const
 

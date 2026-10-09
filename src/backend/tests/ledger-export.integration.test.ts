@@ -74,11 +74,10 @@ describe('조회 조건을 반영하는 거래 CSV', () => {
       shareMode: 'equal',
       manualShare: null
     })
-    characters.setHidden({ id: second, isHidden: true })
     ledger = new LedgerService(ledgers)
   })
   afterEach(() => database.close())
-  it('기간·캐릭터·수입일을 적용하고 숨긴 캐릭터도 전체 내보내기에 포함한다', () => {
+  it('기간·캐릭터·수입일을 적용하고 모든 캐릭터를 전체 내보내기에 포함한다', () => {
     const before = database.prepare('SELECT * FROM ledger_entries ORDER BY id').all()
     const query = { from: '2026-10-01', to: '2026-10-15' }
     const all = ledger.exportCsv(query),

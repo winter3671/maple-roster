@@ -34,7 +34,7 @@ export function WeeklyPage() {
   const [data, setData] = useState<WeeklyOverview>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [showHidden, setShowHidden] = useState(false)
+  const [showPrevious, setShowPrevious] = useState(false)
   const alive = useRef(false),
     pending = useRef(false)
   const load = useCallback(async (sync: boolean) => {
@@ -63,29 +63,32 @@ export function WeeklyPage() {
       clearInterval(timer)
     }
   }, [load])
-  const rows = data?.characters.filter((row) => showHidden || !row.isHidden) ?? []
+  const selected = showPrevious ? data?.previous : data
+  const rows = selected?.characters ?? []
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-line bg-surface p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-sm font-semibold">이번 주 콘텐츠</h2>
+            <h2 className="text-sm font-semibold">{showPrevious ? '지난주' : '이번 주'} 콘텐츠</h2>
             <p className="mt-2 text-xs text-muted">
-              {data ? `${data.week} (목) ~ ${data.end} (수)` : '주차 확인 중…'} · 한국 시간 목요일
-              00시 초기화
+              {selected ? `${selected.week} (목) ~ ${selected.end} (수)` : '주차 확인 중…'} · 한국
+              시간 목요일 00시 초기화
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-xs text-muted">
-              <input
-                type="checkbox"
-                checked={showHidden}
-                onChange={(event) => setShowHidden(event.target.checked)}
-              />
-              숨김 포함
-            </label>
+            <select
+              aria-label="주간 콘텐츠 주차"
+              value={showPrevious ? 'previous' : 'current'}
+              disabled={busy}
+              onChange={(event) => setShowPrevious(event.target.value === 'previous')}
+              className="rounded-lg border border-line bg-surface px-3 py-2 text-xs"
+            >
+              <option value="current">이번 주</option>
+              <option value="previous">지난주</option>
+            </select>
             <Button
-              disabled={busy || !data?.characters.some((row) => row.connected)}
+              disabled={busy || showPrevious || !data?.characters.some((row) => row.connected)}
               onClick={() => void load(true)}
             >
               {busy ? '조회 중…' : '전체 새로고침'}
@@ -96,7 +99,13 @@ export function WeeklyPage() {
           전체 새로고침으로 등록된 API 캐릭터를 일괄 확인합니다. 지하수로·플래그는 이번 주 참여
           기록과 점수를 표시합니다.
         </p>
-        <p className="mt-1 text-[11px] leading-5 text-muted">앱을 재실행하면 다시 조회해 주세요.</p>
+        <p className="mt-1 text-[11px] leading-5 text-muted">
+          조회 결과는 재실행 후에도 유지됩니다. 이번 주와 지난주만 보관하며, 2주 전 기록은 자동
+          삭제합니다.
+          {showPrevious
+            ? ' 지난주는 저장된 기록만 표시합니다.'
+            : ' 최신 점수는 전체 새로고침으로 확인하세요.'}
+        </p>
         {error && (
           <p role="alert" className="mt-3 text-xs text-expense">
             {error}
@@ -124,10 +133,7 @@ export function WeeklyPage() {
                   return (
                     <tr key={row.characterId} className="border-t border-line align-top">
                       <td className="px-5 py-4">
-                        <p className="font-semibold">
-                          {row.name}
-                          {row.isHidden ? ' (숨김)' : ''}
-                        </p>
+                        <p className="font-semibold">{row.name}</p>
                         <p className="mt-1 text-muted">{row.world}</p>
                       </td>
                       <td className="px-5 py-4">
@@ -158,7 +164,7 @@ export function WeeklyPage() {
           <EmptyState
             icon="weekly"
             title="표시할 캐릭터가 없어요"
-            description="캐릭터 관리에서 캐릭터를 등록하거나 숨김 포함을 선택해 주세요."
+            description="캐릭터 관리에서 캐릭터를 등록해 주세요."
           />
         )}
       </section>

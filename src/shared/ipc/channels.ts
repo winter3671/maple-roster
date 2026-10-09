@@ -53,7 +53,6 @@ export const IPC_CHANNELS = {
   charactersList: 'characters:list',
   charactersCreate: 'characters:create',
   charactersUpdate: 'characters:update',
-  charactersSetHidden: 'characters:set-hidden',
   charactersRemove: 'characters:remove',
   huntingList: 'hunting:list',
   huntingCreate: 'hunting:create',

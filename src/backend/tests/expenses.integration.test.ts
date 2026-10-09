@@ -203,20 +203,19 @@ describe('직접 지출 장부', () => {
     expect(ledger.list(query).summary.net).toBe(0)
     expect(db.prepare('SELECT * FROM manual_expenses').all()).toEqual([])
   })
-  it('캐릭터 서버가 바뀌어도 같은 캐릭터의 과거 기록 서버를 보존하고 숨긴 기록은 수정 가능하다', () => {
+  it('캐릭터 서버가 바뀌어도 같은 캐릭터의 과거 기록 서버를 보존하며 다른 캐릭터로 수정할 수 있다', () => {
     const saved = expenses.create(input())
     characters.update({ id: characterId, name: '새이름', world: '스카니아', notes: '' })
-    characters.setHidden({ id: characterId, isHidden: true })
     expenses.update({ ...saved, amount: 100 })
     expect(ledger.list(query).entries[0]).toMatchObject({
       characterName: '새이름',
       characterWorld: '루나',
       amount: 100
     })
-    expect(() => expenses.create(input())).toThrow('숨긴 캐릭터')
+    expect(expenses.create(input()).characterWorld).toBe('스카니아')
     const other = characters.create({ name: '부캐', world: '루나' })
     const otherExpense = expenses.create(input({ characterId: other.id }))
-    expect(() => expenses.update({ ...otherExpense, characterId })).toThrow('숨긴 캐릭터')
+    expect(expenses.update({ ...otherExpense, characterId }).characterId).toBe(characterId)
   })
   it.each([
     { amount: 0 },

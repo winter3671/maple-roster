@@ -1,9 +1,4 @@
-import type {
-  Character,
-  CharacterInput,
-  CharacterUpdate,
-  CharacterVisibility
-} from './character.contract'
+import type { Character, CharacterInput, CharacterUpdate } from './character.contract'
 import type { ApiResult } from '../errors'
 import type { WeeklyOverview } from './weekly.contract'
 import type { DashboardStats } from './dashboard.contract'
@@ -136,7 +131,6 @@ export interface AppApi {
     list: () => Promise<ApiResult<Character[]>>
     create: (input: CharacterInput) => Promise<ApiResult<Character>>
     update: (input: CharacterUpdate) => Promise<ApiResult<Character>>
-    setHidden: (input: CharacterVisibility) => Promise<ApiResult<Character>>
     remove: (id: string) => Promise<ApiResult<null>>
   }
   hunting: {

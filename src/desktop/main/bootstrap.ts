@@ -24,6 +24,7 @@ import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.
 
 import { ExpenseService } from '../../backend/modules/ledger/expense.service'
 import { WeeklyService } from '../../backend/modules/weekly/weekly.service'
+import { WeeklyRepository } from '../../backend/modules/weekly/weekly.repository'
 
 export function createServices(
   version: string,
@@ -60,7 +61,7 @@ export function createServices(
       () => backup.export()
     ),
     prices,
-    weekly: new WeeklyService(nexonClient, characters),
+    weekly: new WeeklyService(nexonClient, characters, undefined, new WeeklyRepository(database)),
     backup,
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,

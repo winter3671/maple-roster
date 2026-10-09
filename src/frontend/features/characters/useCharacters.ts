@@ -104,11 +104,6 @@ export function useCharacters() {
       mutate(() => charactersApi.create(input), '캐릭터를 등록했습니다.'),
     update: (id: string, input: CharacterInput) =>
       mutate(() => charactersApi.update({ id, ...input }), '캐릭터 정보를 수정했습니다.'),
-    setHidden: (character: Character) =>
-      mutate(
-        () => charactersApi.setHidden({ id: character.id, isHidden: !character.isHidden }),
-        character.isHidden ? '캐릭터를 다시 표시합니다.' : '캐릭터를 숨겼습니다.'
-      ),
     remove: (id: string) => mutate(() => charactersApi.remove(id), '캐릭터를 삭제했습니다.')
   }
 }

@@ -151,7 +151,6 @@ describe('API 보스 클리어 미리보기와 반영', () => {
   }
   it('빈 주차의 등록 캐릭터만 일괄 조회하고 새 보스를 1인으로 등록하며 반복 수익을 만들지 않는다', async () => {
     const second = linkedCharacter('두번째')
-    new CharacterService(characters).setHidden({ id: second.id, isHidden: true })
     const unlinked = new CharacterService(characters).create({
       name: '수동캐릭터',
       world: '루나',

@@ -75,7 +75,7 @@ describe('캐릭터 로컬 저장', () => {
     database = openDatabase(path)
     service = new CharacterService(new CharacterRepository(database))
     expect(service.list()).toEqual([created])
-    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(13)
+    expect(database.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(14)
   })
 
   it('앞뒤 공백과 Unicode 표현을 정규화한다', () => {
@@ -109,9 +109,8 @@ describe('캐릭터 로컬 저장', () => {
     expect(service.list()).toHaveLength(0)
   })
 
-  it('수정과 숨김 후에도 내부 ID와 생성 시각을 유지한다', () => {
+  it('수정 후에도 내부 ID와 생성 시각을 유지한다', () => {
     const original = service.create({ name: '원래이름', world: '월드', notes: '' })
-    service.setHidden({ id: original.id, isHidden: true })
     const updated = service.update({
       id: original.id,
       name: '새이름',
@@ -121,19 +120,17 @@ describe('캐릭터 로컬 저장', () => {
     expect(updated).toMatchObject({
       id: original.id,
       createdAt: original.createdAt,
-      isHidden: true,
+
       name: '새이름',
       world: '새월드',
       notes: '수정'
     })
-    service.setHidden({ id: original.id, isHidden: false })
-    expect(service.list()[0].isHidden).toBe(false)
+    expect(service.list()[0]).not.toHaveProperty('isHidden')
   })
 
-  it('숨긴 캐릭터와 중복되는 수정은 기존 기록을 바꾸지 않는다', () => {
+  it('다른 캐릭터와 중복되는 수정은 기존 기록을 바꾸지 않는다', () => {
     const first = service.create({ name: '본캐', world: '월드' })
     const second = service.create({ name: '부캐', world: '월드' })
-    service.setHidden({ id: first.id, isHidden: true })
     expect(() => service.update({ id: second.id, name: '본캐', world: '월드', notes: '' })).toThrow(
       '이미 등록'
     )
@@ -161,7 +158,7 @@ describe('캐릭터 로컬 저장', () => {
       'CREATE TABLE test_records (character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE RESTRICT) STRICT'
     )
     database.prepare('INSERT INTO test_records VALUES (?)').run(character.id)
-    expect(() => service.remove(character.id)).toThrow('숨김 기능')
+    expect(() => service.remove(character.id)).toThrow('장부 기록')
     expect(service.list()).toHaveLength(1)
     expect(database.prepare('SELECT * FROM test_records').all()).toHaveLength(1)
   })

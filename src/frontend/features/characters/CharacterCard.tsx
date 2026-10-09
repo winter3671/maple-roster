@@ -6,7 +6,6 @@ interface CharacterCardProps {
   character: Character
   busy: boolean
   onEdit: () => void
-  onHide: () => void
   onRemove: () => void
   onSync: () => void
   onUnlink: () => void
@@ -16,7 +15,6 @@ export function CharacterCard({
   character,
   busy,
   onEdit,
-  onHide,
   onRemove,
   onSync,
   onUnlink
@@ -24,7 +22,7 @@ export function CharacterCard({
   return (
     <article
       aria-label={`${character.name} · ${character.world}`}
-      className={`rounded-xl border border-line p-5 ${character.isHidden ? 'bg-canvas' : 'bg-surface'}`}
+      className="rounded-xl border border-line bg-surface p-5"
     >
       <div className="flex flex-wrap items-center gap-6">
         <CharacterAvatar character={character} size="large" />
@@ -34,11 +32,6 @@ export function CharacterCard({
             <span className="rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-medium text-brand">
               {character.world}
             </span>
-            {character.isHidden && (
-              <span className="rounded-full border border-line px-2 py-1 text-[10px] text-muted">
-                숨김
-              </span>
-            )}
           </div>
           {character.nexon?.profile && (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
@@ -96,9 +89,6 @@ export function CharacterCard({
         )}
         <Button variant="secondary" onClick={onEdit} disabled={busy}>
           수정
-        </Button>
-        <Button variant="secondary" onClick={onHide} disabled={busy}>
-          {character.isHidden ? '다시 표시' : '숨기기'}
         </Button>
         <button
           type="button"

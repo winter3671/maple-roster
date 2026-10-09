@@ -224,7 +224,7 @@ export function LedgerPage() {
                 characters.loading ||
                 exporting ||
                 saving ||
-                !characters.characters.some((row) => !row.isHidden)
+                !characters.characters.length
               }
               onClick={() => {
                 setEditor('new')

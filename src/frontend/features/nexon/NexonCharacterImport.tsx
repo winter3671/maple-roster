@@ -234,7 +234,7 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
                       </span>
                       <span className="mt-1 block text-xs text-muted">
                         Lv. {row.level} · {row.job}
-                        {saved ? (existing?.isHidden ? ' · 등록됨 (숨김)' : ' · 이미 등록됨') : ''}
+                        {saved ? ' · 이미 등록됨' : ''}
                         {!saved && existing ? ' · 기존 캐릭터에 API 연결' : ''}
                       </span>
                     </label>

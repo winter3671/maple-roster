@@ -95,7 +95,6 @@ describe('JSON 장부 백업과 전체 복원', () => {
       shareMode: 'equal',
       manualShare: null
     })
-    characters.setHidden({ id: characterId, isHidden: true })
   })
   afterEach(() => database.close())
   it('이미지 URL을 백업·복원하고 이전 10번 백업은 기존 기록을 유지하며 이미지 없이 복원한다', () => {
@@ -128,6 +127,21 @@ describe('JSON 장부 백업과 전체 복원', () => {
     expect(() => backup.prepare(JSON.stringify(file), '고립된이미지.json')).toThrow()
   })
   const tables = () => JSON.parse(backup.export()).tables
+  it('이전 백업의 숨김 캐릭터도 표시하며 복원할 때 단기 주간 캐시는 비운다', () => {
+    const file = JSON.parse(backup.export())
+    file.schemaVersion = 13
+    file.tables.characters[0].is_hidden = 1
+    database
+      .prepare('INSERT INTO weekly_content_snapshots VALUES (?,?,?,?,?)')
+      .run(characterId, '2026-10-15', 'fake-backup-ocid', '[]', now.toISOString())
+    const preview = backup.prepare(JSON.stringify(file), '이전13.json')
+    backup.restore({ previewId: preview.id })
+    expect(characters.list()[0].id).toBe(characterId)
+    expect(characters.list()[0]).not.toHaveProperty('isHidden')
+    expect(database.prepare('SELECT is_hidden FROM characters').get()?.is_hidden).toBe(0)
+    expect(database.prepare('SELECT * FROM weekly_content_snapshots').all()).toEqual([])
+    expect(bosses.list({ date: '2026-10-15' }).runs[0].settlement?.amount).toBe(60)
+  })
   it('인원 미확인 상태를 백업·복원하고 이전 DB 버전 백업은 기존 확인 상태로 변환한다', () => {
     database.exec('UPDATE boss_runs SET party_size_needs_review=1')
     const file = JSON.parse(backup.export())
@@ -155,7 +169,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     file.schemaVersion = 7
     expect(() => backup.prepare(JSON.stringify(file), '잘못된이전.json')).toThrow('올바르지')
   })
-  it('모든 기록·연결·ID·숨김·프리셋·수동 수익을 그대로 백업하고 전체 복원한다', () => {
+  it('모든 기록·연결·ID·프리셋·수동 수익을 그대로 백업하고 전체 복원한다', () => {
     const content = backup.export(),
       original = tables()
     expect(Object.keys(JSON.parse(content))).toEqual([
@@ -191,7 +205,6 @@ describe('JSON 장부 백업과 전체 복원', () => {
     expect(tables()).toEqual(original)
     expect(JSON.parse(saveRecovery.mock.calls[0][0]).tables).toEqual(before)
     expect(characters.list()[0]).toMatchObject({
-      isHidden: true,
       notes: '보존 메모',
       nexon: { ocid: 'fake-backup-ocid' }
     })

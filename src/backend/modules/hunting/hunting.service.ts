@@ -52,11 +52,6 @@ export class HuntingService {
       }
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      if (character.isHidden)
-        throw new AppError(
-          'VALIDATION_ERROR',
-          '숨긴 캐릭터는 다시 표시한 뒤 새 기록을 추가해 주세요.'
-        )
       const timestamp = this.now().toISOString()
       const session: HuntingSession = {
         ...input,
@@ -91,8 +86,6 @@ export class HuntingService {
         )
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      if (character.isHidden && input.characterId !== current.characterId)
-        throw new AppError('VALIDATION_ERROR', '숨긴 캐릭터로 기록을 옮길 수 없습니다.')
       const session: HuntingSession = {
         ...current,
         ...input,

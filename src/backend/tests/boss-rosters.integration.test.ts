@@ -133,17 +133,14 @@ describe('보스 묶음과 캐릭터별 독립 할당', () => {
     ).toThrow('난이도')
     expect(bosses.presets(first)).toHaveLength(2)
   })
-  it('없는 캐릭터·숨김 캐릭터가 섞인 일괄 할당은 전체 롤백한다', () => {
+  it('없는 캐릭터가 섞인 일괄 할당은 전체 롤백한다', () => {
     const template = rosters.saveTemplate({ name: '기본', members })
     expect(() =>
       rosters.assign({ templateId: template.id, characterIds: [first, randomUUID()] })
     ).toThrow('찾을 수')
     expect(bosses.presets(first)).toEqual([])
-    characters.setHidden({ id: second, isHidden: true })
-    expect(() =>
-      rosters.assign({ templateId: template.id, characterIds: [first, second] })
-    ).toThrow('숨김')
-    expect(rosters.state().rosters).toEqual([])
+    rosters.assign({ templateId: template.id, characterIds: [first, second] })
+    expect(rosters.state().rosters).toHaveLength(2)
   })
   it('이전 DB의 보스 구성을 마이그레이션하고 과거 기록을 보존한다', () => {
     bosses.createPreset({ characterId: first, bossName: '스우', difficulty: '노멀', partySize: 3 })

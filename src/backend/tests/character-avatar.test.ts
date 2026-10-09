@@ -15,7 +15,7 @@ function fixture() {
     name: '테스트',
     world: '레드',
     notes: '',
-    isHidden: false,
+
     createdAt: '',
     updatedAt: '',
     nexon: {

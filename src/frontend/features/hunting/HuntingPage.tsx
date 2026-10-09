@@ -71,9 +71,9 @@ export function HuntingPage() {
               </Button>
             ))}
           </div>
-          {!state.loading && state.characters.every((character) => character.isHidden) && (
+          {!state.loading && !state.characters.length && (
             <p className="mb-4 rounded-lg bg-brand-soft p-3 text-xs leading-5 text-brand">
-              캐릭터 관리에서 캐릭터를 등록하거나 숨김을 해제해 주세요.
+              캐릭터 관리에서 캐릭터를 등록해 주세요.
             </p>
           )}
           <div hidden={recordMode !== 'quick'}>

@@ -112,7 +112,7 @@ export class NexonService {
     const candidates = all.filter(
       (row) =>
         row.nexon &&
-        (selected ? selected.has(row.id) : !row.isHidden) &&
+        (!selected || selected.has(row.id)) &&
         (input.force ||
           !row.nexon.profile ||
           timestamp - Date.parse(row.nexon.profile.fetchedAt) >= 24 * 60 * 60 * 1000)

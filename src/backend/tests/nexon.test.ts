@@ -218,12 +218,10 @@ describe('API character registration', () => {
       nodestones: 0,
       notes: ''
     })
-    characters.setHidden({ id: existing.id, isHidden: true })
     const result = await service.register(row.ocid)
     expect(result.character).toMatchObject({
       id: existing.id,
-      notes: '보존할 메모',
-      isHidden: true
+      notes: '보존할 메모'
     })
     expect(hunting.list({ from: '2026-10-07', to: '2026-10-08' }).sessions[0].id).toBe(session.id)
     expect(service.status()).toEqual({ configured: true, issue: null })

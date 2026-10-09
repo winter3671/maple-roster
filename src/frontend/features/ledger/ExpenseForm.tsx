@@ -29,9 +29,7 @@ export function ExpenseForm({
   onSave: (input: ExpenseInput, requestId: string) => Promise<boolean>
   onCancel: () => void
 }) {
-  const options = characters.filter(
-    (character) => !character.isHidden || character.id === initial?.characterId
-  )
+  const options = characters
   const [draft, setDraft] = useState(() => ({
     characterId:
       initial?.characterId ??
@@ -109,7 +107,6 @@ export function ExpenseForm({
               {options.map((row) => (
                 <option key={row.id} value={row.id}>
                   {row.name} · {row.world}
-                  {row.isHidden ? ' (숨김)' : ''}
                 </option>
               ))}
             </select>

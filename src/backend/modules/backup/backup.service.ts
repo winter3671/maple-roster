@@ -286,7 +286,9 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, 10, 11, 12, schemaVersion(this.database)].includes(raw.schemaVersion as number)
+        ![7, 8, 9, 10, 11, 12, 13, schemaVersion(this.database)].includes(
+          raw.schemaVersion as number
+        )
       )
         throw new AppError(
           'VALIDATION_ERROR',
@@ -344,6 +346,10 @@ export class BackupService {
           if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
           if (legacyExpense && table === 'ledger_entries') row.manual_expense_id = null
           if (legacyImages && table === 'characters') row.nexon_image_url = null
+          if (table === 'characters') {
+            if (row.is_hidden !== 0 && row.is_hidden !== 1) invalid()
+            row.is_hidden = 0
+          }
           if (legacyPoints && table === 'manual_expenses') {
             row.currency = 'meso'
             row.point_amount = null

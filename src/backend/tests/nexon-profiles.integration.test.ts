@@ -74,19 +74,18 @@ describe('캐릭터 OCID 연결과 프로필 갱신', () => {
     await service.syncProfiles({ force: true })
     expect(repository.find(first.character.id)?.nexon?.profile?.imageUrl).toBeNull()
   })
-  it('기존 캐릭터를 연결하고 ID·메모·숨김을 유지하며 프로필을 DB에 저장한다', async () => {
+  it('기존 캐릭터를 연결하고 ID·메모를 유지하며 프로필을 DB에 저장한다', async () => {
     const manual = characters.create({
       name: profile.character_name,
       world: profile.world_name,
       notes: '내 메모'
     })
-    characters.setHidden({ id: manual.id, isHidden: true })
     const result = await service.register('first-ocid')
     expect(result.alreadyRegistered).toBe(true)
     expect(result.character).toMatchObject({
       id: manual.id,
       notes: '내 메모',
-      isHidden: true,
+
       nexon: {
         ocid: 'first-ocid',
         profile: { level: 280, job: '아크', guild: '검증길드', fetchedAt: current.toISOString() }
@@ -129,19 +128,27 @@ describe('캐릭터 OCID 연결과 프로필 갱신', () => {
     })
     expect(repository.find(first.character.id)).toEqual(first.character)
   })
-  it('자동 갱신은 하루 이상 지난 표시 캐릭터에만 요청하고 반복 호출을 제한한다', async () => {
+  it('자동 갱신은 하루 이상 지난 모든 등록 캐릭터에 요청하고 반복 호출을 제한한다', async () => {
     const first = await service.register('first-ocid')
-    profile = { ...profile, character_name: '숨김캐릭터' }
-    const hidden = await service.register('hidden-ocid')
-    characters.setHidden({ id: hidden.character.id, isHidden: true })
+    profile = { ...profile, character_name: '두번째캐릭터' }
+    const second = await service.register('second-ocid')
     expect((await service.syncProfiles({ force: false })).items).toEqual([])
     current = new Date(current.getTime() + 25 * 60 * 60 * 1000)
     profile = { ...profile, character_name: '연동캐릭터', character_level: 281 }
-    expect((await service.syncProfiles({ force: false })).items).toEqual([
-      { characterId: first.character.id, status: 'updated' }
-    ])
+    transport.mockImplementation(async (input) => {
+      const name =
+        new URL(String(input)).searchParams.get('ocid') === 'second-ocid'
+          ? '두번째캐릭터'
+          : '연동캐릭터'
+      return new Response(JSON.stringify({ ...profile, character_name: name }))
+    })
+    const refreshed = (await service.syncProfiles({ force: false })).items
+    expect(refreshed.map((row) => row.characterId).sort()).toEqual(
+      [first.character.id, second.character.id].sort()
+    )
+    expect(refreshed.every((row) => row.status === 'updated')).toBe(true)
     expect((await service.syncProfiles({ force: false })).items).toEqual([])
-    expect(transport).toHaveBeenCalledTimes(3)
+    expect(transport).toHaveBeenCalledTimes(4)
   })
   it('공통 API 실패는 남은 요청을 중단하고 기존 프로필을 보존한다', async () => {
     const first = await service.register('first-ocid')

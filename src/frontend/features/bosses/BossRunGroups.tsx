@@ -43,9 +43,7 @@ export function BossRunGroups({
     }
     groups.get(key)?.runs.push(run)
   }
-  for (const character of characters.filter(
-    (row) => !row.isHidden && (!characterId || row.id === characterId)
-  )) {
+  for (const character of characters.filter((row) => !characterId || row.id === characterId)) {
     if (!runs.some((run) => run.characterId === character.id))
       groups.set(JSON.stringify([character.world, character.id]), {
         character,
@@ -80,10 +78,7 @@ export function BossRunGroups({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-canvas px-4 py-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h4 className="text-sm font-semibold">
-                        {group.character.name}
-                        {group.character.isHidden ? ' (숨김)' : ''}
-                      </h4>
+                      <h4 className="text-sm font-semibold">{group.character.name}</h4>
                       <span className="text-xs text-muted">
                         {cleared}/{group.runs.length} 완료
                       </span>
@@ -110,7 +105,7 @@ export function BossRunGroups({
                       </Button>
                       <Button
                         variant="secondary"
-                        disabled={busy || !canAdd || group.character.isHidden || count >= 12}
+                        disabled={busy || !canAdd || count >= 12}
                         onClick={() => onAdd(group.character)}
                       >
                         + 보스 추가

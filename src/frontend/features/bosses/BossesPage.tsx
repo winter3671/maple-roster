@@ -218,7 +218,6 @@ export function BossesPage() {
             {state.characters.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.name} · {row.world}
-                {row.isHidden ? ' (숨김)' : ''}
               </option>
             ))}
           </select>
@@ -257,7 +256,7 @@ export function BossesPage() {
           {week} ~ {shiftDate(week, 6)} · 목요일 00시(KST) 기준 · 새로고침하면 등록된 전체 API 연결
           캐릭터의 클리어와 수익을 자동 반영합니다.{' '}
           {canSyncApi
-            ? '캐릭터 필터와 관계없이 숨긴 캐릭터도 확인합니다.'
+            ? '캐릭터 필터와 관계없이 등록된 모든 API 캐릭터를 확인합니다.'
             : '최근 14일 범위 밖은 저장된 기록만 새로고침합니다.'}
         </p>
       </section>

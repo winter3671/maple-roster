@@ -49,8 +49,6 @@ export class BossService {
     return this.transaction.run(() => {
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      if (character.isHidden)
-        throw new AppError('VALIDATION_ERROR', '숨김을 해제한 뒤 프리셋을 추가해 주세요.')
       const bossKey = input.bossName.toLowerCase()
       if (this.repository.presetByKey(input.characterId, bossKey))
         throw new AppError(
@@ -130,7 +128,6 @@ export class BossService {
       )
       for (const preset of this.repository.presets(query.characterId)) {
         const character = this.characters.find(preset.characterId)!
-        if (character.isHidden) continue
         if (existing.has(`${preset.characterId}:${preset.bossKey}`)) continue
         const count = counts.get(preset.characterId) ?? 0
         if (count >= 12)
@@ -188,8 +185,6 @@ export class BossService {
     return this.transaction.run(() => {
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      if (character.isHidden)
-        throw new AppError('VALIDATION_ERROR', '숨김을 해제한 뒤 보스를 추가해 주세요.')
       const existing = this.repository.list(week, character.id)
       if (existing.some((run) => run.bossName === input.bossName))
         throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 주차에 같은 보스가 이미 있습니다.')

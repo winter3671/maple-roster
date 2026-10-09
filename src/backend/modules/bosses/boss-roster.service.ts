@@ -129,8 +129,6 @@ export class BossRosterService {
   private replace(characterId: string, members: BossMember[]): void {
     const character = this.characters.find(characterId)
     if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-    if (character.isHidden)
-      throw new AppError('VALIDATION_ERROR', '숨김을 해제한 뒤 보스 구성을 변경해 주세요.')
     const previous = this.bosses.presets(characterId)
     const timestamp = this.now().toISOString()
     // Weekly run snapshots have no FK to these planning rows and remain untouched.

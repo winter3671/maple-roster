@@ -68,7 +68,6 @@ const api: AppApi = {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.charactersList),
     create: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersCreate, input),
     update: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersUpdate, input),
-    setHidden: (input) => ipcRenderer.invoke(IPC_CHANNELS.charactersSetHidden, input),
     remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.charactersRemove, id)
   },
   hunting: {

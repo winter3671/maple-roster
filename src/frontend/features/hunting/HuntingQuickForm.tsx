@@ -35,14 +35,12 @@ export function HuntingQuickForm({
   const pending = useRef(false)
   const mesosField = useRef<HTMLInputElement>(null)
   const id = useId()
-  const options = characters.filter((character) => !character.isHidden)
+  const options = characters
 
   useEffect(() => {
     if (!characters.length) return
     setCharacterId((current) =>
-      characters.some((character) => character.id === current && !character.isHidden)
-        ? current
-        : (characters.find((character) => !character.isHidden)?.id ?? '')
+      characters.some((character) => character.id === current) ? current : (characters[0]?.id ?? '')
     )
   }, [characters])
 

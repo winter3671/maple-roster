@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 import {
   parseCharacterInput,
   parseCharacterUpdate,
-  parseCharacterVisibility,
   type Character
 } from '../../../shared/contracts/character.contract'
 import { AppError } from '../../../shared/errors'
@@ -23,7 +22,6 @@ export class CharacterService {
     const character: Character = {
       ...input,
       id: randomUUID(),
-      isHidden: false,
       createdAt: timestamp,
       updatedAt: timestamp
     }
@@ -36,14 +34,6 @@ export class CharacterService {
     const current = this.find(input.id)
     this.assertUnique(input.name, input.world, input.id)
     const character = { ...current, ...input, updatedAt: new Date().toISOString() }
-    this.write(() => this.repository.update(character))
-    return character
-  }
-
-  setHidden(value: unknown): Character {
-    const input = parseCharacterVisibility(value)
-    const current = this.find(input.id)
-    const character = { ...current, isHidden: input.isHidden, updatedAt: new Date().toISOString() }
     this.write(() => this.repository.update(character))
     return character
   }
@@ -70,7 +60,7 @@ export class CharacterService {
     if (existing && existing.id !== excludeId)
       throw new AppError(
         'DUPLICATE_CHARACTER',
-        '같은 이름과 월드의 캐릭터가 이미 등록되어 있습니다. 숨긴 캐릭터도 확인해 주세요.'
+        '같은 이름과 월드의 캐릭터가 이미 등록되어 있습니다.'
       )
   }
 
@@ -93,7 +83,7 @@ export class CharacterService {
       )
         throw new AppError(
           'CHARACTER_IN_USE',
-          '장부 기록이 연결된 캐릭터는 삭제할 수 없습니다. 숨김 기능을 사용해 주세요.'
+          '장부 기록이 연결된 캐릭터는 삭제할 수 없습니다. 연결된 기록을 먼저 정리해 주세요.'
         )
       throw error
     }

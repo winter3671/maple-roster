@@ -73,8 +73,6 @@ export class ExpenseService {
       }
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      if (character.isHidden && current?.characterId !== character.id)
-        throw new AppError('VALIDATION_ERROR', '숨긴 캐릭터는 다시 표시한 뒤 지출을 추가해 주세요.')
       const timestamp = this.now().toISOString()
       const expense: Expense = {
         ...input,

@@ -212,8 +212,7 @@ describe('주간 보스와 결정석 장부', () => {
     expect(ledger.list(month).entries).toEqual([])
     expect(() => bosses.createRun({ ...input, difficulty: '하드' })).toThrow('같은 보스')
     expect(() => bosses.createRun({ ...input, date: '2026-10-22' })).toThrow('미래 주차')
-    characters.setHidden({ id: character.id, isHidden: true })
-    expect(() => bosses.createRun({ ...input, bossName: '데미안' })).toThrow('숨김')
+    expect(bosses.createRun({ ...input, bossName: '데미안' }).bossName).toBe('데미안')
   })
 
   it('캐릭터별 주차 추가는 12개까지만 허용한다', () => {
@@ -581,12 +580,11 @@ describe('주간 보스와 결정석 장부', () => {
     expect(ledger.list(month).entries).toHaveLength(0)
     expect(bosses.presets()).toHaveLength(1)
   })
-  it('숨긴 캐릭터는 새 주차에서 제외하고 기존 기록은 조회한다', () => {
+  it('등록된 캐릭터는 새 주차와 기존 주차 모두에서 조회한다', () => {
     run()
-    characters.setHidden({ id: character.id, isHidden: true })
-    expect(bosses.generate({ date: '2026-10-15' }).runs).toHaveLength(0)
+    expect(bosses.generate({ date: '2026-10-15' }).runs).toHaveLength(1)
     expect(bosses.list({ ...query, characterId: character.id }).runs).toHaveLength(1)
-    expect(() => preset({ bossName: '데미안' })).toThrow('숨김')
+    expect(preset({ bossName: '데미안' }).bossName).toBe('데미안')
   })
   it('폐기된 프리셋만 있는 캐릭터는 삭제하고 실제 주차 기록이 있으면 롤백한다', () => {
     preset()
@@ -596,7 +594,7 @@ describe('주간 보스와 결정석 장부', () => {
   })
   it('주차 기록으로 캐릭터 삭제가 막히면 폐기된 프리셋 정리도 롤백한다', () => {
     const record = run()
-    expect(() => characters.remove(character.id)).toThrow('숨김 기능')
+    expect(() => characters.remove(character.id)).toThrow('장부 기록')
     expect(bosses.presets()).toHaveLength(1)
     expect(bosses.list(query).runs[0].id).toBe(record.id)
   })
@@ -604,7 +602,7 @@ describe('주간 보스와 결정석 장부', () => {
     const record = run()
     bosses.removePreset(bosses.presets()[0].id)
     expect(bosses.list(query).runs).toHaveLength(1)
-    expect(() => characters.remove(character.id)).toThrow('숨김 기능')
+    expect(() => characters.remove(character.id)).toThrow('장부 기록')
     bosses.removeRun(record.id)
     characters.remove(character.id)
     expect(characters.list()).toHaveLength(0)
@@ -702,7 +700,7 @@ describe('주간 보스와 결정석 장부', () => {
     old.close()
     const upgraded = openDatabase(file)
     try {
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(13)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(14)
       expect(
         upgraded
           .prepare('SELECT id FROM ledger_entries ORDER BY id')

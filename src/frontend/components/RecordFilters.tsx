@@ -77,7 +77,6 @@ export function RecordFilters({
             {characters.map((character) => (
               <option key={character.id} value={character.id}>
                 {character.name} · {character.world}
-                {character.isHidden ? ' (숨김)' : ''}
               </option>
             ))}
           </select>

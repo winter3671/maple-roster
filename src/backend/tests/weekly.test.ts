@@ -15,7 +15,7 @@ function character(id: string, connected = true): Character {
     name: id,
     world: '레드',
     notes: '',
-    isHidden: false,
+
     createdAt: '',
     updatedAt: '',
     ...(connected ? { nexon: { ocid: id, profile: null } } : {})

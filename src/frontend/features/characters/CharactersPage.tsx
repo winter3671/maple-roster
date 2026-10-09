@@ -10,7 +10,6 @@ import { NexonCharacterImport } from '../nexon/NexonCharacterImport'
 
 export function CharactersPage() {
   const state = useCharacters()
-  const [showHidden, setShowHidden] = useState(false)
   const [editing, setEditing] = useState<Character | null>(null)
   const [deleting, setDeleting] = useState<Character | null>(null)
   const [unlinking, setUnlinking] = useState<Character | null>(null)
@@ -21,8 +20,7 @@ export function CharactersPage() {
       void state.syncProfiles(false)
     }
   }, [state.loading, state.busy, state.error, state.syncProfiles])
-  const visible = state.characters.filter((character) => showHidden || !character.isHidden)
-  const hiddenCount = state.characters.filter((character) => character.isHidden).length
+  const visible = state.characters
 
   return (
     <div className="space-y-5">
@@ -97,15 +95,6 @@ export function CharactersPage() {
               >
                 API 프로필 모두 갱신
               </Button>
-              <label className="flex items-center gap-2 text-xs text-muted">
-                <input
-                  type="checkbox"
-                  checked={showHidden}
-                  onChange={(event) => setShowHidden(event.target.checked)}
-                  className="accent-brand"
-                />
-                숨김 포함{hiddenCount > 0 ? ` (${hiddenCount})` : ''}
-              </label>
               <Button
                 variant="secondary"
                 onClick={() => void state.reload()}
@@ -135,7 +124,6 @@ export function CharactersPage() {
                     state.clearFeedback()
                     setEditing(character)
                   }}
-                  onHide={() => void state.setHidden(character)}
                   onRemove={() => {
                     state.clearFeedback()
                     setDeleting(character)
@@ -146,12 +134,8 @@ export function CharactersPage() {
           ) : (
             <EmptyState
               icon="characters"
-              title={hiddenCount > 0 ? '표시 중인 캐릭터가 없어요' : '첫 캐릭터를 등록해 보세요'}
-              description={
-                hiddenCount > 0
-                  ? '숨김 포함을 선택하면 숨겨둔 캐릭터를 다시 표시할 수 있습니다.'
-                  : '이름과 월드를 입력하면 이곳에 캐릭터가 표시됩니다. 앱을 다시 열어도 기록은 유지됩니다.'
-              }
+              title="첫 캐릭터를 등록해 보세요"
+              description="이름과 월드를 입력하면 이곳에 캐릭터가 표시됩니다. 앱을 다시 열어도 기록은 유지됩니다."
             />
           )}
         </section>
@@ -211,7 +195,7 @@ export function CharactersPage() {
             <strong>{deleting.name}</strong> ({deleting.world}) 캐릭터를 삭제할까요?
           </p>
           <p className="mt-3 text-xs leading-5 text-muted">
-            삭제한 정보는 복구할 수 없습니다. 목록에서만 제외하려면 숨기기를 사용하세요.
+            삭제한 정보는 복구할 수 없습니다. 장부 기록이 연결된 캐릭터는 삭제할 수 없습니다.
           </p>
           {state.error && (
             <p role="alert" className="mt-4 text-xs text-expense">

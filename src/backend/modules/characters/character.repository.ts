@@ -9,7 +9,6 @@ function mapRow(row: Record<string, SQLOutputValue>): Character {
     name: String(row.name),
     world: String(row.world),
     notes: String(row.notes),
-    isHidden: row.is_hidden === 1,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     ...(row.nexon_ocid
@@ -126,7 +125,7 @@ export class CharacterRepository {
         character.world,
         characterIdentity(character.name, character.world),
         character.notes,
-        Number(character.isHidden),
+        0,
         character.createdAt,
         character.updatedAt
       )
@@ -142,7 +141,7 @@ export class CharacterRepository {
         character.world,
         characterIdentity(character.name, character.world),
         character.notes,
-        Number(character.isHidden),
+        0,
         character.updatedAt,
         character.id
       )
