@@ -35,7 +35,7 @@ export function BossIncomeDateForm({
       </p>
       <p className="text-xs leading-6 text-muted">
         수익 {formatMeso(run.settlement?.amount ?? 0)} 메소의 장부 반영일만 변경합니다.
-        보스·인원·금액·인원 확인 상태는 유지하며 거래 내역과 대시보드의 날짜별 합계에 적용됩니다.
+        보스·인원·금액은 유지하며 거래 내역과 대시보드의 날짜별 합계에 적용됩니다.
       </p>
       <label className="block text-xs font-semibold">
         수익 반영일

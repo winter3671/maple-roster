@@ -45,6 +45,7 @@ export function BossesPage() {
   const [apiBusy, setApiBusy] = useState(false)
   const [apiError, setApiError] = useState('')
   const [batchResult, setBatchResult] = useState<BossBatchSyncResult | null>(null)
+  const [partyNotice, setPartyNotice] = useState(false)
   const apiLock = useRef(false),
     mounted = useRef(true),
     liveWeek = useRef(currentBossWeek())
@@ -58,7 +59,7 @@ export function BossesPage() {
   const week = bossWeek(query.date)
   const summary = state.data?.summary
   const modal = Boolean(
-    editingRun || editingIncomeDate || addingCharacter || confirmation || apiPreview
+    editingRun || editingIncomeDate || addingCharacter || confirmation || apiPreview || partyNotice
   )
   const canSyncApi = week <= currentBossWeek() && shiftDate(week, 6) >= shiftDate(getKstDate(), -14)
   async function refreshAll() {
@@ -76,7 +77,10 @@ export function BossesPage() {
         shiftDate(targetWeek, 6) >= shiftDate(getKstDate(), -14)
       ) {
         const result = await bossesApi.syncClears(targetWeek)
-        if (mounted.current) setBatchResult(result)
+        if (mounted.current) {
+          setBatchResult(result)
+          if (result.items.some((item) => (item.added ?? 0) > 0)) setPartyNotice(true)
+        }
       }
     } catch (caught) {
       if (mounted.current)
@@ -112,6 +116,21 @@ export function BossesPage() {
   }
   return (
     <div className="space-y-5">
+      {partyNotice && (
+        <Dialog title="API 보스 클리어 인원 안내" onClose={() => setPartyNotice(false)}>
+          <p className="text-sm leading-6">
+            API에서 새로 등록한 보스는 기본 1인 클리어 기준으로 수익을 계산합니다. 다인 파티로
+            클리어했다면 보스명·난이도·인원을 눌러 클리어 인원을 수정해 주세요.
+          </p>
+          <p className="mt-3 text-xs leading-5 text-muted">
+            넥슨 API는 클리어 인원을 제공하지 않습니다. 기존 기록의 인원과 직접 지정한 인원은
+            유지됩니다.
+          </p>
+          <div className="mt-6 flex justify-end">
+            <Button onClick={() => setPartyNotice(false)}>확인</Button>
+          </div>
+        </Dialog>
+      )}
       {apiBusy && (
         <p role="status" className="rounded-xl bg-brand-soft p-4 text-xs text-brand">
           API 보스 클리어를 조회하고 있습니다. 일괄 확인은 캐릭터별로 순서대로 반영합니다…
@@ -367,11 +386,20 @@ export function BossesPage() {
             busy={state.busy}
             onCancel={() => setApiPreview(null)}
             onReplace={async (members, date) => {
-              const saved = await state.mutate(
-                () => bossesApi.replaceClears(apiPreview.id, members, date),
-                '이 주차를 API 완료 보스 목록으로 맞추고 결정석 수익을 반영했습니다.'
-              )
-              if (saved) setApiPreview(null)
+              let added = 0
+              const saved = await state.mutate(async () => {
+                const result = await bossesApi.replaceClears(apiPreview.id, members, date)
+                added = result.added ?? 0
+              }, '이 주차를 API 완료 보스 목록으로 맞추고 결정석 수익을 반영했습니다.')
+              if (saved) {
+                const newSolo = members.some(
+                  (member) =>
+                    member.partySize === 1 &&
+                    !apiPreview.rows.some((row) => row.bossName === member.bossName)
+                )
+                setApiPreview(null)
+                if (added > 0 && newSolo) setPartyNotice(true)
+              }
             }}
             onApply={async (ids, date) => {
               const saved = await state.mutate(

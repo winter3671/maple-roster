@@ -72,14 +72,16 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     )
   })
   afterEach(() => database.close())
-  it('자동 추가 인원은 미확인 상태이며 반복 조회·메모 수정 후에도 유지되고 명시적 확인은 수익을 보존한다', async () => {
-    await sync.syncAll(query)
+  it('자동 추가는 1인으로 등록하고 반복 조회·메모 수정에 확인 체크나 중복 수익이 필요 없다', async () => {
+    const first = await sync.syncAll(query)
+    expect(first.items[0].added).toBe(1)
     let row = bosses.list(query).runs[0]
-    expect(row).toMatchObject({ partySize: 1, partySizeNeedsReview: true, isCleared: true })
+    expect(row).toMatchObject({ partySize: 1, partySizeNeedsReview: false, isCleared: true })
     const original = ledger.list(month).entries
-    await sync.syncAll(query)
+    const repeated = await sync.syncAll(query)
+    expect(repeated.items[0].added).toBe(0)
     row = bosses.updateRun({ ...row, notes: '인원 확인 전 메모' })
-    expect(row.partySizeNeedsReview).toBe(true)
+    expect(row.partySizeNeedsReview).toBe(false)
     expect(() => bosses.updateRun({ ...row, confirmPartySize: 'true' })).toThrow('인원 확인')
     row = bosses.updateRun({ ...row, confirmPartySize: true })
     expect(row.partySizeNeedsReview).toBe(false)
@@ -87,13 +89,13 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     await sync.syncAll(query)
     expect(bosses.list(query).runs[0].partySizeNeedsReview).toBe(false)
   })
-  it('인원을 수정하면 미확인 표시가 해제되고 장부 금액도 갱신된다', async () => {
+  it('다인 파티로 인원을 수정하면 장부 금액을 갱신하고 재조회에도 유지한다', async () => {
     await sync.syncAll(query)
     const row = bosses.list(query).runs[0]
     expect(() => bosses.updateRun({ ...row, partySize: 7, confirmPartySize: true })).toThrow(
       '파티 인원'
     )
-    expect(bosses.list(query).runs[0].partySizeNeedsReview).toBe(true)
+    expect(bosses.list(query).runs[0].partySizeNeedsReview).toBe(false)
     const updated = bosses.updateRun({ ...row, partySize: 2 })
     expect(updated).toMatchObject({ partySizeNeedsReview: false, partySize: 2 })
     expect(updated.settlement?.amount).toBe(4175000)
@@ -101,7 +103,7 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     await sync.syncAll(query)
     expect(bosses.list(query).runs[0]).toMatchObject({ partySize: 2, partySizeNeedsReview: false })
   })
-  it('수동으로 설정한 기존 인원은 확인 상태를 유지하되 자동 난이도 변경으로 추정한 인원은 확인이 필요하다', async () => {
+  it('기존 인원을 유지하고 자동 난이도 변경도 개별 확인 상태를 만들지 않는다', async () => {
     run()
     await sync.syncAll(query)
     expect(bosses.list(query).runs[0]).toMatchObject({ partySize: 3, partySizeNeedsReview: false })
@@ -110,7 +112,7 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     contents[0].difficulty = 'hard'
     await sync.syncAll(query)
     expect(bosses.list(query).runs.find((row) => row.bossName === '데미안')).toMatchObject({
-      partySizeNeedsReview: true,
+      partySizeNeedsReview: false,
       difficulty: '하드'
     })
   })

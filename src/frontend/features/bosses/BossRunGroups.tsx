@@ -153,11 +153,6 @@ export function BossRunGroups({
                                       <span className="ml-2 text-muted">
                                         {run.difficulty} · {run.partySize}명
                                       </span>
-                                      {run.partySizeNeedsReview && (
-                                        <span className="ml-2 inline-block rounded-md bg-expense/10 px-2 py-1 text-[11px] font-semibold text-expense">
-                                          인원 확인 필요
-                                        </span>
-                                      )}
                                     </span>
                                   </span>
                                 </button>

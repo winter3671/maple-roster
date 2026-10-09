@@ -38,7 +38,6 @@ export function BossRunForm({
     incomeDate: run.settlement?.date ?? run.week
   })
   const [error, setError] = useState('')
-  const [partyConfirmed, setPartyConfirmed] = useState(false)
   const change = (key: keyof typeof draft, value: string) =>
     setDraft((current) =>
       key === 'bossName'
@@ -68,7 +67,6 @@ export function BossRunForm({
           partySize: parseDigits(draft.partySize)
         }),
         notes: readText(draft.notes, '메모', 500, false, true),
-        confirmPartySize: partyConfirmed,
         ...(run.isCleared ? { incomeDate: draft.incomeDate } : {})
       })
     } catch (caught) {
@@ -124,28 +122,6 @@ export function BossRunForm({
         change={change}
       />
       <div>
-        {run.partySizeNeedsReview && (
-          <div className="mb-4 rounded-lg border border-expense/20 bg-expense/5 p-3 text-xs leading-5">
-            <p>
-              API에서 클리어 인원을 확인할 수 없어 임시 인원으로 수익을 반영했습니다. 다인
-              파티였다면 인원을 변경하세요.
-            </p>
-            <label className="mt-2 flex items-center gap-2 font-semibold">
-              <input
-                type="checkbox"
-                checked={partyConfirmed}
-                disabled={busy}
-                onChange={(event) => setPartyConfirmed(event.target.checked)}
-                className="accent-brand"
-              />
-              클리어 인원을 확인했습니다
-            </label>
-            <p className="mt-1 text-muted">
-              확인 체크 또는 보스·난이도·인원 변경 후 저장하면 표시가 해제됩니다. 메모나 날짜만
-              수정하면 유지됩니다.
-            </p>
-          </div>
-        )}
         {run.isCleared && (
           <label className="mb-4 block text-xs font-semibold">
             수익 반영일

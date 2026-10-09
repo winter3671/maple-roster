@@ -467,8 +467,7 @@ export class BossService {
       week,
       members,
       incomeDate,
-      preserved.map((row) => row.id),
-      false
+      preserved.map((row) => row.id)
     )
   }
   updateRun(value: unknown): BossRun {
