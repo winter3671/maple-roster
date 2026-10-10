@@ -68,7 +68,7 @@ export function useBosses(query: BossQuery) {
       if (active.current)
         setError(
           saved
-            ? '변경은 저장했지만 목록을 불러오지 못했습니다. 새로고침해 주세요.'
+            ? '변경은 저장했지만 목록을 불러오지 못했습니다. 보스 장부 화면에 다시 들어와 주세요.'
             : caught instanceof Error
               ? caught.message
               : '기록을 저장하지 못했습니다.'
