@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import './theme.css';
 
+html {
+  scrollbar-gutter: stable;
+}
+
+html:has(dialog[open]) {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   min-width: 900px;

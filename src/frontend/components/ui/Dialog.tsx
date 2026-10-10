@@ -25,7 +25,7 @@ export function Dialog({ title, children, onClose, busy = false, wide = false }:
         event.preventDefault()
         if (!busy) onClose()
       }}
-      className={`m-auto max-h-[90vh] ${wide ? 'w-[min(95vw,800px)]' : 'w-[min(90vw,520px)]'} overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30`}
+      className={`m-auto max-h-[90vh] ${wide ? 'w-[min(95vw,800px)]' : 'w-[min(90vw,520px)]'} overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30`}
     >
       <div className="flex items-center justify-between border-b border-line px-6 py-5">
         <h2 id={titleId} className="text-base font-semibold">

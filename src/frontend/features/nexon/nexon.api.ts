@@ -3,7 +3,14 @@ import { getBridge } from '../../lib/bridge'
 import type { NexonKeyRegistration } from '../../../shared/contracts/nexon.contract'
 
 export const nexonApi = {
-  openKeyGuide: () => unwrap(getBridge().nexon.openKeyGuide()),
+  openKeyGuide: async () => {
+    const bridge = getBridge()
+    if (typeof bridge.nexon.openKeyGuide !== 'function')
+      throw new Error(
+        '발급 가이드 연결을 적용하려면 앱을 완전히 종료한 뒤 다시 실행해 주세요. 개발 실행 중이라면 터미널에서 Ctrl+C 후 npm run dev로 다시 시작하세요.'
+      )
+    return unwrap(bridge.nexon.openKeyGuide())
+  },
   syncProfiles: (force: boolean, characterIds?: string[]) =>
     unwrap(getBridge().nexon.syncProfiles({ force, characterIds })),
   unlink: (id: string) => unwrap(getBridge().nexon.unlink(id)),
