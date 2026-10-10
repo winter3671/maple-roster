@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  nexonOpenKeyGuide: 'nexon:open-key-guide',
   nexonActivateKey: 'nexon:activate-key',
   nexonRenameKey: 'nexon:rename-key',
   ledgerCreateIncome: 'ledger:create-income',

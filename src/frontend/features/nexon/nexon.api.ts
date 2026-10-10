@@ -3,6 +3,7 @@ import { getBridge } from '../../lib/bridge'
 import type { NexonKeyRegistration } from '../../../shared/contracts/nexon.contract'
 
 export const nexonApi = {
+  openKeyGuide: () => unwrap(getBridge().nexon.openKeyGuide()),
   syncProfiles: (force: boolean, characterIds?: string[]) =>
     unwrap(getBridge().nexon.syncProfiles({ force, characterIds })),
   unlink: (id: string) => unwrap(getBridge().nexon.unlink(id)),

@@ -110,6 +110,7 @@ export interface AppApi {
     removeRun: (id: string) => Promise<ApiResult<null>>
   }
   nexon: {
+    openKeyGuide: () => Promise<ApiResult<null>>
     syncProfiles: (input: {
       force: boolean
       characterIds?: string[]
