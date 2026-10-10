@@ -204,3 +204,5 @@ API 키 없이도 수동 장부를 사용할 수 있습니다. 설정에 저장�
 - [electron-vite 문서](https://electron-vite.org/guide/)
 
 이 프로젝트는 NEXON의 공식 서비스가 아닙니다.
+
+개발 실행과 설치 앱은 장부를 분리합니다. 개발용 저장소는 `%APPDATA%/maple-roster-dev`, 설치 앱은 기존 `%APPDATA%/maple-roster`입니다. 개발 중 DB 구조 변경으로 설치 앱 실행이 막히지 않도록 분리하며 기존 장부는 설치 앱 폴더에 유지합니다. 더 새로운 장부 구조를 만난 설치 앱은 업데이트 전용 화면을 제공합니다. 자세한 규칙은 [앱 업데이트](docs/app-updates.md)를 참고하세요.

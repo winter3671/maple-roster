@@ -32,6 +32,13 @@ const migrations = [
   { version: 14, name: 'weekly_snapshots', sql: weeklySnapshotsSql }
 ]
 
+export class NewerDatabaseError extends Error {
+  constructor() {
+    super('현재 앱보다 새로운 데이터베이스입니다. 최신 버전의 앱을 사용해 주세요.')
+    this.name = 'NewerDatabaseError'
+  }
+}
+
 export function migrate(database: DatabaseSync): void {
   database.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     version INTEGER PRIMARY KEY,
@@ -41,7 +48,7 @@ export function migrate(database: DatabaseSync): void {
   const rows = database.prepare('SELECT version FROM schema_migrations ORDER BY version').all()
   const applied = new Set(rows.map((row) => Number(row.version)))
   if ([...applied].some((version) => version > migrations.length)) {
-    throw new Error('현재 앱보다 새로운 데이터베이스입니다. 최신 버전의 앱을 사용해 주세요.')
+    throw new NewerDatabaseError()
   }
   for (const migration of migrations) {
     if (applied.has(migration.version)) continue

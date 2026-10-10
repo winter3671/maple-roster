@@ -31,10 +31,15 @@ export function createWindow(): BrowserWindow {
   return window
 }
 
-export async function loadWindow(window: BrowserWindow): Promise<void> {
+export async function loadWindow(window: BrowserWindow, recovery = false): Promise<void> {
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
-    await window.loadURL(process.env.ELECTRON_RENDERER_URL)
+    await window.loadURL(
+      `${process.env.ELECTRON_RENDERER_URL}${recovery ? '#update-recovery' : ''}`
+    )
   } else {
-    await window.loadFile(join(outputDir, '../renderer/index.html'))
+    await window.loadFile(
+      join(outputDir, '../renderer/index.html'),
+      recovery ? { hash: 'update-recovery' } : {}
+    )
   }
 }

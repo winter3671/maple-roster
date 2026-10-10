@@ -11,6 +11,11 @@ import { UpdateService } from './update.service'
 import { requireIdleUpdate } from './ipc/register-routes'
 import { AppError } from '../../shared/errors'
 import { CharacterAvatarService } from './character-avatar.service'
+import { dataDirectory } from './data-directory'
+import { NewerDatabaseError } from '../../backend/database/migrate'
+import { backupForRecovery } from './recovery-backup'
+import { registerRoutes } from './ipc/register-routes'
+import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 let services: Services | undefined
 let updates: UpdateService | undefined
@@ -20,7 +25,7 @@ let backupTimer: ReturnType<typeof setInterval> | undefined
 // 테스트 실행은 일반 장부와 분리된 저장 위치를 지정할 수 있다.
 app.setPath(
   'userData',
-  process.env.MAPLE_ROSTER_DATA_DIR || join(app.getPath('appData'), 'maple-roster')
+  dataDirectory(app.getPath('appData'), app.isPackaged, process.env.MAPLE_ROSTER_DATA_DIR)
 )
 
 const singleInstance = app.requestSingleInstanceLock()
@@ -58,12 +63,37 @@ app
       },
       developmentKey
     )
-    services = createServices(
-      app.getVersion(),
-      join(app.getPath('userData'), 'data', 'maple-roster.sqlite'),
-      developmentKey,
-      keyStore
-    )
+    const databasePath = join(app.getPath('userData'), 'data', 'maple-roster.sqlite')
+    try {
+      services = createServices(app.getVersion(), databasePath, developmentKey, keyStore)
+    } catch (error) {
+      if (!(error instanceof NewerDatabaseError)) throw error
+      updates = new UpdateService(
+        app.getVersion(),
+        app.isPackaged && process.platform === 'win32' ? electronUpdater.autoUpdater : undefined,
+        () => {
+          requireIdleUpdate()
+          try {
+            backupForRecovery(databasePath)
+          } catch {
+            throw new AppError(
+              'DATABASE_ERROR',
+              '업데이트 전 장부 백업을 저장하지 못했습니다. 저장 공간과 권한을 확인해 주세요.'
+            )
+          }
+        }
+      )
+      const window = createWindow()
+      const dispose = registerRoutes(window, [
+        [IPC_CHANNELS.updatesStatus, () => updates!.status()],
+        [IPC_CHANNELS.updatesCheck, () => updates!.check()],
+        [IPC_CHANNELS.updatesDownload, () => updates!.download()],
+        [IPC_CHANNELS.updatesInstall, () => updates!.install()]
+      ])
+      window.once('closed', dispose)
+      await loadWindow(window, true)
+      return
+    }
     services.automaticBackup.check()
     avatars = new CharacterAvatarService(
       (id) => services!.characters.list().find((row) => row.id === id),
