@@ -16,6 +16,7 @@ import { NewerDatabaseError } from '../../backend/database/migrate'
 import { backupForRecovery } from './recovery-backup'
 import { registerRoutes } from './ipc/register-routes'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
+import { seedDevelopmentData } from './development-data'
 
 let services: Services | undefined
 let updates: UpdateService | undefined
@@ -48,6 +49,12 @@ app
   .whenReady()
   .then(async () => {
     if (!singleInstance) return
+    if (!app.isPackaged && !process.env.MAPLE_ROSTER_DATA_DIR) {
+      await seedDevelopmentData(
+        join(app.getPath('appData'), 'maple-roster'),
+        app.getPath('userData')
+      )
+    }
     const developmentKey = app.isPackaged
       ? { configured: false, issue: 'missing' as const }
       : readNexonKey(app.getAppPath())
