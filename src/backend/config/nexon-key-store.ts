@@ -51,7 +51,11 @@ export class NexonKeyStore {
           throw new Error('Invalid key storage')
         const accounts = raw.accounts.map((value) => {
           const row = readObject(value)
-          return { id: readId(row.id), label: this.label(row.label), key: this.validate(row.key) }
+          return {
+            id: readId(row.id),
+            label: this.label(row.label, 30),
+            key: this.validate(row.key)
+          }
         })
         if (
           new Set(accounts.map((row) => row.id)).size !== accounts.length ||
@@ -217,8 +221,8 @@ export class NexonKeyStore {
         'API 계정을 찾을 수 없습니다. 설정을 다시 열어 주세요.'
       )
   }
-  private label(value: unknown): string {
-    return readText(value, '계정 이름', 30).normalize('NFC')
+  private label(value: unknown, maxLength = 15): string {
+    return readText(value, '계정 이름', maxLength).normalize('NFC')
   }
   private validate(value: unknown): string {
     if (typeof value !== 'string' || value.length > 4096 || !/^[\x21-\x7e]+$/.test(value.trim()))

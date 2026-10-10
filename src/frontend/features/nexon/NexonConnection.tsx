@@ -135,23 +135,8 @@ export function NexonConnection() {
         <p className="mt-3 text-xs text-expense">환경 파일(.env)의 API 키 형식을 확인해 주세요.</p>
       )}
       <form onSubmit={(event) => void save(event)} className="mt-5 space-y-3">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-xs font-semibold" htmlFor="nexon-account-label">
-              계정 이름
-            </label>
-            <input
-              id="nexon-account-label"
-              value={label}
-              required
-              maxLength={30}
-              disabled={busy || !status?.encryptionAvailable}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder="예: 본계정, 부계정1"
-              className={field}
-            />
-          </div>
-          <div>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="sm:col-span-3">
             <label className="mb-2 block text-xs font-semibold" htmlFor="nexon-api-key">
               넥슨 API 키
             </label>
@@ -166,6 +151,21 @@ export function NexonConnection() {
               disabled={busy || !status?.encryptionAvailable}
               onChange={(event) => setKey(event.target.value)}
               placeholder="발급받은 API 키를 붙여넣으세요"
+              className={field}
+            />
+          </div>
+          <div className="sm:col-span-1">
+            <label className="mb-2 block text-xs font-semibold" htmlFor="nexon-account-label">
+              계정 이름 (최대 15자)
+            </label>
+            <input
+              id="nexon-account-label"
+              value={label}
+              required
+              maxLength={15}
+              disabled={busy || !status?.encryptionAvailable}
+              onChange={(event) => setLabel(event.target.value)}
+              placeholder="예: 본계정, 부계정1"
               className={field}
             />
           </div>
@@ -261,12 +261,12 @@ export function NexonConnection() {
             }}
           >
             <label className="block text-xs font-semibold" htmlFor="nexon-rename-label">
-              새 계정 이름
+              새 계정 이름 (최대 15자)
             </label>
             <input
               id="nexon-rename-label"
               required
-              maxLength={30}
+              maxLength={15}
               disabled={busy}
               value={renaming.label}
               onChange={(event) => setRenaming({ ...renaming, label: event.target.value })}

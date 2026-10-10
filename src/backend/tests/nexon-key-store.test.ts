@@ -99,12 +99,37 @@ describe('암호화 API 키 저장소', () => {
     expect(() => store.save({ label: 'main', key: 'fake-new' })).toThrow('계정 이름')
     expect(() => store.save({ label: '새 계정', key: 'fake-main' })).toThrow('이미 등록된 API 키')
     expect(() => store.save({ label: '', key: 'fake-new' })).toThrow()
-    expect(() => store.save({ label: 'x'.repeat(31), key: 'fake-new' })).toThrow()
+    expect(() => store.save({ label: 'x'.repeat(16), key: 'fake-new' })).toThrow()
+    expect(() => store.rename({ id: other, label: 'x'.repeat(16) })).toThrow()
     expect(() => store.save({ label: '새 계정', key: '키\n' })).toThrow()
     expect(() => store.rename({ id: other, label: 'Main' })).toThrow('계정 이름')
     expect(() => store.activate('00000000-0000-4000-8000-000000000099')).toThrow('찾을 수 없습니다')
     expect(store.status().activeAccountId).toBe(id)
     expect(readFileSync(file)).toEqual(before)
+  })
+  it('기존 긴 계정 이름을 보존하고 새 이름은 15자까지 허용한다', () => {
+    const file = fixture(),
+      id = '00000000-0000-4000-8000-000000000001'
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(
+      file,
+      cipher.encrypt(
+        JSON.stringify({
+          version: 1,
+          activeId: id,
+          accounts: [{ id, label: '가'.repeat(30), key: 'fake-existing-key' }]
+        })
+      )
+    )
+    const store = new NexonKeyStore(file, cipher, missing)
+    expect(store.status().accounts![0].label).toBe('가'.repeat(30))
+    expect(store.getKey()).toBe('fake-existing-key')
+    store.save({ label: '나'.repeat(15), key: 'fake-new-key' })
+    const reopened = new NexonKeyStore(file, cipher, missing)
+    expect(reopened.status().accounts).toHaveLength(2)
+    expect(reopened.status().accounts![0].label).toBe('가'.repeat(30))
+    store.rename({ id, label: '다'.repeat(15) })
+    expect(store.status().accounts![0].label).toBe('다'.repeat(15))
   })
   it('비활성 계정 삭제는 선택을 유지하고 활성 계정 삭제는 남은 계정으로 전환한다', () => {
     const file = fixture(),
