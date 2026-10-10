@@ -20,6 +20,10 @@ export function summarizeHunting(
     timed.flatMap((item) => [item.mesos, item.saleIncome ?? 0, -item.cost])
   )
   return {
+    mesos: sumIntegers(sessions.map((item) => item.mesos)),
+    hourlyMesos: hourlyProfit(sumIntegers(timed.map((item) => item.mesos)), minutes),
+    solFragmentsSold: 0,
+    solFragmentsSaleIncome: 0,
     income,
     expense,
     net: sumIntegers([income, -expense]),

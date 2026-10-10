@@ -40,6 +40,22 @@ describe('사냥 정산', () => {
       summarizeHunting([{ ...session(60, 100), solFragments: 10, nodestones: 5 }])
     ).toMatchObject({ income: 100, solFragments: 10, nodestones: 5 })
   })
+  it('획득 메소와 시간당 메소는 판매 수익과 과거 비용을 제외한다', () => {
+    expect(
+      summarizeHunting([
+        { ...session(30, 100, 50), saleIncome: 900 },
+        { ...session(60, 500), saleIncome: 1000 },
+        session(0, 1000)
+      ])
+    ).toMatchObject({ mesos: 1600, hourlyMesos: 400, income: 3500 })
+    expect(summarizeHunting([])).toMatchObject({
+      mesos: 0,
+      hourlyMesos: null,
+      solFragments: 0,
+      solFragmentsSold: 0,
+      solFragmentsSaleIncome: 0
+    })
+  })
   it('정수 연산 중간값을 안전하게 처리하고 범위 초과를 거부한다', () => {
     expect(hourlyProfit(Number.MAX_SAFE_INTEGER, 60)).toBe(Number.MAX_SAFE_INTEGER)
     expect(() => hourlyProfit(Number.MAX_SAFE_INTEGER, 1)).toThrow('금액 범위')

@@ -157,6 +157,24 @@ export class DropRepository {
     }
     return totals
   }
+  huntingFragmentSales(): Map<string, { quantity: number; income: number }> {
+    const totals = new Map<string, { quantity: number; income: number }>()
+    for (const row of this.database
+      .prepare(
+        `SELECT l.hunting_session_id, s.quantity, s.net_share
+         FROM drop_sales s JOIN drop_lots l ON l.id = s.drop_lot_id
+         WHERE l.hunting_session_id IS NOT NULL AND l.managed_kind = 'sol_fragment'`
+      )
+      .all()) {
+      const id = String(row.hunting_session_id)
+      const current = totals.get(id)
+      totals.set(id, {
+        quantity: sumIntegers([current?.quantity ?? 0, Number(row.quantity)]),
+        income: sumIntegers([current?.income ?? 0, Number(row.net_share)])
+      })
+    }
+    return totals
+  }
   syncHunting(session: HuntingSession): void {
     const source: DropSource = { kind: 'hunting', id: session.id }
     const existing = this.lots(source)

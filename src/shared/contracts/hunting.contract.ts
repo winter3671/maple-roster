@@ -29,6 +29,10 @@ export interface HuntingSession extends HuntingInput {
   saleIncome: number
 }
 export interface HuntingSummary {
+  mesos: number
+  hourlyMesos: number | null
+  solFragmentsSold: number
+  solFragmentsSaleIncome: number
   income: number
   expense: number
   net: number

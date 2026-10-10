@@ -33,6 +33,37 @@ describe('획득 묶음과 드랍 부분 판매', () => {
   let characterId: string, session: HuntingSession, lot: DropLot
   const clock = () => new Date('2026-10-15T00:00:00Z')
   const month = { from: '2026-10-01', to: '2026-10-15' }
+  it('조각 획득·부분 판매·판매 수익을 사냥 날짜와 캐릭터별로 집계하고 젬스톤을 제외한다', () => {
+    const first = sale({ quantity: 2, grossAmount: 200, feeAmount: 0, partySize: 1 })
+    sale({ quantity: 3, grossAmount: 300, feeAmount: 0, partySize: 1 })
+    const node = drops.list(lot.source).lots.find((row) => row.managedKind === 'nodestone')!
+    sale({ lotId: node.id, quantity: 1, grossAmount: 900, feeAmount: 0, partySize: 1 })
+    const query = { from: session.date, to: session.date, characterId }
+    expect(hunting.list(query).summary).toMatchObject({
+      mesos: session.mesos,
+      solFragments: 10,
+      solFragmentsSold: 5,
+      solFragmentsSaleIncome: 500,
+      income: session.mesos + 1400
+    })
+    expect(hunting.list({ from: '2026-10-15', to: '2026-10-15' }).summary).toMatchObject({
+      mesos: 0,
+      solFragments: 0,
+      solFragmentsSold: 0,
+      solFragmentsSaleIncome: 0
+    })
+    expect(hunting.list({ ...query, characterId: randomUUID() }).summary.solFragmentsSold).toBe(0)
+    drops.updateSale({ ...first, quantity: 1, grossAmount: 150 })
+    expect(hunting.list(query).summary).toMatchObject({
+      solFragmentsSold: 4,
+      solFragmentsSaleIncome: 450
+    })
+    drops.cancelSale(first.id)
+    expect(hunting.list(query).summary).toMatchObject({
+      solFragmentsSold: 3,
+      solFragmentsSaleIncome: 300
+    })
+  })
   it('사냥 판매완료·금액 수정·미판매 전환은 장부와 수익에 한 번만 반영한다', () => {
     const input = {
       lotId: lot.id,

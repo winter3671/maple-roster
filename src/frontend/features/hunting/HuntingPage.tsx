@@ -3,7 +3,8 @@ import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
-import { FinancialSummary } from '../../components/FinancialSummary'
+import { HuntingSummaryCards } from './HuntingSummaryCards'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { RecordFilters } from '../../components/RecordFilters'
 import { formatMeso, formatMinutes, thisMonthQuery } from '../../lib/format'
 import { HuntingSessionForm } from './HuntingSessionForm'
@@ -44,11 +45,24 @@ export function HuntingPage() {
         busy={state.loading || state.busy}
         onApply={setQuery}
       />
-      <FinancialSummary summary={summary} loading={state.loading} hideExpense={!summary?.expense} />
-      <p className="text-[11px] leading-5 text-muted">
-        사냥 수익은 사냥 날짜 기준으로 연결된 드랍 판매 내 몫을 포함합니다. 거래 장부와 대시보드는
-        실제 판매일 기준입니다. 미판매 예상 금액은 순수익에서 제외됩니다.
-      </p>
+      <HuntingSummaryCards summary={summary} loading={state.loading} />
+      <div className="text-[11px] leading-5 text-muted">
+        {!state.loading && summary && (
+          <div className="mb-2">
+            <p>
+              총 사냥 수입{' '}
+              <span className="font-semibold text-brand">{formatMeso(summary.income)} 메소</span> ·
+              획득 메소와 모든 사냥 드랍 판매 수익 합산
+            </p>
+            <MesoAmountHint value={summary.income} />
+          </div>
+        )}
+        <p>
+          획득량·판매량·판매 수익은 조회 기간에 사냥한 회차 기준입니다. 기간 밖에 판매한 조각도 해당
+          회차에 포함하며, 코어 젬스톤 판매는 조각 판매 수익에서 제외합니다. 거래 내역과 대시보드는
+          실제 판매일 기준입니다. 미판매 조각은 수입에 포함하지 않습니다.
+        </p>
+      </div>
       <div className="grid items-start gap-5 lg:grid-cols-[300px_1fr]">
         <section className="rounded-2xl border border-line bg-surface p-6">
           <h2 className="text-sm font-semibold">사냥 회차 추가</h2>
@@ -101,9 +115,9 @@ export function HuntingPage() {
                 사냥 회차 <span className="ml-1 text-brand">{summary?.count ?? 0}</span>
               </h2>
               <p className="mt-2 text-[11px] leading-5 text-muted">
-                총 {summary ? formatMinutes(summary.minutes) : '—'} · 시간당 순수익{' '}
-                {summary?.hourlyNet != null
-                  ? `${formatMeso(summary.hourlyNet)} 메소`
+                총 {summary ? formatMinutes(summary.minutes) : '—'} · 시간당 획득 메소{' '}
+                {summary?.hourlyMesos != null
+                  ? `${formatMeso(summary.hourlyMesos)} 메소`
                   : '시간 기록 없음'}
               </p>
             </div>

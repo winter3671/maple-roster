@@ -13,6 +13,7 @@ import { CharacterRepository } from '../characters/character.repository'
 import { LedgerRepository } from '../ledger/ledger.repository'
 import { HuntingRepository } from './hunting.repository'
 import { DropRepository } from '../drops/drop.repository'
+import { sumIntegers } from '../../domain/money'
 
 export class HuntingService {
   constructor(
@@ -29,7 +30,19 @@ export class HuntingService {
     const sessions = this.repository
       .list(parseRecordQuery(value))
       .map((session) => this.withSales(session, income))
-    return { sessions, summary: summarizeHunting(sessions) }
+    const fragmentSales = this.drops.huntingFragmentSales()
+    return {
+      sessions,
+      summary: {
+        ...summarizeHunting(sessions),
+        solFragmentsSold: sumIntegers(
+          sessions.map((session) => fragmentSales.get(session.id)?.quantity ?? 0)
+        ),
+        solFragmentsSaleIncome: sumIntegers(
+          sessions.map((session) => fragmentSales.get(session.id)?.income ?? 0)
+        )
+      }
+    }
   }
 
   create(value: unknown): HuntingSession {
