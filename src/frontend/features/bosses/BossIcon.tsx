@@ -44,7 +44,7 @@ export function BossIcon({
         </span>
       )}
       {entry?.badge && src && failed !== src && (
-        <span className="absolute inset-x-0 bottom-0 bg-ink text-center text-[9px] font-bold leading-4 text-white">
+        <span className="absolute inset-x-0 bottom-0 bg-icon-label text-center text-[9px] font-bold leading-4 text-white">
           {difficulty}
         </span>
       )}

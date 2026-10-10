@@ -8,4 +8,25 @@
   --color-brand: #25765e;
   --color-brand-soft: #edf6f1;
   --color-expense: #b65b47;
+  --color-on-brand: #ffffff;
+  --color-on-expense: #ffffff;
+  --color-icon-label: #202a32;
+}
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-canvas: #14191f;
+  --color-surface: #1d252d;
+  --color-ink: #e8eef3;
+  --color-muted: #a3b1bd;
+  --color-line: #384651;
+  --color-brand: #79d8b2;
+  --color-brand-soft: #223b34;
+  --color-expense: #f49a87;
+  --color-on-brand: #10271d;
+  --color-on-expense: #301712;
 }

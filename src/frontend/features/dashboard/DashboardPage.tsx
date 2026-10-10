@@ -101,7 +101,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
             시작일로 기록하며 보스 장부에서 수정할 수 있습니다.
           </p>
         </div>
-        <span className="shrink-0 rounded-lg bg-white/70 px-3 py-2 text-xs text-brand">
+        <span className="shrink-0 rounded-lg bg-surface/70 px-3 py-2 text-xs text-brand">
           보스·사냥 장부 사용 가능
         </span>
       </section>

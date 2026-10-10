@@ -14,7 +14,7 @@ export function AppLayout({ page, onNavigate, children }: AppLayoutProps) {
     <div className="flex min-h-screen">
       <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface px-4 py-7">
         <div className="flex items-center gap-3 px-3">
-          <span className="rounded-xl bg-brand p-2.5 text-white">
+          <span className="rounded-xl bg-brand p-2.5 text-on-brand">
             <Icon name="leaf" className="size-5" />
           </span>
           <div>

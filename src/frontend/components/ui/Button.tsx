@@ -5,9 +5,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 }
 
 const variants = {
-  primary: 'border-brand bg-brand text-white hover:bg-brand/90',
+  primary: 'border-brand bg-brand text-on-brand hover:bg-brand/90',
   secondary: 'border-line bg-surface text-ink hover:bg-canvas',
-  danger: 'border-expense bg-expense text-white hover:bg-expense/90'
+  danger: 'border-expense bg-expense text-on-expense hover:bg-expense/90'
 }
 
 export function Button({

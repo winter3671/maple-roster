@@ -22,5 +22,5 @@ a:focus-visible {
   outline-offset: 4px;
 }
 ::selection {
-  background: #dcf2e9;
+  background: var(--color-brand-soft);
 }
