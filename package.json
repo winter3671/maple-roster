@@ -1,6 +1,6 @@
 {
   "name": "maple-roster",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "메이플스토리 캐릭터별 수익·지출을 관리하는 데스크톱 가계부",
   "main": "./out/main/index.js",

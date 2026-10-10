@@ -65,7 +65,8 @@ export function DropManager({
   }
   async function mutate(
     action: () => Promise<ApiResult<unknown>>,
-    message = '저장했습니다. 판매 수량과 연결 수입을 반영했습니다.'
+    message = '저장했습니다. 판매 수량과 연결 수입을 반영했습니다.',
+    closeAfterSave = false
   ): Promise<boolean> {
     if (lock.current) return false
     lock.current = true
@@ -79,6 +80,18 @@ export function DropManager({
         return false
       }
       retry.current = null
+      if (closeAfterSave) {
+        try {
+          await onChanged()
+        } catch {
+          setError(
+            '저장했지만 사냥 목록을 갱신하지 못했습니다. 창을 닫고 사냥 장부를 새로고침해 주세요.'
+          )
+          return true
+        }
+        if (alive.current) onClose()
+        return true
+      }
       setEditor(undefined)
       setBossAdding(false)
       setConfirmation(undefined)
@@ -142,7 +155,8 @@ export function DropManager({
                   () => window.maple.drops.setHuntingSale(input),
                   input.sold
                     ? '판매완료로 저장하고 사냥 수익에 반영했습니다.'
-                    : '미판매로 저장했습니다.'
+                    : '미판매로 저장했습니다.',
+                  true
                 )
               }
             />
@@ -152,9 +166,6 @@ export function DropManager({
               획득한 드랍이 없습니다. 사냥 회차에서 조각·젬스톤 수량을 입력해 주세요.
             </p>
           )}
-          <Button variant="secondary" disabled={busy || loading} onClick={() => void load()}>
-            새로고침
-          </Button>
         </div>
       </Dialog>
     )
