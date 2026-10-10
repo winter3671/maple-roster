@@ -4,7 +4,6 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { HuntingSummaryCards } from './HuntingSummaryCards'
-import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { RecordFilters } from '../../components/RecordFilters'
 import { formatMeso, formatMinutes, thisMonthQuery } from '../../lib/format'
 import { HuntingSessionForm } from './HuntingSessionForm'
@@ -47,16 +46,6 @@ export function HuntingPage() {
       />
       <HuntingSummaryCards summary={summary} loading={state.loading} />
       <div className="text-[11px] leading-5 text-muted">
-        {!state.loading && summary && (
-          <div className="mb-2">
-            <p>
-              총 사냥 수입{' '}
-              <span className="font-semibold text-brand">{formatMeso(summary.income)} 메소</span> ·
-              획득 메소와 모든 사냥 드랍 판매 수익 합산
-            </p>
-            <MesoAmountHint value={summary.income} />
-          </div>
-        )}
         <p>
           획득량·판매량·판매 수익은 조회 기간에 사냥한 회차 기준입니다. 기간 밖에 판매한 조각도 해당
           회차에 포함하며, 코어 젬스톤 판매는 조각 판매 수익에서 제외합니다. 거래 내역과 대시보드는

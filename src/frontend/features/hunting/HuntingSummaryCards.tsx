@@ -20,19 +20,20 @@ export function HuntingSummaryCards({
       label: '솔 에르다 조각 획득량',
       value: summary?.solFragments,
       unit: '개',
-      detail: `미판매 ${formatMeso((summary?.solFragments ?? 0) - (summary?.solFragmentsSold ?? 0))}개`
-    },
-    {
-      label: '솔 에르다 조각 판매량',
-      value: summary?.solFragmentsSold,
-      unit: '개',
-      detail: '조회한 사냥 회차에서 얻은 조각의 판매 수량'
+      detail: `판매 ${formatMeso(summary?.solFragmentsSold ?? 0)}개 · 미판매 ${formatMeso((summary?.solFragments ?? 0) - (summary?.solFragmentsSold ?? 0))}개`
     },
     {
       label: '솔 에르다 조각 판매 수익',
       value: summary?.solFragmentsSaleIncome,
       unit: '메소',
       detail: '판매가 완료된 조각의 실제 수입'
+    },
+    {
+      label: '총 사냥 수입',
+      value: summary?.income,
+      unit: '메소',
+      detail: '획득 메소 + 모든 사냥 드랍 판매 수익',
+      emphasized: true
     }
   ]
   return (
@@ -41,9 +42,16 @@ export function HuntingSummaryCards({
       className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
     >
       {cards.map((card) => (
-        <article key={card.label} className="min-w-0 rounded-2xl border border-line bg-surface p-5">
-          <p className="text-xs text-muted">{card.label}</p>
-          <p className="mb-1 mt-4 break-all text-xl font-semibold tabular-nums text-brand">
+        <article
+          key={card.label}
+          className={`min-w-0 rounded-2xl border p-5 ${card.emphasized ? 'border-brand/30 bg-brand-soft' : 'border-line bg-surface'}`}
+        >
+          <p className={`text-xs ${card.emphasized ? 'font-semibold text-brand' : 'text-muted'}`}>
+            {card.label}
+          </p>
+          <p
+            className={`mb-1 mt-4 break-all tabular-nums text-brand ${card.emphasized ? 'text-2xl font-bold' : 'text-xl font-semibold'}`}
+          >
             {loading || card.value === undefined ? '—' : formatMeso(card.value)}
             <span className="ml-2 text-[11px] font-normal text-muted">{card.unit}</span>
           </p>
