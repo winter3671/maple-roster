@@ -31,11 +31,18 @@ export function ReleaseNotes({ currentVersion }: { currentVersion?: string }) {
               {note.date}
             </time>
             <p className="mt-3 text-sm leading-6">{note.summary}</p>
-            <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-6 text-muted">
-              {note.changes.map((change) => (
-                <li key={change}>{change}</li>
+            <div className="mt-4 space-y-4">
+              {(note.sections ?? [{ title: '', changes: note.changes }]).map((section) => (
+                <div key={section.title}>
+                  {section.title && <h3 className="text-xs font-semibold">{section.title}</h3>}
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-6 text-muted">
+                    {section.changes?.map((change) => (
+                      <li key={change}>{change}</li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </details>
         ))}
       </div>
