@@ -44,7 +44,6 @@ export function AppLayout({ page, onNavigate, children }: AppLayoutProps) {
       <main className="min-w-0 flex-1">
         <div className="flex h-16 items-center justify-between border-b border-line bg-surface/70 px-9">
           <p className="text-xs text-muted">
-            가계부 <span className="mx-2 text-line">/</span>
             <span className="font-medium text-ink">{selected.label}</span>
           </p>
         </div>
