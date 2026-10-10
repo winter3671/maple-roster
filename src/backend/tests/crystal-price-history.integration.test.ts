@@ -16,7 +16,7 @@ import { BossRosterService } from '../modules/bosses/boss-roster.service'
 import { BossSyncService } from '../modules/bosses/boss-sync.service'
 import { NexonClient } from '../integrations/nexon/nexon.client'
 
-describe('결정석 가격 이력 관리', () => {
+describe('결정 가격 이력 관리', () => {
   let db: DatabaseSync, prices: CrystalPriceService, bosses: BossService, characterId: string
   const now = () => new Date('2026-10-15T00:00:00Z')
   const input = {

@@ -88,7 +88,7 @@ export function BossClearPreview({
             <table className="w-full min-w-[460px] text-left text-xs">
               <thead className="bg-canvas text-muted">
                 <tr>
-                  {['보스 · 난이도', '클리어 인원', '반영 후 결정석 내 몫'].map((label) => (
+                  {['보스 · 난이도', '클리어 인원', '반영 후 결정 내 몫'].map((label) => (
                     <th key={label} scope="col" className="px-3 py-3">
                       {label}
                     </th>
@@ -177,7 +177,7 @@ export function BossClearPreview({
             <table className="w-full min-w-[500px] text-left text-xs">
               <thead className="bg-canvas text-muted">
                 <tr>
-                  {['선택', '보스 · 난이도 · 인원', '조회 결과', '결정석 내 몫'].map((label) => (
+                  {['선택', '보스 · 난이도 · 인원', '조회 결과', '결정 내 몫'].map((label) => (
                     <th key={label} className="px-3 py-3" scope="col">
                       {label}
                     </th>

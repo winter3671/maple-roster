@@ -87,7 +87,7 @@ describe('조회 조건을 반영하는 거래 CSV', () => {
     expect(all.content).toContain('둘째캐릭터')
     expect(single.content).not.toContain('둘째캐릭터')
     expect(all.content).not.toContain('2026-09-01')
-    expect(single.content).toContain('결정석 수익')
+    expect(single.content).toContain('결정 수익')
     expect(single.content).toContain('드랍 판매')
     expect(ledger.exportCsv({ from: '2026-10-15', to: '2026-10-15' }).count).toBe(2)
     expect(database.prepare('SELECT * FROM ledger_entries ORDER BY id').all()).toEqual(before)

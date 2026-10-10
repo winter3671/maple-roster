@@ -20,7 +20,7 @@ export const navigation: { id: PageId; label: string; icon: IconName; descriptio
     id: 'bosses',
     label: '보스 장부',
     icon: 'boss',
-    description: '보스 진행과 결정석·드랍 정산을 함께 관리하세요.'
+    description: '보스 진행과 결정·드랍 정산을 함께 관리하세요.'
   },
   {
     id: 'hunting',

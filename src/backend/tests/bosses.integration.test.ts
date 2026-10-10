@@ -24,7 +24,7 @@ import charactersSql from '../database/migrations/001_characters.sql?raw'
 import huntingSql from '../database/migrations/002_hunting_ledger.sql?raw'
 import { migrate } from '../database/migrate'
 
-describe('주간 보스와 결정석 장부', () => {
+describe('주간 보스와 결정 장부', () => {
   let directory: string
   let database: DatabaseSync
   let characters: CharacterService
@@ -176,7 +176,7 @@ describe('주간 보스와 결정석 장부', () => {
     ).toThrow('반영일이 변경')
     expect(ledger.list(month).entries).toEqual(entries)
   })
-  it('날짜 수정 중 장부 저장에 실패하면 결정석 정산과 거래 날짜를 모두 되돌린다', () => {
+  it('날짜 수정 중 장부 저장에 실패하면 결정 정산과 거래 날짜를 모두 되돌린다', () => {
     const record = cleared(),
       entries = ledger.list(month).entries
     database.exec(
@@ -424,7 +424,7 @@ describe('주간 보스와 결정석 장부', () => {
       characterWorld: '루나'
     })
   })
-  it('클리어 체크는 결정석 수입을 바로 장부에 반영한다', () => {
+  it('클리어 체크는 결정 수입을 바로 장부에 반영한다', () => {
     cleared()
     expect(ledger.list(month).summary.income).toBe(2783333)
     expect(bosses.list(query).summary).toMatchObject({
@@ -632,7 +632,7 @@ describe('주간 보스와 결정석 장부', () => {
     expect(() => preset(overrides)).toThrow()
     expect(bosses.presets()).toHaveLength(0)
   })
-  it('장부 저장 실패 시 결정석 정산도 되돌린다', () => {
+  it('장부 저장 실패 시 결정 정산도 되돌린다', () => {
     const record = run()
     database.exec(
       "CREATE TRIGGER fail_crystal BEFORE INSERT ON ledger_entries WHEN NEW.crystal_settlement_id IS NOT NULL BEGIN SELECT RAISE(ABORT, 'forced failure'); END"

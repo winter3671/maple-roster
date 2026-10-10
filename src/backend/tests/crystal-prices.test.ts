@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { WEEKLY_BOSSES } from '../../shared/boss-catalog'
 import { findCrystalPrice, crystalShare } from '../../shared/crystal-prices'
 
-describe('결정석 가격표', () => {
+describe('결정 가격표', () => {
   it('모든 주간 보스 난이도에 안전한 정수 가격이 있다', () => {
     for (const boss of WEEKLY_BOSSES) {
       for (const difficulty of boss.difficulties) {

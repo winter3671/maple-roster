@@ -109,14 +109,14 @@ export function BossDetailsFields({
       <div>
         <div className="rounded-xl bg-brand-soft p-4 text-xs leading-6">
           <p>
-            1인 기준 결정석 가격{' '}
-            <output aria-label="1인 기준 결정석 가격" className="font-semibold">
+            1인 기준 결정 가격{' '}
+            <output aria-label="1인 기준 결정 가격" className="font-semibold">
               {amount === undefined ? '보스·난이도를 선택하세요' : `${formatMeso(amount)} 메소`}
             </output>
           </p>
           <p>
             예상 내 몫{' '}
-            <output aria-label="예상 결정석 내 몫" className="font-semibold text-brand">
+            <output aria-label="예상 결정 내 몫" className="font-semibold text-brand">
               {share === undefined ? '클리어 인원을 확인하세요' : `${formatMeso(share)} 메소`}
             </output>
           </p>

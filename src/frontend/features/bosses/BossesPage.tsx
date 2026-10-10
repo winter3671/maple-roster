@@ -270,15 +270,15 @@ export function BossesPage() {
           {
             title: '클리어 진행',
             value: summary ? `${summary.cleared} / ${summary.count}` : '—',
-            detail: '클리어 체크 시 결정석 수익 자동 반영'
+            detail: '클리어 체크 시 결정 수익 자동 반영'
           },
           {
             title: '남은 보스 예상 수익',
             value: summary ? `${formatMeso(summary.remaining)} 메소` : '—',
-            detail: '주차에 저장된 결정석 가격과 클리어 인원으로 계산'
+            detail: '주차에 저장된 결정 가격과 클리어 인원으로 계산'
           },
           {
-            title: '이 주차 결정석 수익',
+            title: '이 주차 결정 수익',
             amount: summary?.settled,
             value: summary ? `${formatMeso(summary.settled)} 메소` : '—',
             detail: '클리어한 보스 기준 · 드랍 수익은 별도 반영'
@@ -302,7 +302,7 @@ export function BossesPage() {
           <div>
             <h2 className="text-sm font-semibold">주간 보스 기록</h2>
             <p className="mt-2 text-xs leading-5 text-muted">
-              클리어를 체크하면 결정석 수익이 바로 반영됩니다. 체크 해제 시 해당 수입도 취소됩니다.
+              클리어를 체크하면 결정 수익이 바로 반영됩니다. 체크 해제 시 해당 수입도 취소됩니다.
               드랍 판매는 별도로 기록합니다.
             </p>
           </div>
@@ -338,15 +338,13 @@ export function BossesPage() {
             onClear={(run, value) =>
               void state.mutate(
                 () => bossesApi.setClear(run.id, value),
-                value
-                  ? '클리어와 결정석 수익을 반영했습니다.'
-                  : '클리어와 결정석 수익을 취소했습니다.'
+                value ? '클리어와 결정 수익을 반영했습니다.' : '클리어와 결정 수익을 취소했습니다.'
               )
             }
             onDelete={(run) =>
               confirm({
                 title: '보스 기록 삭제',
-                description: `${run.characterName}의 ${run.bossName} 기록과 결정석 수익을 이 주차에서 삭제합니다. 다른 주차는 유지됩니다.`,
+                description: `${run.characterName}의 ${run.bossName} 기록과 결정 수익을 이 주차에서 삭제합니다. 다른 주차는 유지됩니다.`,
                 action: () => bossesApi.removeRun(run.id),
                 message: '주차 보스 기록을 삭제했습니다.'
               })
@@ -389,7 +387,7 @@ export function BossesPage() {
               const saved = await state.mutate(async () => {
                 const result = await bossesApi.replaceClears(apiPreview.id, members, date)
                 added = result.added ?? 0
-              }, '이 주차를 API 완료 보스 목록으로 맞추고 결정석 수익을 반영했습니다.')
+              }, '이 주차를 API 완료 보스 목록으로 맞추고 결정 수익을 반영했습니다.')
               if (saved) {
                 const newSolo = members.some(
                   (member) =>
@@ -403,7 +401,7 @@ export function BossesPage() {
             onApply={async (ids, date) => {
               const saved = await state.mutate(
                 () => bossesApi.applyClears(apiPreview.id, ids, date),
-                'API에서 확인한 클리어와 결정석 수익을 반영했습니다.'
+                'API에서 확인한 클리어와 결정 수익을 반영했습니다.'
               )
               if (saved) setApiPreview(null)
             }}
@@ -439,7 +437,7 @@ export function BossesPage() {
       )}
       {editingIncomeDate && (
         <Dialog
-          title="결정석 수익 반영일 수정"
+          title="결정 수익 반영일 수정"
           busy={state.busy}
           onClose={() => setEditingIncomeDate(null)}
         >

@@ -127,7 +127,7 @@ export function requireCrystalPrice(
   if (!price)
     throw new AppError(
       'VALIDATION_ERROR',
-      '해당 보스·난이도·날짜의 결정석 가격표가 없습니다. 지원되는 주차를 선택해 주세요.'
+      '해당 보스·난이도·날짜의 결정 가격표가 없습니다. 지원되는 주차를 선택해 주세요.'
     )
   return price.amount
 }

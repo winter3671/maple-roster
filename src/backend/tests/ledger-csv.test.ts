@@ -44,12 +44,12 @@ describe('거래 내역 CSV 형식', () => {
       )
     }
   )
-  it('결정석과 드랍의 분류·원본 ID를 출력한다', () => {
+  it('결정과 드랍의 분류·원본 ID를 출력한다', () => {
     const content = ledgerCsv([
       { ...row, source: 'crystal', huntingSessionId: null, crystalSettlementId: 'crystal-id' },
       { ...row, source: 'drop', huntingSessionId: null, dropSaleId: 'sale-id' }
     ])
-    expect(content).toContain('"결정석 수익","수입"')
+    expect(content).toContain('"결정 수익","수입"')
     expect(content).toContain('"transaction-id","crystal-id"')
     expect(content).toContain('"드랍 판매","수입"')
     expect(content).toContain('"transaction-id","sale-id"')

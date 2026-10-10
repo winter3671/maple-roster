@@ -176,7 +176,7 @@ maple-roster/
    │  │  ├─ money.ts                 # 정수 금액·분배·수수료 계산
    │  │  ├─ periods.ts               # KST와 일간·주간·월간 기간
    │  │  ├─ hunting-profit.ts         # 사냥 회차와 시간당 수익
-   │  │  ├─ boss-profit.ts            # 결정석 예상 수익
+   │  │  ├─ boss-profit.ts            # 결정 예상 수익
    │  │  └─ drop-settlement.ts        # 판매 수량·잔여 수량·내 몫
    │  ├─ integrations/nexon/
    │  │  ├─ nexon.client.ts           # 인증 헤더·타임아웃·호출 제한 대응
@@ -278,7 +278,7 @@ Button·Input·Dialog 같은 공통 컴포넌트는 Tailwind 클래스로 작성
 1. Electron + React + Tailwind 기본 실행과 AppLayout. 임시 데이터로 메뉴와 표를 만든다.
 2. characters 수동 등록을 shared → desktop → backend → frontend 순서로 연결한다. 재실행 후 유지되는지 확인한다.
 3. hunting 회차 저장으로 DB 트랜잭션과 수입·지출 집계를 구현한다.
-4. bosses 프리셋·기간 기록·결정석 판매를 구현한다.
+4. bosses 프리셋·기간 기록·결정 판매를 구현한다.
 5. drops와 ledger를 연결해 일부 판매와 분배·수수료 정산을 구현한다.
 6. 개인 키 보관과 NEXON 프로필·완료 상태 연동을 추가한다.
 7. dashboard·백업·CSV·Windows 패키징을 완료한다.

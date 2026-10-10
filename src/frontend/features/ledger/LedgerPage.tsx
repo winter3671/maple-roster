@@ -261,8 +261,8 @@ export function LedgerPage() {
       <section aria-label="묶음 수익" className="rounded-2xl border border-line bg-surface p-6">
         <h2 className="text-sm font-semibold">수익 요약</h2>
         <p className="mt-2 text-[11px] leading-5 text-muted">
-          조회 기간·캐릭터의 수입을 보스·사냥·직접 수익으로 표시합니다. 보스 수익은 결정석과 보스
-          드랍 판매, 사냥 수익은 획득 메소와 사냥 드랍 판매를 포함합니다.
+          조회 기간·캐릭터의 수입을 보스·사냥·직접 수익으로 표시합니다. 보스 수익은 결정과 보스 드랍
+          판매, 사냥 수익은 획득 메소와 사냥 드랍 판매를 포함합니다.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {incomeGroups.map((group) => (

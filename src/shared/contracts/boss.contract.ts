@@ -91,7 +91,7 @@ export function parseBossDetails(value: unknown) {
   return {
     difficulty: readText(input.difficulty, '난이도', 40),
     partySize,
-    crystalPrice: readInteger(input.crystalPrice ?? 0, '결정석 가격')
+    crystalPrice: readInteger(input.crystalPrice ?? 0, '결정 가격')
   }
 }
 export function parseBossPreset(value: unknown): BossPresetInput {

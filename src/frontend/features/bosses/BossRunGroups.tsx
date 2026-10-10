@@ -117,17 +117,13 @@ export function BossRunGroups({
                       <table className="w-full min-w-[670px] text-left text-xs">
                         <thead className="text-muted">
                           <tr>
-                            {[
-                              '보스 · 난이도 · 인원',
-                              '결정석 내 몫',
-                              '클리어',
-                              '반영 수익',
-                              ''
-                            ].map((title, index) => (
-                              <th key={index} className="px-4 py-3 font-medium" scope="col">
-                                {title}
-                              </th>
-                            ))}
+                            {['보스 · 난이도 · 인원', '결정 내 몫', '클리어', '반영 수익', ''].map(
+                              (title, index) => (
+                                <th key={index} className="px-4 py-3 font-medium" scope="col">
+                                  {title}
+                                </th>
+                              )
+                            )}
                           </tr>
                         </thead>
                         <tbody>

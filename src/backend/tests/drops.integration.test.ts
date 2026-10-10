@@ -129,7 +129,7 @@ describe('획득 묶음과 드랍 부분 판매', () => {
     expect(() => drops.setHuntingSale({ lotId: bossLot.id, sold: false })).toThrow('사냥 드랍')
     expect(() => drops.setHuntingSale({ lotId: lot.id, sold: 'true' })).toThrow('판매 상태')
   })
-  it('결정석·보스 드랍은 보스 수익, 획득 메소·사냥 드랍은 사냥 수익으로 묶고 지출은 제외한다', () => {
+  it('결정·보스 드랍은 보스 수익, 획득 메소·사냥 드랍은 사냥 수익으로 묶고 지출은 제외한다', () => {
     const huntingSale = sale()
     const run = bosses.createRun({
       characterId,
@@ -526,7 +526,7 @@ describe('획득 묶음과 드랍 부분 판매', () => {
     ).toThrow()
     expect(stock().remaining).toBe(10)
   })
-  it('3번 버전 DB의 기존 사냥·결정석 거래와 ID를 보존하고 재고를 한 번 생성한다', () => {
+  it('3번 버전 DB의 기존 사냥·결정 거래와 ID를 보존하고 재고를 한 번 생성한다', () => {
     const path = join(directory, 'legacy.sqlite'),
       old = new DatabaseSync(path)
     old.exec('PRAGMA foreign_keys = ON')

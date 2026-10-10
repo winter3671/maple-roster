@@ -19,7 +19,7 @@ const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }
     title: '캐릭터 관리',
     detail: '기록할 캐릭터를 모아보세요'
   },
-  { page: 'bosses', icon: 'boss', title: '보스 장부', detail: '주간 클리어와 결정석 수익' },
+  { page: 'bosses', icon: 'boss', title: '보스 장부', detail: '주간 클리어와 결정 수익' },
   { page: 'hunting', icon: 'hunting', title: '사냥 장부', detail: '오늘의 사냥을 한 회차씩' }
 ]
 

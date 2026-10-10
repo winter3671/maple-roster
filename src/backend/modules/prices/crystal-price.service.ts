@@ -40,12 +40,11 @@ export class CrystalPriceService {
       bossName = readText(input.bossName, '보스', 60),
       difficulty = readText(input.difficulty, '난이도', 40)
     validateBossSelection(bossName, difficulty)
-    const amount = readInteger(input.amount, '1인 결정석 가격'),
+    const amount = readInteger(input.amount, '1인 결정 가격'),
       effectiveOn = readDate(input.effectiveOn),
       checkedOn = readDate(input.checkedOn),
       source = readText(input.source, '출처', 300)
-    if (amount === 0)
-      throw new AppError('VALIDATION_ERROR', '결정석 가격은 1메소 이상이어야 합니다.')
+    if (amount === 0) throw new AppError('VALIDATION_ERROR', '결정 가격은 1메소 이상이어야 합니다.')
     if (checkedOn > getKstDate(this.now()))
       throw new AppError('VALIDATION_ERROR', '확인일은 오늘 이후일 수 없습니다.')
     if (

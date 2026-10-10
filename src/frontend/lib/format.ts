@@ -8,7 +8,7 @@ export function ledgerLabel(entry: LedgerEntry): string {
   if (entry.source === 'manual') return entry.expenseCategory ?? '직접 지출'
   if (entry.source === 'drop') return '드랍 판매'
   return entry.source === 'crystal'
-    ? '결정석 수익'
+    ? '결정 수익'
     : entry.direction === 'income'
       ? '사냥 획득'
       : '사냥 소모 비용'

@@ -576,7 +576,7 @@ export class BossService {
     return this.transaction.run(() => {
       const current = this.findRun(input.runId)
       if (!current.isCleared)
-        throw new AppError('VALIDATION_ERROR', '클리어 체크 후 결정석 판매를 기록해 주세요.')
+        throw new AppError('VALIDATION_ERROR', '클리어 체크 후 결정 판매를 기록해 주세요.')
       if (input.date < current.week)
         throw new AppError('VALIDATION_ERROR', '판매일은 보스 주차 시작일보다 빠를 수 없습니다.')
       const timestamp = this.now().toISOString()

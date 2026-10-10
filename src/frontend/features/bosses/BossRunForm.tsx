@@ -140,7 +140,7 @@ export function BossRunForm({
         )}
         {run.isCleared && (
           <p className="mb-4 text-xs leading-5 text-muted">
-            보스·난이도·인원을 수정하면 결정석 수익도 자동 갱신됩니다.
+            보스·난이도·인원을 수정하면 결정 수익도 자동 갱신됩니다.
           </p>
         )}
         <label htmlFor={`${id}-notes`} className="text-xs font-semibold">

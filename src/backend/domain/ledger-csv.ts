@@ -37,7 +37,7 @@ export function ledgerCsv(entries: LedgerEntry[]): string {
               ? '사냥 메소'
               : '사냥 비용'
             : entry.source === 'crystal'
-              ? '결정석 수익'
+              ? '결정 수익'
               : '드랍 판매'
     lines.push(
       [

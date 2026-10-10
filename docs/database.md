@@ -6,7 +6,7 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## 적용된 마이그레이션
 
-`001_characters.sql`부터 `015_manual_incomes.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 15번 버전까지 순서대로 갱신한다.
+`001_characters.sql`부터 `015_manual_incomes.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정·거래 정보를 유지하면서 15번 버전까지 순서대로 갱신한다.
 
 ## characters
 
@@ -43,20 +43,20 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## ledger_entries
 
-| 컬럼                    | 타입                        | 의미                                     |
-| ----------------------- | --------------------------- | ---------------------------------------- |
-| id                      | TEXT, PK                    | 거래 UUID                                |
-| hunting_session_id      | TEXT, FK, NULL 가능         | 사냥 회차 ID, ON DELETE CASCADE          |
-| crystal_settlement_id   | TEXT, UNIQUE, FK, NULL 가능 | 결정석 정산 ID, ON DELETE CASCADE        |
-| drop_sale_id            | TEXT, UNIQUE, FK, NULL 가능 | 드랍 판매 ID, ON DELETE CASCADE          |
-| character_id            | TEXT, FK                    | 캐릭터 ID, ON DELETE RESTRICT            |
-| world_snapshot          | TEXT                        | 기록 당시 월드                           |
-| occurred_on             | TEXT                        | 사냥 거래는 활동일, 결정석·드랍은 판매일 |
-| direction               | TEXT                        | income 또는 expense                      |
-| amount                  | INTEGER                     | 1 이상 정수 메소                         |
-| created_at / updated_at | TEXT                        | UTC 생성 / 수정 시각                     |
+| 컬럼                    | 타입                        | 의미                                   |
+| ----------------------- | --------------------------- | -------------------------------------- |
+| id                      | TEXT, PK                    | 거래 UUID                              |
+| hunting_session_id      | TEXT, FK, NULL 가능         | 사냥 회차 ID, ON DELETE CASCADE        |
+| crystal_settlement_id   | TEXT, UNIQUE, FK, NULL 가능 | 결정 정산 ID, ON DELETE CASCADE        |
+| drop_sale_id            | TEXT, UNIQUE, FK, NULL 가능 | 드랍 판매 ID, ON DELETE CASCADE        |
+| character_id            | TEXT, FK                    | 캐릭터 ID, ON DELETE RESTRICT          |
+| world_snapshot          | TEXT                        | 기록 당시 월드                         |
+| occurred_on             | TEXT                        | 사냥 거래는 활동일, 결정·드랍은 판매일 |
+| direction               | TEXT                        | income 또는 expense                    |
+| amount                  | INTEGER                     | 1 이상 정수 메소                       |
+| created_at / updated_at | TEXT                        | UTC 생성 / 수정 시각                   |
 
-회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 결정석·드랍 판매는 판매당 수입 하나만 생성하고 각 원본 FK를 UNIQUE로 보호한다. 세 원본 FK 중 정확히 하나만 값이 있어야 하며 결정석·드랍 거래는 income만 허용한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 수동 거래는 후속 단계다.
+회차별 수입·지출은 각 하나씩만 생성한다. `(hunting_session_id, direction)`을 UNIQUE로 보호한다. 결정·드랍 판매는 판매당 수입 하나만 생성하고 각 원본 FK를 UNIQUE로 보호한다. 세 원본 FK 중 정확히 하나만 값이 있어야 하며 결정·드랍 거래는 income만 허용한다. 금액 0인 거래는 생성하지 않으며, 수정 후 0이 되면 삭제한다. 0이 아닌 기존 거래의 ID·생성 시각은 수정 시 유지한다. 수동 거래는 후속 단계다.
 
 ## drop_lots / drop_sales
 
@@ -67,11 +67,11 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## boss_presets / boss_runs / crystal_settlements
 
-9번 마이그레이션은 수동 가격 이력을 저장하는 `crystal_price_history` 테이블을 추가한다. 보스·난이도·적용일은 UNIQUE이며 양의 정수 가격, 확인일과 출처를 저장한다. 기본 가격표는 앱에 포함하고 수동 이력만 DB·JSON 백업에서 관리한다. 가격표 저장·삭제는 기존 보스 기록이나 정산을 갱신하지 않는다. 상세 규칙은 [결정석 가격 이력](crystal-price-history.md)을 참고한다.
+9번 마이그레이션은 수동 가격 이력을 저장하는 `crystal_price_history` 테이블을 추가한다. 보스·난이도·적용일은 UNIQUE이며 양의 정수 가격, 확인일과 출처를 저장한다. 기본 가격표는 앱에 포함하고 수동 이력만 DB·JSON 백업에서 관리한다. 가격표 저장·삭제는 기존 보스 기록이나 정산을 갱신하지 않는다. 상세 규칙은 [결정 가격 이력](crystal-price-history.md)을 참고한다.
 
 8번 마이그레이션은 `boss_runs`에 `party_size_needs_review`(0 또는 1)를 추가한다. API 자동 추가나 난이도 변경으로 인원을 추정한 기록은 1로 저장하고, 사용자가 인원을 확인하거나 보스·난이도·인원을 변경해 저장하면 0으로 바꾼다. 메모·날짜만 수정하면 상태를 유지한다. 기존 기록은 기본값 0으로 보존하며 인원과 수익을 바꾸지 않는다.
 
-- `boss_presets`: 캐릭터 FK(RESTRICT), 보스 키·이름, 난이도, 파티 인원(1~6명), 결정석 전체 가격과 생성·수정 시각. 캐릭터·보스 키를 UNIQUE로 보호한다.
+- `boss_presets`: 캐릭터 FK(RESTRICT), 보스 키·이름, 난이도, 파티 인원(1~6명), 결정 전체 가격과 생성·수정 시각. 캐릭터·보스 키를 UNIQUE로 보호한다.
 - `boss_runs`: 캐릭터 FK(RESTRICT), 기록 당시 월드, 보스·난이도·파티 인원·가격 스냅샷, 목요일 기준 `period_start`, 수동 클리어 상태와 메모. 캐릭터·보스 키·주차를 UNIQUE로 보호한다. 프리셋 삭제가 과거 기록을 지우지 않도록 프리셋 FK는 두지 않는다.
 - `crystal_settlements`: 보스 기록 FK(CASCADE, UNIQUE), 판매일, 실제 수령액, 생성·수정 시각. 보스 기록당 하나의 정산만 허용하고 0 메소도 판매 상태로 저장한다.
 
@@ -117,7 +117,7 @@ UI 자동 확인은 `MAPLE_ROSTER_DATA_DIR`로 일반 사용자 데이터와 분
 
 13번 마이그레이션은 `currency`(meso/maplePoint), `point_amount`, `points_per_100m`을 추가한다. 메소 기록에는 포인트 필드를 NULL로 두고, 포인트 기록은 양의 정수 원본과 환전비를 함께 보관한다. `amount`와 연결 거래 금액은 환산 메소를 사용한다. 기존 지출은 메소로 유지한다. 계산·복원 규칙은 [메이플포인트 지출](expense-maple-points.md)을 참고한다.
 
-10번 마이그레이션은 직접 지출 원본을 저장하는 `manual_expenses`를 추가한다. 캐릭터 FK(RESTRICT), 거래 당시 서버, 지출 날짜, 분류, 양의 정수 금액, 메모와 생성·수정 시각을 보관한다. `ledger_entries`에는 UNIQUE FK `manual_expense_id`(CASCADE)를 추가한다. 사냥·결정석·드랍·직접 지출 출처 중 정확히 하나만 연결할 수 있으며 직접 지출의 방향은 expense다.
+10번 마이그레이션은 직접 지출 원본을 저장하는 `manual_expenses`를 추가한다. 캐릭터 FK(RESTRICT), 거래 당시 서버, 지출 날짜, 분류, 양의 정수 금액, 메모와 생성·수정 시각을 보관한다. `ledger_entries`에는 UNIQUE FK `manual_expense_id`(CASCADE)를 추가한다. 사냥·결정·드랍·직접 지출 출처 중 정확히 하나만 연결할 수 있으며 직접 지출의 방향은 expense다.
 
 기존 거래의 ID·금액·날짜·생성·수정 시각을 보존하며 장부 테이블을 확장한다. 직접 지출과 거래의 저장·수정은 한 트랜잭션이며 삭제는 연결 거래도 제거한다. 요청 UUID로 재시도 중복을 막는다. [거래 내역](ledger-view.md)과 [백업](backup.md)에 상세 규칙이 있다.
 
