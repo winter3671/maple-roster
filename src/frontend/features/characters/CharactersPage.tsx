@@ -135,7 +135,7 @@ export function CharactersPage() {
             <EmptyState
               icon="characters"
               title="첫 캐릭터를 등록해 보세요"
-              description="이름과 월드를 입력하면 이곳에 캐릭터가 표시됩니다. 앱을 다시 열어도 기록은 유지됩니다."
+              description="이름을 입력하고 월드를 선택하면 이곳에 캐릭터가 표시됩니다. 앱을 다시 열어도 기록은 유지됩니다."
             />
           )}
         </section>

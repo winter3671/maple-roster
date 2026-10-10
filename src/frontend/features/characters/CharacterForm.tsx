@@ -4,6 +4,7 @@ import {
   type CharacterInput
 } from '../../../shared/contracts/character.contract'
 import { Button } from '../../components/ui/Button'
+import { MAPLE_WORLDS } from '../../../shared/maple-worlds'
 
 const inputClass =
   'mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm placeholder:text-muted/70 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:opacity-50'
@@ -55,21 +56,28 @@ export function CharacterForm({ initial, busy, onSave, onCancel }: CharacterForm
         <label htmlFor={`${id}-world`} className="text-xs font-semibold">
           월드 <span className="text-brand">*</span>
         </label>
-        <input
+        <select
           id={`${id}-world`}
           name="world"
           required
-          maxLength={40}
           value={input.world}
           disabled={busy}
-          autoComplete="off"
           onChange={(event) => setInput({ ...input, world: event.target.value })}
-          placeholder="예: 스카니아"
           className={inputClass}
-        />
-        <p className="mt-2 text-[11px] leading-5 text-muted">
-          게임에 표시된 월드 이름을 입력해 주세요.
-        </p>
+        >
+          <option value="" disabled>
+            월드 선택
+          </option>
+          {initial?.world && !MAPLE_WORLDS.includes(initial.world) && (
+            <option value={initial.world}>{initial.world} (기존 등록 월드)</option>
+          )}
+          {MAPLE_WORLDS.map((world) => (
+            <option key={world} value={world}>
+              {world}
+            </option>
+          ))}
+        </select>
+        <p className="mt-2 text-[11px] leading-5 text-muted">캐릭터가 있는 월드를 선택해 주세요.</p>
       </div>
       <div>
         <label htmlFor={`${id}-notes`} className="text-xs font-semibold">
