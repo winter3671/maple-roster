@@ -2,7 +2,7 @@ import { parseDigits, formatMeso } from '../../lib/format'
 import { getKstDate } from '../../../shared/dates'
 import { crystalShare } from '../../../shared/crystal-prices'
 import { useCrystalPrices } from '../prices/CrystalPriceProvider'
-import { findWeeklyBoss, bossPartyLimit } from '../../../shared/boss-catalog'
+import { findBoss, bossPartyLimit } from '../../../shared/boss-catalog'
 
 export const bossFieldClass =
   'mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm focus:outline-brand disabled:opacity-50'
@@ -29,7 +29,7 @@ export function BossDetailsFields({
   busy: boolean
   change: (key: 'difficulty' | 'partySize', value: string) => void
 }) {
-  const difficulties = findWeeklyBoss(bossName)?.difficulties ?? []
+  const difficulties = findBoss(bossName)?.difficulties ?? []
   const { findPrice } = useCrystalPrices()
   const legacy =
     legacyDifficulty && !difficulties.includes(legacyDifficulty) ? legacyDifficulty : undefined

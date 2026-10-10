@@ -1,6 +1,6 @@
 import { AppError } from '../errors'
 import { getKstDate, readDate } from '../dates'
-import { bossWeek } from '../boss-period'
+import { bossWeek, readBossCycle, type BossCycle } from '../boss-period'
 import { readId, readInteger, readObject, readText } from '../validation'
 
 export interface BossPresetInput {
@@ -24,6 +24,7 @@ export interface BossPresetUpdate extends BossPresetInput {
 }
 export interface BossQuery {
   date: string
+  cycle?: BossCycle
   characterId?: string
 }
 export interface CrystalInput {
@@ -37,6 +38,7 @@ export interface CrystalSettlement {
   amount: number
 }
 export interface BossRun extends BossPresetInput {
+  cycle?: BossCycle
   crystalPrice: number
   id: string
   bossKey: string
@@ -67,6 +69,7 @@ export interface BossIncomeDateUpdate {
   expectedDate: string
 }
 export interface BossRunCreate extends BossPresetInput {
+  cycle?: BossCycle
   date: string
   notes?: string
 }
@@ -109,6 +112,7 @@ export function parseBossQuery(value: unknown): BossQuery {
     throw new AppError('VALIDATION_ERROR', '보스 주차는 2000년 1월 6일 이후로 조회해 주세요.')
   return {
     date,
+    ...(input.cycle === undefined ? {} : { cycle: readBossCycle(input.cycle) }),
     ...(input.characterId === undefined || input.characterId === ''
       ? {}
       : { characterId: readId(input.characterId) })

@@ -5,7 +5,7 @@ import { UnitOfWork } from '../../database/unit-of-work'
 import { AppError } from '../../../shared/errors'
 import { readId, readObject, readText } from '../../../shared/validation'
 import { readDate } from '../../../shared/dates'
-import { bossWeek } from '../../../shared/boss-period'
+import { bossWeek, bossMonth } from '../../../shared/boss-period'
 import { validateBossSelection } from '../../../shared/boss-catalog'
 import { parseBossMembers } from '../../../shared/contracts/boss-roster.contract'
 import { parseExpenseInput } from '../../../shared/contracts/expense.contract'
@@ -151,15 +151,28 @@ function validateRelations(database: DatabaseSync, tables: Tables): void {
       readText(row.boss_name, '보스', 60)
       readText(row.difficulty, '난이도', 40)
       if (row.boss_key !== String(row.boss_name).toLowerCase()) invalid()
-      if (table === 'boss_runs' && bossWeek(String(row.period_start)) !== row.period_start)
-        invalid()
+      if (table === 'boss_runs') {
+        if (row.cycle !== 'weekly' && row.cycle !== 'monthly') invalid()
+        if (
+          (row.cycle === 'monthly'
+            ? bossMonth(String(row.period_start))
+            : bossWeek(String(row.period_start))) !== row.period_start
+        )
+          invalid()
+        if (
+          row.cycle === 'monthly' &&
+          (row.boss_name !== '검은 마법사' ||
+            !['하드', '익스트림'].includes(String(row.difficulty)))
+        )
+          invalid()
+      }
     }
   }
   for (const row of tables.boss_templates) parseBossMembers(JSON.parse(String(row.members_json)))
   if (
     database
       .prepare(
-        'SELECT 1 FROM boss_runs GROUP BY character_id,period_start HAVING COUNT(*)>12 LIMIT 1'
+        "SELECT 1 FROM boss_runs GROUP BY character_id,cycle,period_start HAVING COUNT(*) > CASE WHEN cycle='monthly' THEN 1 ELSE 12 END LIMIT 1"
       )
       .get()
   )
@@ -304,7 +317,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, 10, 11, 12, 13, 14, schemaVersion(this.database)].includes(
+        ![7, 8, 9, 10, 11, 12, 13, 14, 15, schemaVersion(this.database)].includes(
           raw.schemaVersion as number
         )
       )
@@ -337,7 +350,9 @@ export class BackupService {
       let total = 0
       for (const table of TABLES) {
         const rows = tables[table],
-          names = columns(staging, table)
+          names = columns(staging, table).filter(
+            (name) => !(Number(raw.schemaVersion) < 16 && table === 'boss_runs' && name === 'cycle')
+          )
         const types = new Map(
           staging
             .prepare(`PRAGMA table_info(${table})`)
@@ -368,6 +383,7 @@ export class BackupService {
                 ? incomeNames.filter((name) => name !== 'manual_expense_id')
                 : incomeNames
           if (Object.keys(row).sort().join(',') !== [...expectedNames].sort().join(',')) invalid()
+          if (Number(raw.schemaVersion) < 16 && table === 'boss_runs') row.cycle = 'weekly'
           if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
           if (legacyExpense && table === 'ledger_entries') row.manual_expense_id = null
           if (legacyIncome && table === 'ledger_entries') row.manual_income_id = null

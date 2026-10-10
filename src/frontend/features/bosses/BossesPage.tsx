@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import {
-  currentBossWeek,
+  bossPeriod,
+  bossPeriodEnd,
+  shiftDate,
+  shiftMonth,
+  type BossCycle
+} from '../../../shared/boss-period'
+import {
   parseBossQuery,
-  type BossRun
+  type BossRun,
+  type BossQuery
 } from '../../../shared/contracts/boss.contract'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { formatMeso } from '../../lib/format'
-import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
 import { BossIncomeDateForm } from './BossIncomeDateForm'
@@ -30,10 +34,11 @@ type Confirmation = {
   action: () => Promise<unknown>
   message: string
 }
-export function BossesPage() {
-  const [query, setQuery] = useState<{ date: string; characterId?: string }>(() => ({
-    date: currentBossWeek()
-  }))
+export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
+  const monthly = cycle === 'monthly'
+  const periodLabel = monthly ? '월간' : '주간'
+  const currentPeriod = () => bossPeriod(getKstDate(), cycle)
+  const [query, setQuery] = useState<BossQuery>(() => ({ date: currentPeriod(), cycle }))
   const state = useBosses(query)
   const [periodError, setPeriodError] = useState('')
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
@@ -47,8 +52,7 @@ export function BossesPage() {
   const [batchResult, setBatchResult] = useState<BossBatchSyncResult | null>(null)
   const [partyNotice, setPartyNotice] = useState(false)
   const apiLock = useRef(false),
-    mounted = useRef(true),
-    liveWeek = useRef(currentBossWeek())
+    mounted = useRef(true)
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -56,44 +60,35 @@ export function BossesPage() {
     }
   }, [])
   const disabled = state.loading || state.busy || apiBusy
-  const week = bossWeek(query.date)
-  const summary = state.data?.summary
+  const week = bossPeriod(query.date, cycle)
   const modal = Boolean(
     editingRun || editingIncomeDate || addingCharacter || confirmation || apiPreview || partyNotice
   )
-  const canSyncApi = week <= currentBossWeek() && shiftDate(week, 6) >= shiftDate(getKstDate(), -14)
-  async function refreshAll() {
-    if (apiLock.current) return
-    const targetWeek = week === liveWeek.current ? currentBossWeek() : week
-    liveWeek.current = currentBossWeek()
-    apiLock.current = true
-    setApiBusy(true)
-    setApiError('')
-    setBatchResult(null)
-    state.clearFeedback()
-    try {
-      if (
-        targetWeek <= currentBossWeek() &&
-        shiftDate(targetWeek, 6) >= shiftDate(getKstDate(), -14)
-      ) {
-        const result = await bossesApi.syncClears(targetWeek)
+  const canSyncApi =
+    week <= currentPeriod() && bossPeriodEnd(week, cycle) >= shiftDate(getKstDate(), -14)
+  async function queryApi(character: Character) {
+    if (monthly) {
+      if (apiLock.current) return
+      apiLock.current = true
+      setApiBusy(true)
+      setApiError('')
+      setBatchResult(null)
+      try {
+        const result = await bossesApi.syncClears(week, cycle, character.id)
         if (mounted.current) {
           setBatchResult(result)
-          if (result.items.some((item) => (item.added ?? 0) > 0)) setPartyNotice(true)
+          if (result.items.some((row) => (row.added ?? 0) > 0)) setPartyNotice(true)
         }
+      } catch (caught) {
+        if (mounted.current)
+          setApiError(caught instanceof Error ? caught.message : 'API 확인에 실패했습니다.')
+      } finally {
+        await state.reload()
+        apiLock.current = false
+        if (mounted.current) setApiBusy(false)
       }
-    } catch (caught) {
-      if (mounted.current)
-        setApiError(caught instanceof Error ? caught.message : 'API 일괄 확인에 실패했습니다.')
-    } finally {
-      if (targetWeek !== week) {
-        if (mounted.current) setQuery({ ...query, date: targetWeek })
-      } else await state.reload()
-      apiLock.current = false
-      if (mounted.current) setApiBusy(false)
+      return
     }
-  }
-  async function queryApi(character: Character) {
     if (apiLock.current) return
     apiLock.current = true
     setApiBusy(true)
@@ -147,7 +142,7 @@ export function BossesPage() {
           className="space-y-2 rounded-xl border border-line bg-surface p-4 text-xs leading-6"
         >
           <p role="status" className="font-semibold text-brand">
-            {batchResult.week} 주차 · 확인{' '}
+            {monthly ? batchResult.week.slice(0, 7) + ' 월간' : batchResult.week + ' 주차'} · 확인{' '}
             {batchResult.items.filter((item) => item.status === 'synced').length}명 · 새 클리어{' '}
             {batchResult.items.reduce((sum, item) => sum + (item.applied ?? 0), 0)}개 · 실패{' '}
             {batchResult.items.filter((item) => item.status === 'failed').length}명 · 미처리{' '}
@@ -182,17 +177,22 @@ export function BossesPage() {
       )}
       <section className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-5">
         <label className="text-xs text-muted">
-          보스 주차 기준일
+          {monthly ? '보스 기록 월' : '보스 주차 기준일'}
           <input
-            aria-label="보스 주차 기준일"
-            type="date"
-            min="2000-01-06"
-            value={query.date}
+            aria-label={monthly ? '보스 기록 월' : '보스 주차 기준일'}
+            type={monthly ? 'month' : 'date'}
+            min={monthly ? '2000-02' : '2000-01-06'}
+            value={monthly ? query.date.slice(0, 7) : query.date}
             disabled={disabled}
             onChange={(event) => {
               if (!event.target.value) return
               try {
-                setQuery(parseBossQuery({ ...query, date: event.target.value }))
+                setQuery(
+                  parseBossQuery({
+                    ...query,
+                    date: monthly ? event.target.value + '-01' : event.target.value
+                  })
+                )
                 setPeriodError('')
               } catch (caught) {
                 setPeriodError(
@@ -224,36 +224,34 @@ export function BossesPage() {
         </label>
         <Button
           variant="secondary"
-          disabled={disabled || week <= '2000-01-06'}
-          onClick={() => setQuery({ ...query, date: shiftDate(week, -7) })}
+          disabled={disabled || week <= (monthly ? '2000-02-01' : '2000-01-06')}
+          onClick={() =>
+            setQuery({ ...query, date: monthly ? shiftMonth(week, -1) : shiftDate(week, -7) })
+          }
         >
-          이전 주
+          {monthly ? '지난달' : '이전 주'}
         </Button>
         <Button
           variant="secondary"
-          disabled={disabled || week >= currentBossWeek()}
-          onClick={() => setQuery({ ...query, date: shiftDate(week, 7) })}
+          disabled={disabled || week >= currentPeriod()}
+          onClick={() =>
+            setQuery({ ...query, date: monthly ? shiftMonth(week, 1) : shiftDate(week, 7) })
+          }
         >
-          다음 주
+          {monthly ? '다음 달' : '다음 주'}
         </Button>
         <Button
           variant="secondary"
           disabled={disabled}
-          onClick={() => setQuery({ ...query, date: currentBossWeek() })}
+          onClick={() => setQuery({ ...query, date: currentPeriod() })}
         >
-          이번 주
-        </Button>
-        <Button
-          disabled={disabled || !canSyncApi || !state.characters.some((row) => row.nexon)}
-          onClick={() => void refreshAll()}
-        >
-          API 클리어 일괄 확인
+          {monthly ? '이번 달' : '이번 주'}
         </Button>
         <p className="basis-full text-[11px] leading-5 text-muted">
-          {week} ~ {shiftDate(week, 6)} · 목요일 00시(KST) 기준 · API 클리어 일괄 확인으로 등록된
-          전체 API 연결 캐릭터의 클리어와 수익을 자동 반영합니다.{' '}
+          {week} ~ {bossPeriodEnd(week, cycle)} · {monthly ? '매월 1일' : '목요일'} 00시(KST) 기준 ·
+          보스 진행도 및 정산에서 API 클리어 일괄 확인으로 주간·월간 기록을 함께 갱신합니다.{' '}
           {canSyncApi
-            ? '캐릭터 필터와 관계없이 등록된 모든 API 캐릭터를 확인합니다.'
+            ? '캐릭터별 API 조회와 수동 기록도 사용할 수 있습니다.'
             : '최근 14일 범위 밖은 저장된 기록만 표시하며 API 조회를 지원하지 않습니다.'}
         </p>
       </section>
@@ -262,42 +260,10 @@ export function BossesPage() {
           {periodError}
         </p>
       )}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          {
-            title: '클리어 진행',
-            value: summary ? `${summary.cleared} / ${summary.count}` : '—',
-            detail: '클리어 체크 시 결정 수익 자동 반영'
-          },
-          {
-            title: '남은 보스 예상 수익',
-            value: summary ? `${formatMeso(summary.remaining)} 메소` : '—',
-            detail: '주차에 저장된 결정 가격과 클리어 인원으로 계산'
-          },
-          {
-            title: '이 주차 결정 수익',
-            amount: summary?.settled,
-            value: summary ? `${formatMeso(summary.settled)} 메소` : '—',
-            detail: '클리어한 보스 기준 · 드랍 수익은 별도 반영'
-          }
-        ].map((card) => (
-          <article
-            key={card.title}
-            className="min-w-0 rounded-2xl border border-line bg-surface p-5"
-          >
-            <p className="text-xs text-muted">{card.title}</p>
-            <p className="mb-1 mt-4 break-all text-lg font-semibold tabular-nums text-brand">
-              {card.value}
-            </p>
-            {!state.loading && card.amount !== undefined && <MesoAmountHint value={card.amount} />}
-            <p className="mt-3 text-[11px] leading-5 text-muted">{card.detail}</p>
-          </article>
-        ))}
-      </div>
       <section className="rounded-2xl border border-line bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-5">
           <div>
-            <h2 className="text-sm font-semibold">주간 보스 기록</h2>
+            <h2 className="text-sm font-semibold">{periodLabel} 보스 기록</h2>
             <p className="mt-2 text-xs leading-5 text-muted">
               클리어를 체크하면 결정 수익이 바로 반영됩니다. 체크 해제 시 해당 수입도 취소됩니다.
               드랍 판매는 별도로 기록합니다.
@@ -310,13 +276,14 @@ export function BossesPage() {
           </p>
         ) : state.characters.length ? (
           <BossRunGroups
+            cycle={cycle}
             runs={state.data?.runs ?? []}
             characters={state.characters}
             characterId={query.characterId}
             busy={disabled}
-            canAdd={week <= currentBossWeek()}
+            canAdd={week <= currentPeriod()}
             canQueryApi={
-              week <= currentBossWeek() && shiftDate(week, 6) >= shiftDate(getKstDate(), -14)
+              week <= currentPeriod() && bossPeriodEnd(week, cycle) >= shiftDate(getKstDate(), -14)
             }
             onQueryApi={(character) => void queryApi(character)}
             onAdd={(character) => {
@@ -341,9 +308,9 @@ export function BossesPage() {
             onDelete={(run) =>
               confirm({
                 title: '보스 기록 삭제',
-                description: `${run.characterName}의 ${run.bossName} 기록과 결정 수익을 이 주차에서 삭제합니다. 다른 주차는 유지됩니다.`,
+                description: `${run.characterName}의 ${run.bossName} 기록과 결정 수익을 이 기간에서 삭제합니다. 다른 기간는 유지됩니다.`,
                 action: () => bossesApi.removeRun(run.id),
-                message: '주차 보스 기록을 삭제했습니다.'
+                message: `${periodLabel} 보스 기록을 삭제했습니다.`
               })
             }
           />
@@ -384,7 +351,7 @@ export function BossesPage() {
               const saved = await state.mutate(async () => {
                 const result = await bossesApi.replaceClears(apiPreview.id, members, date)
                 added = result.added ?? 0
-              }, '이 주차를 API 완료 보스 목록으로 맞추고 결정 수익을 반영했습니다.')
+              }, '이 기간를 API 완료 보스 목록으로 맞추고 결정 수익을 반영했습니다.')
               if (saved) {
                 const newSolo = members.some(
                   (member) =>
@@ -406,7 +373,11 @@ export function BossesPage() {
         </Dialog>
       )}
       {editingRun && (
-        <Dialog title="주차 보스 기록 수정" busy={state.busy} onClose={() => setEditingRun(null)}>
+        <Dialog
+          title={`${periodLabel} 보스 기록 수정`}
+          busy={state.busy}
+          onClose={() => setEditingRun(null)}
+        >
           {state.error && (
             <p role="alert" className="mb-4 text-xs text-expense">
               {state.error}
@@ -424,7 +395,7 @@ export function BossesPage() {
             onSave={async (input) => {
               const saved = await state.mutate(
                 () => bossesApi.updateRun(input),
-                '이 주차의 보스 기록을 수정했습니다.'
+                '이 기간의 보스 기록을 수정했습니다.'
               )
               if (saved) setEditingRun(null)
               return saved
@@ -450,7 +421,7 @@ export function BossesPage() {
             onSave={async (input) => {
               const saved = await state.mutate(
                 () => bossesApi.updateIncomeDate(input),
-                '수익 반영일을 수정했습니다. 금액과 보스 주차는 유지됩니다.'
+                '수익 반영일을 수정했습니다. 금액과 보스 기록 기간은 유지됩니다.'
               )
               if (saved) setEditingIncomeDate(null)
               return saved
@@ -475,13 +446,14 @@ export function BossesPage() {
               characterId: addingCharacter.id,
               characterName: addingCharacter.name,
               characterWorld: addingCharacter.world,
-              bossName: '',
+              bossName: monthly ? '검은 마법사' : '',
               bossKey: '',
-              difficulty: '',
+              difficulty: monthly ? '하드' : '',
               partySize: 1,
               crystalPrice: 0,
               expectedShare: 0,
               week,
+              cycle,
               isCleared: false,
               partySizeNeedsReview: false,
               notes: '',
@@ -501,9 +473,10 @@ export function BossesPage() {
                     ...input,
                     bossName: input.bossName ?? '',
                     characterId: addingCharacter.id,
-                    date: week
+                    date: week,
+                    cycle
                   }),
-                '이 주차에 보스를 추가했습니다.'
+                '이 기간에 보스를 추가했습니다.'
               )
               if (saved) setAddingCharacter(null)
               return saved

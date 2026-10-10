@@ -7,7 +7,13 @@ import type {
 } from '../../../shared/contracts/boss-sync.contract'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { compareBossProgression } from '../../../shared/boss-order'
-import { bossWeek, shiftDate } from '../../../shared/boss-period'
+import {
+  bossWeek,
+  shiftDate,
+  bossPeriod,
+  bossPeriodEnd,
+  readBossCycle
+} from '../../../shared/boss-period'
 import { readId, readObject } from '../../../shared/validation'
 import { AppError } from '../../../shared/errors'
 import { NexonClient } from '../../integrations/nexon/nexon.client'
@@ -40,20 +46,24 @@ export class BossSyncService {
         'API 일괄 확인이 진행 중입니다. 완료 후 다시 시도해 주세요.'
       )
     const input = readObject(value)
+    const cycle = readBossCycle(input.cycle)
     const today = getKstDate(this.now()),
-      week = bossWeek(readDate(input.date))
-    if (week > bossWeek(today))
+      week = bossPeriod(readDate(input.date), cycle)
+    if (week > bossPeriod(today, cycle))
       throw new AppError('VALIDATION_ERROR', '미래 주차는 조회할 수 없습니다.')
-    const queriedDate = week === bossWeek(today) ? today : shiftDate(week, 6)
+    const queriedDate = week === bossPeriod(today, cycle) ? today : bossPeriodEnd(week, cycle)
     if (queriedDate < shiftDate(today, -14))
       throw new AppError('VALIDATION_ERROR', '스케줄러 조회 범위인 최근 14일을 벗어난 주차입니다.')
     const result: BossBatchSyncResult = {
       week,
       queriedDate,
-      incomeDate: week === bossWeek(today) ? today : week,
+      incomeDate: week === bossPeriod(today, cycle) ? today : week,
       items: []
     }
-    const characters = this.characters.list()
+    const selectedId = input.characterId === undefined ? undefined : readId(input.characterId)
+    const characters = this.characters.list().filter((row) => !selectedId || row.id === selectedId)
+    if (selectedId && !characters.length)
+      throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
     let interruption: { code: AppError['code']; message: string } | undefined
     this.batchRunning = true
     try {
@@ -72,24 +82,30 @@ export class BossSyncService {
           continue
         }
         try {
-          const snapshots = this.bosses.list({ date: week, characterId: character.id }).runs
-          const state = await this.client.scheduler(character.nexon.ocid, queriedDate, today)
+          const snapshots = this.bosses.list({ date: week, cycle, characterId: character.id }).runs
+          const state = await this.client.scheduler(character.nexon.ocid, queriedDate, today, cycle)
           if (this.characters.find(character.id)?.nexon?.ocid !== character.nexon.ocid)
             throw new AppError(
               'REQUEST_CONFLICT',
               '조회 중 API 연결이 변경되었습니다. 다시 확인해 주세요.'
             )
-          if (week === bossWeek(today) && bossWeek(getKstDate(this.now())) !== week)
+          if (
+            week === bossPeriod(today, cycle) &&
+            bossPeriod(getKstDate(this.now()), cycle) !== week
+          )
             throw new AppError(
               'REQUEST_CONFLICT',
-              '목요일 00시가 지나 주차가 바뀌었습니다. 이번 주로 이동해 다시 확인하세요.'
+              cycle === 'monthly'
+                ? '매월 1일 00시가 지나 월이 바뀌었습니다. 이번 달로 이동해 다시 확인하세요.'
+                : '목요일 00시가 지나 주차가 바뀌었습니다. 이번 주로 이동해 다시 확인하세요.'
             )
           const applied = this.bosses.syncApiClears(
             snapshots,
             character.id,
             week,
             state.bosses.filter((boss) => boss.isCleared),
-            result.incomeDate
+            result.incomeDate,
+            cycle
           )
           result.items.push({ ...identity, status: 'synced', ...applied })
         } catch (caught) {
@@ -118,7 +134,10 @@ export class BossSyncService {
     }
   }
   async preview(value: unknown): Promise<BossSyncPreview> {
+    const cycle = 'weekly'
     const query = parseBossQuery(value)
+    if (query.cycle === 'monthly')
+      throw new AppError('VALIDATION_ERROR', '월간 보스는 월간 API 클리어 확인을 사용해 주세요.')
     const characterId = readId(query.characterId)
     const character = this.characters.find(characterId)
     if (!character?.nexon)

@@ -34,6 +34,62 @@ describe('주간 보스와 결정 장부', () => {
   const clock = () => new Date('2026-10-15T00:00:00Z')
   const query = { date: '2026-10-08' }
   const month = { from: '2026-10-01', to: '2026-10-15' }
+  it('같은 달의 검은 마법사는 주차와 무관하게 한 기록이며 주간 보스와 분리한다', () => {
+    const weekly = bosses.createRun({
+      characterId: character.id,
+      date: '2026-10-01',
+      bossName: '스우',
+      difficulty: '노멀',
+      partySize: 1
+    })
+    const monthly = bosses.createRun({
+      characterId: character.id,
+      date: '2026-10-10',
+      cycle: 'monthly',
+      bossName: '검은 마법사',
+      difficulty: '하드',
+      partySize: 3
+    })
+    expect(monthly).toMatchObject({ week: '2026-10-01', cycle: 'monthly', crystalPrice: 465000000 })
+    expect(bosses.list({ date: '2026-10-01' }).runs.map((row) => row.id)).toEqual([weekly.id])
+    expect(bosses.list({ date: '2026-10-29', cycle: 'monthly' }).runs.map((row) => row.id)).toEqual(
+      [monthly.id]
+    )
+    expect(() =>
+      bosses.createRun({ ...monthly, date: '2026-10-15', difficulty: '익스트림' })
+    ).toThrow('같은 보스')
+    expect(() => bosses.createRun({ ...monthly, date: '2026-11-01' })).toThrow('미래')
+    expect(() => bosses.createRun({ ...monthly, date: '2026-10-01', cycle: 'weekly' })).toThrow(
+      '주간 보스'
+    )
+    expect(() => bosses.updateRun({ ...monthly, bossName: '스우', difficulty: '노멀' })).toThrow(
+      '월간 보스'
+    )
+    expect(() => bosses.createRun({ ...weekly, date: '2026-10-01', cycle: 'monthly' })).toThrow(
+      '월간 보스'
+    )
+  })
+  it('월간 수익은 클리어 시 한 번 반영하고 인원·난이도 수정과 취소를 적용한다', () => {
+    let row = bosses.createRun({
+      characterId: character.id,
+      date: '2026-10-10',
+      cycle: 'monthly',
+      bossName: '검은 마법사',
+      difficulty: '하드',
+      partySize: 3
+    })
+    row = bosses.setClear({ id: row.id, isCleared: true })
+    expect(row.settlement).toMatchObject({ date: '2026-10-15', amount: 155000000 })
+    bosses.setClear({ id: row.id, isCleared: true })
+    expect(ledger.list(month).entries).toHaveLength(1)
+    row = bosses.updateRun({ ...row, difficulty: '익스트림', partySize: 2 })
+    expect(row.settlement?.amount).toBe(2840000000)
+    expect(ledger.list(month).entries).toHaveLength(1)
+    expect(bosses.list({ date: query.date }).summary.settled).toBe(0)
+    expect(bosses.list({ date: query.date, cycle: 'monthly' }).summary.settled).toBe(2840000000)
+    bosses.setClear({ id: row.id, isCleared: false })
+    expect(ledger.list(month).entries).toHaveLength(0)
+  })
   it('기존 DB를 갱신할 때 인원·수익을 보존하고 과거 기록은 미확인으로 추정하지 않는다', () => {
     const original = bosses.createRun({
       characterId: character.id,
@@ -55,6 +111,27 @@ describe('주간 보스와 결정 장부', () => {
       isCleared: true
     })
     expect(ledger.list(month).entries).toEqual(entries)
+  })
+  it('같은 시작일의 주간 12개와 월간 1개를 독립적으로 기록한다', () => {
+    for (const boss of WEEKLY_BOSSES.slice(0, 12)) {
+      bosses.createRun({
+        characterId: character.id,
+        date: '2026-10-01',
+        bossName: boss.name,
+        difficulty: boss.difficulties[0],
+        partySize: 1
+      })
+    }
+    bosses.createRun({
+      characterId: character.id,
+      date: '2026-10-01',
+      cycle: 'monthly',
+      bossName: '검은 마법사',
+      difficulty: '하드',
+      partySize: 6
+    })
+    expect(bosses.list({ date: '2026-10-01' }).runs).toHaveLength(12)
+    expect(bosses.list({ date: '2026-10-01', cycle: 'monthly' }).runs).toHaveLength(1)
   })
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), 'maple-boss-test-'))
@@ -160,7 +237,7 @@ describe('주간 보스와 결정 장부', () => {
           date,
           expectedDate: clearedRecord.settlement!.date
         })
-      ).toThrow('주차 시작일')
+      ).toThrow('기간 시작일')
     bosses.updateIncomeDate({
       id: record.id,
       date: '2026-10-13',
@@ -211,7 +288,7 @@ describe('주간 보스와 결정 장부', () => {
     expect(bosses.presets()).toEqual([])
     expect(ledger.list(month).entries).toEqual([])
     expect(() => bosses.createRun({ ...input, difficulty: '하드' })).toThrow('같은 보스')
-    expect(() => bosses.createRun({ ...input, date: '2026-10-22' })).toThrow('미래 주차')
+    expect(() => bosses.createRun({ ...input, date: '2026-10-22' })).toThrow('미래 기간')
     expect(bosses.createRun({ ...input, bossName: '데미안' }).bossName).toBe('데미안')
   })
 
@@ -455,7 +532,7 @@ describe('주간 보스와 결정 장부', () => {
       date: '2026-10-14'
     })
     expect(() => bosses.updateRun({ ...updated, incomeDate: '2026-10-16' })).toThrow('오늘 이후')
-    expect(() => bosses.updateRun({ ...updated, incomeDate: '2026-10-07' })).toThrow('주차 시작일')
+    expect(() => bosses.updateRun({ ...updated, incomeDate: '2026-10-07' })).toThrow('기간 시작일')
     expect(bosses.list(query).runs[0].settlement?.date).toBe('2026-10-14')
   })
   it('자동 수익 갱신 실패 시 인원과 수익도 함께 롤백한다', () => {
@@ -614,7 +691,7 @@ describe('주간 보스와 결정 장부', () => {
     )
     bosses.setClear({ id: record.id, isCleared: true })
     expect(() => bosses.settle({ runId: record.id, date: '2026-10-07', amount: 60 })).toThrow(
-      '주차 시작일'
+      '기간 시작일'
     )
     expect(() => bosses.settle({ runId: record.id, date: '2026-10-16', amount: 60 })).toThrow(
       '오늘 이후'
@@ -700,7 +777,7 @@ describe('주간 보스와 결정 장부', () => {
     old.close()
     const upgraded = openDatabase(file)
     try {
-      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(15)
+      expect(upgraded.prepare('SELECT * FROM schema_migrations').all()).toHaveLength(16)
       expect(
         upgraded
           .prepare('SELECT id FROM ledger_entries ORDER BY id')

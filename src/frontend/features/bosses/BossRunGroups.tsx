@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { BossIcon } from './BossIcon'
 
 export function BossRunGroups({
+  cycle = 'weekly',
   runs,
   characters,
   characterId,
@@ -20,6 +21,7 @@ export function BossRunGroups({
   onClear,
   onDrops
 }: {
+  cycle?: 'weekly' | 'monthly'
   runs: BossRun[]
   characters: Character[]
   characterId?: string
@@ -73,7 +75,7 @@ export function BossRunGroups({
               return (
                 <article
                   key={key}
-                  aria-label={`${group.character.name} 주간 보스`}
+                  aria-label={`${group.character.name} ${cycle === 'monthly' ? '월간' : '주간'} 보스`}
                   className="overflow-hidden rounded-xl border border-line"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-canvas px-4 py-3">
@@ -90,13 +92,16 @@ export function BossRunGroups({
                       <Button
                         variant="secondary"
                         disabled={
-                          busy || !canQueryApi || !group.character.nexon || !group.runs.length
+                          busy ||
+                          !canQueryApi ||
+                          !group.character.nexon ||
+                          (cycle === 'weekly' && !group.runs.length)
                         }
                         title={
                           !group.character.nexon
                             ? '캐릭터 관리에서 API 연결이 필요합니다.'
                             : !canQueryApi
-                              ? '최근 14일 범위의 주차만 조회할 수 있습니다.'
+                              ? '최근 14일 범위의 기간만 조회할 수 있습니다.'
                               : '스케줄러의 완료 보스를 확인합니다.'
                         }
                         onClick={() => onQueryApi(group.character)}
@@ -105,7 +110,7 @@ export function BossRunGroups({
                       </Button>
                       <Button
                         variant="secondary"
-                        disabled={busy || !canAdd || count >= 12}
+                        disabled={busy || !canAdd || count >= (cycle === 'monthly' ? 1 : 12)}
                         onClick={() => onAdd(group.character)}
                       >
                         + 보스 추가
@@ -219,8 +224,8 @@ export function BossRunGroups({
                     </div>
                   ) : (
                     <p className="p-5 text-xs text-muted">
-                      이번 주차의 보스가 없습니다. API 클리어를 일괄 확인하거나 보스를 직접
-                      추가하세요.
+                      {cycle === 'monthly' ? '이달' : '이번 주차'}의 보스 기록이 없습니다. API
+                      클리어를 일괄 확인하거나 보스를 직접 추가하세요.
                     </p>
                   )}
                 </article>

@@ -11,10 +11,12 @@ import {
 import { AppError } from '../../../shared/errors'
 import { readId, readObject, readText } from '../../../shared/validation'
 import { getKstDate, readDate } from '../../../shared/dates'
-import { bossWeek } from '../../../shared/boss-period'
+import { bossWeek, bossPeriod, readBossCycle, type BossCycle } from '../../../shared/boss-period'
 import {
   validateBossSelection,
   WEEKLY_BOSSES,
+  bossCatalog,
+  validateBossCycle,
   bossPartyLimit,
   validateBossDifficultyChange,
   validateBossParty
@@ -45,6 +47,7 @@ export class BossService {
   createPreset(value: unknown): BossPreset {
     const input = parseBossPreset(value)
     validateBossSelection(input.bossName, input.difficulty)
+    validateBossCycle(input.bossName, 'weekly')
     validateBossParty(input.bossName, input.difficulty, input.partySize)
     return this.transaction.run(() => {
       const character = this.characters.find(input.characterId)
@@ -106,12 +109,17 @@ export class BossService {
   }
   list(value: unknown): BossList {
     const query = parseBossQuery(value)
-    const week = bossWeek(query.date)
-    const runs = this.repository.list(week, query.characterId)
+    const week = bossPeriod(query.date, query.cycle)
+    const runs = this.repository.list(week, query.characterId, query.cycle)
     return { week, runs, summary: summarizeBosses(runs) }
   }
   generate(value: unknown): BossList {
     const query = parseBossQuery(value)
+    if (query.cycle === 'monthly')
+      throw new AppError(
+        'VALIDATION_ERROR',
+        '월간 보스는 월간 기록에서 직접 추가하거나 API로 확인해 주세요.'
+      )
     const week = bossWeek(query.date)
     if (week > bossWeek(getKstDate(this.now())))
       throw new AppError('VALIDATION_ERROR', '미래 주차는 생성할 수 없습니다.')
@@ -170,32 +178,38 @@ export class BossService {
       const run = { ...current, isCleared, updatedAt: this.now().toISOString() }
       this.repository.updateRun(run)
       if (!raw.isCleared) this.repository.cancelSettlement(run.id, run.updatedAt)
-      else if (!current.settlement) this.syncClearIncome(run, this.defaultIncomeDate(run.week))
+      else if (!current.settlement)
+        this.syncClearIncome(run, this.defaultIncomeDate(run.week, run.cycle))
       return this.findRun(run.id)
     })
   }
   createRun(value: unknown): BossRun {
     const raw = readObject(value)
     const input = parseBossPreset(raw)
-    const week = bossWeek(parseBossQuery(raw).date)
-    if (week > bossWeek(getKstDate(this.now())))
-      throw new AppError('VALIDATION_ERROR', '미래 주차는 추가할 수 없습니다.')
+    const cycle = readBossCycle(raw.cycle)
+    const week = bossPeriod(parseBossQuery(raw).date, cycle)
+    if (week > bossPeriod(getKstDate(this.now()), cycle))
+      throw new AppError('VALIDATION_ERROR', '미래 기간은 추가할 수 없습니다.')
     validateBossSelection(input.bossName, input.difficulty)
+    validateBossCycle(input.bossName, cycle)
     validateBossParty(input.bossName, input.difficulty, input.partySize)
     return this.transaction.run(() => {
       const character = this.characters.find(input.characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      const existing = this.repository.list(week, character.id)
+      const existing = this.repository.list(week, character.id, cycle)
       if (existing.some((run) => run.bossName === input.bossName))
-        throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 주차에 같은 보스가 이미 있습니다.')
-      if (existing.length >= 12)
+        throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 해당 기간에 같은 보스가 이미 있습니다.')
+      if (existing.length >= (cycle === 'monthly' ? 1 : 12))
         throw new AppError(
           'VALIDATION_ERROR',
-          '한 캐릭터의 주차에는 최대 12개 보스를 추가할 수 있습니다.'
+          cycle === 'monthly'
+            ? '한 캐릭터의 월간 검은 마법사 기록은 한 개만 추가할 수 있습니다.'
+            : '한 캐릭터의 주차에는 최대 12개 보스를 추가할 수 있습니다.'
         )
       const timestamp = this.now().toISOString()
       const run: BossRun = {
         ...input,
+        cycle,
         crystalPrice: requireCrystalPrice(
           input.bossName,
           input.difficulty,
@@ -230,7 +244,7 @@ export class BossService {
         if (current.week > incomeDate || incomeDate > today)
           throw new AppError(
             'VALIDATION_ERROR',
-            '수익 반영일은 주차 시작일부터 오늘 사이여야 합니다.'
+            '수익 반영일은 기록 기간 시작일부터 오늘 사이여야 합니다.'
           )
         if (
           ['characterId', 'week', 'bossName', 'difficulty', 'partySize', 'crystalPrice'].some(
@@ -275,18 +289,23 @@ export class BossService {
     members: { bossName: string; difficulty: string; partySize: number }[],
     date: string,
     preservedRunIds: string[] = [],
-    partySizeConfirmed = true
+    partySizeConfirmed = true,
+    cycle: BossCycle = 'weekly'
   ): { applied: number; alreadyCleared: number; added: number; removed: number } {
     const incomeDate = readDate(date)
     if (incomeDate < week || incomeDate > getKstDate(this.now()))
-      throw new AppError('VALIDATION_ERROR', '수익 반영일은 주차 시작일부터 오늘 사이여야 합니다.')
-    if (members.length < 1 || members.length > 12)
-      throw new AppError('VALIDATION_ERROR', '보스 구성은 1~12개여야 합니다.')
+      throw new AppError(
+        'VALIDATION_ERROR',
+        '수익 반영일은 기록 기간 시작일부터 오늘 사이여야 합니다.'
+      )
+    const limit = cycle === 'monthly' ? 1 : 12
+    if (members.length < 1 || members.length > limit)
+      throw new AppError('VALIDATION_ERROR', `보스 구성은 1~${limit}개여야 합니다.`)
     const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
     return this.transaction.run(() => {
       const character = this.characters.find(characterId)
       if (!character) throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
-      const current = this.repository.list(week, characterId)
+      const current = this.repository.list(week, characterId, cycle)
       if (
         current.length !== snapshots.length ||
         current.some(
@@ -315,10 +334,10 @@ export class BossService {
           '조회 이후 주차 기록이 변경되었습니다. 다시 조회해 주세요.'
         )
       const preserved = current.filter((run) => preservedRunIds.includes(run.id))
-      if (preserved.length !== preservedRunIds.length || preserved.length + members.length > 12)
+      if (preserved.length !== preservedRunIds.length || preserved.length + members.length > limit)
         throw new AppError(
           'REQUEST_CONFLICT',
-          '수동 기록을 보존하면 주간 보스 12개를 초과합니다. 기록을 확인해 주세요.'
+          `수동 기록을 보존하면 ${cycle === 'monthly' ? '월간 보스 1개' : '주간 보스 12개'}를 초과합니다. 기록을 확인해 주세요.`
         )
       const conflicts = this.apiReplacementConflicts(
         current.filter((run) => !preservedRunIds.includes(run.id)),
@@ -329,6 +348,7 @@ export class BossService {
       const targets = members.map((member) => {
         const details = parseBossDetails(member)
         validateBossSelection(member.bossName, member.difficulty)
+        validateBossCycle(member.bossName, cycle)
         const existing = current.find((run) => key(run.bossName) === key(member.bossName))
         validateBossParty(
           member.bossName,
@@ -377,6 +397,7 @@ export class BossService {
             }
           : {
               ...member,
+              cycle,
               id: randomUUID(),
               bossKey: member.bossName.toLowerCase(),
               characterId,
@@ -408,17 +429,19 @@ export class BossService {
     characterId: string,
     week: string,
     completed: { bossName: string; difficulty: string }[],
-    incomeDate: string
+    incomeDate: string,
+    cycle: BossCycle = 'weekly'
   ): { applied: number; alreadyCleared: number; added: number; removed: number } {
     if (!completed.length) return { applied: 0, alreadyCleared: 0, added: 0, removed: 0 }
-    if (completed.length > 12)
+    const limit = cycle === 'monthly' ? 1 : 12
+    if (completed.length > limit)
       throw new AppError(
         'VALIDATION_ERROR',
-        'API 완료 보스가 12개를 초과해 자동 반영할 수 없습니다.'
+        `API 완료 보스가 ${limit}개를 초과해 자동 반영할 수 없습니다.`
       )
     const key = (name: string) => name.normalize('NFC').replace(/\s/g, '').toLowerCase()
     const members = completed.map((boss) => {
-      const catalog = WEEKLY_BOSSES.find((row) => key(row.name) === key(boss.bossName))
+      const catalog = bossCatalog(cycle).find((row) => key(row.name) === key(boss.bossName))
       if (!catalog)
         throw new AppError(
           'VALIDATION_ERROR',
@@ -446,15 +469,15 @@ export class BossService {
         run.notes.trim() ||
         this.drops.hasLots({ kind: 'boss', id: run.id })
     )
-    if (members.length + protectedRuns.length > 12)
+    if (members.length + protectedRuns.length > limit)
       throw new AppError(
         'REQUEST_CONFLICT',
-        '기존 클리어·메모·드랍을 보존하면 12개를 초과합니다. 수동 기록을 확인해 주세요.'
+        `기존 클리어·메모·드랍을 보존하면 ${limit}개를 초과합니다. 수동 기록을 확인해 주세요.`
       )
     const planned = unmatched.filter((run) => !protectedRuns.some((row) => row.id === run.id))
     const preserved = [
       ...protectedRuns,
-      ...planned.slice(0, 12 - members.length - protectedRuns.length)
+      ...planned.slice(0, limit - members.length - protectedRuns.length)
     ]
     return this.replaceApiClears(
       snapshots,
@@ -462,7 +485,9 @@ export class BossService {
       week,
       members,
       incomeDate,
-      preserved.map((row) => row.id)
+      preserved.map((row) => row.id),
+      true,
+      cycle
     )
   }
   updateRun(value: unknown): BossRun {
@@ -484,12 +509,13 @@ export class BossService {
         if (this.drops.hasLots({ kind: 'boss', id: current.id }))
           throw new AppError('DROP_IN_USE', '드랍 묶음을 정리한 뒤 보스를 변경해 주세요.')
         validateBossSelection(run.bossName, run.difficulty)
+        validateBossCycle(run.bossName, current.cycle ?? 'weekly')
         if (
           this.repository
-            .list(current.week, current.characterId)
+            .list(current.week, current.characterId, current.cycle)
             .some((other) => other.id !== run.id && other.bossName === run.bossName)
         )
-          throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 주차에 같은 보스가 이미 있습니다.')
+          throw new AppError('DUPLICATE_BOSS', '이 캐릭터의 해당 기간에 같은 보스가 이미 있습니다.')
       } else validateBossDifficultyChange(current.bossName, run.difficulty, current.difficulty)
       validateBossParty(
         run.bossName,
@@ -513,10 +539,13 @@ export class BossService {
       if (run.isCleared) {
         const date =
           raw.incomeDate === undefined
-            ? (current.settlement?.date ?? this.defaultIncomeDate(run.week))
+            ? (current.settlement?.date ?? this.defaultIncomeDate(run.week, run.cycle))
             : readDate(raw.incomeDate)
         if (date < run.week)
-          throw new AppError('VALIDATION_ERROR', '수익 반영일은 주차 시작일보다 빠를 수 없습니다.')
+          throw new AppError(
+            'VALIDATION_ERROR',
+            '수익 반영일은 기록 기간 시작일보다 빠를 수 없습니다.'
+          )
         if (date > getKstDate(this.now()))
           throw new AppError('VALIDATION_ERROR', '오늘 이후의 수익은 기록할 수 없습니다.')
         const changed =
@@ -552,7 +581,7 @@ export class BossService {
       if (date < current.week || date > getKstDate(this.now()))
         throw new AppError(
           'VALIDATION_ERROR',
-          '수익 반영일은 주차 시작일부터 오늘 사이여야 합니다.'
+          '수익 반영일은 기록 기간 시작일부터 오늘 사이여야 합니다.'
         )
       if (current.settlement.date !== expectedDate)
         throw new AppError(
@@ -578,7 +607,10 @@ export class BossService {
       if (!current.isCleared)
         throw new AppError('VALIDATION_ERROR', '클리어 체크 후 결정 판매를 기록해 주세요.')
       if (input.date < current.week)
-        throw new AppError('VALIDATION_ERROR', '판매일은 보스 주차 시작일보다 빠를 수 없습니다.')
+        throw new AppError(
+          'VALIDATION_ERROR',
+          '판매일은 보스 기록 기간 시작일보다 빠를 수 없습니다.'
+        )
       const timestamp = this.now().toISOString()
       this.repository.settle(input, current.settlement?.id ?? randomUUID(), timestamp, false)
       const run = this.findRun(current.id)
@@ -614,9 +646,9 @@ export class BossService {
       throw new AppError('BOSS_NOT_FOUND', '보스 프리셋을 찾을 수 없습니다. 새로고침해 주세요.')
     return preset
   }
-  private defaultIncomeDate(week: string): string {
+  private defaultIncomeDate(week: string, cycle: BossCycle = 'weekly'): string {
     const today = getKstDate(this.now())
-    return bossWeek(today) === week ? today : week
+    return bossPeriod(today, cycle) === week ? today : week
   }
   private syncClearIncome(run: BossRun, date: string): void {
     if (date > getKstDate(this.now()))

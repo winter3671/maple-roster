@@ -8,8 +8,8 @@ import { getKstDate } from '../../../shared/dates'
 import {
   clampBossParty,
   defaultBossDifficulty,
-  findWeeklyBoss,
-  WEEKLY_BOSSES
+  findBoss,
+  bossCatalog
 } from '../../../shared/boss-catalog'
 import { readText } from '../../../shared/validation'
 import { parseDigits } from '../../lib/format'
@@ -81,7 +81,7 @@ export function BossRunForm({
       <label className="block text-xs font-semibold">
         보스
         <select
-          aria-label="주차 보스"
+          aria-label={run.cycle === 'monthly' ? '월간 보스' : '주차 보스'}
           value={draft.bossName}
           required
           disabled={busy}
@@ -91,10 +91,10 @@ export function BossRunForm({
           <option value="" disabled>
             보스 선택
           </option>
-          {run.bossName && !findWeeklyBoss(run.bossName) && (
+          {run.bossName && !findBoss(run.bossName) && (
             <option value={run.bossName}>{run.bossName} (기존 기록)</option>
           )}
-          {WEEKLY_BOSSES.map((boss) => (
+          {bossCatalog(run.cycle).map((boss) => (
             <option
               key={boss.name}
               value={boss.name}
@@ -106,8 +106,8 @@ export function BossRunForm({
         </select>
       </label>
       <p className="text-xs leading-5 text-muted">
-        {run.id ? '이 주차의 기록만 수정합니다.' : '선택한 캐릭터의 이 주차에 보스를 추가합니다.'}{' '}
-        다른 주차에는 반영하지 않습니다.
+        {run.id ? '이 기간의 기록만 수정합니다.' : '선택한 캐릭터의 이 기간에 보스를 추가합니다.'}{' '}
+        다른 기간에는 반영하지 않습니다.
       </p>
       <BossDetailsFields
         id={id}

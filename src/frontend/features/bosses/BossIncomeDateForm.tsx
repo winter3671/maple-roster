@@ -52,9 +52,9 @@ export function BossIncomeDateForm({
         />
       </label>
       <p className="text-xs leading-6 text-muted">
-        API 자동 확인은 실제 처치일을 기록하지 않습니다. 새 수익의 기본 반영일은 이번 주에는 조회일,
-        과거 주에는 주차 시작일입니다. 필요하면 실제 수익을 반영할 날짜로 조정하세요. 보스의 소속
-        주차는 바뀌지 않습니다.
+        API 자동 확인은 실제 처치일을 기록하지 않습니다. 새 수익의 기본 반영일은 현재 기간에는
+        조회일, 과거 기간에는 시작일입니다. 필요하면 실제 수익을 반영할 날짜로 조정하세요. 보스의
+        소속 주차·월은 바뀌지 않습니다.
       </p>
       {error && (
         <p role="alert" className="text-xs text-expense">

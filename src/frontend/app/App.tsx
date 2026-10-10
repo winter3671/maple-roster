@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AppLayout } from './AppLayout'
 import type { PageId } from './navigation'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
-import { BossesPage } from '../features/bosses/BossesPage'
+import { BossLedgerPage } from '../features/bosses/BossLedgerPage'
 import { HuntingPage } from '../features/hunting/HuntingPage'
 import { LedgerPage } from '../features/ledger/LedgerPage'
 import { CharactersPage } from '../features/characters/CharactersPage'
@@ -14,7 +14,7 @@ export function App() {
   const pages = {
     dashboard: <DashboardPage onNavigate={setPage} />,
     weekly: <WeeklyPage />,
-    bosses: <BossesPage />,
+    bosses: <BossLedgerPage />,
     hunting: <HuntingPage />,
     ledger: <LedgerPage />,
     characters: <CharactersPage />,

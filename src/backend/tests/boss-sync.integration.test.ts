@@ -72,6 +72,59 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     )
   })
   afterEach(() => database.close())
+  it('월간 API는 주간 응답을 제외하고 1인으로 추가하며 반복 조회와 인원 수정을 보존한다', async () => {
+    contents.push({
+      content_name: '검은 마법사',
+      difficulty: 'hard',
+      cycle: 'bossMonthly',
+      complete_flag: 'true'
+    })
+    await sync.syncAll(query)
+    const weekly = bosses.list(query).runs[0]
+    const monthlyQuery = { date: query.date, cycle: 'monthly' as const }
+    expect((await sync.syncAll(monthlyQuery)).items[0]).toMatchObject({
+      status: 'synced',
+      added: 1
+    })
+    let row = bosses.list(monthlyQuery).runs[0]
+    expect(row).toMatchObject({
+      week: '2026-10-01',
+      partySize: 1,
+      isCleared: true,
+      cycle: 'monthly'
+    })
+    row = bosses.updateRun({ ...row, partySize: 6, notes: '6인 파티' })
+    await sync.syncAll(monthlyQuery)
+    expect(bosses.list(monthlyQuery).runs[0]).toMatchObject({
+      id: row.id,
+      partySize: 6,
+      notes: '6인 파티'
+    })
+    expect(bosses.list(query).runs).toEqual([weekly])
+    expect(ledger.list(month).entries).toHaveLength(2)
+    contents[1].complete_flag = 'false'
+    await sync.syncAll(monthlyQuery)
+    expect(bosses.list(monthlyQuery).runs[0].isCleared).toBe(true)
+  })
+  it('월간 기록은 달이 바뀌면 새 기록을 만들고 이전 달 조회는 최근 14일까지만 허용한다', async () => {
+    contents = [
+      {
+        content_name: '검은 마법사',
+        difficulty: 'extreme',
+        cycle: 'bossMonthly',
+        complete_flag: 'true'
+      }
+    ]
+    await sync.syncAll({ date: query.date, cycle: 'monthly' })
+    const old = bosses.list({ date: query.date, cycle: 'monthly' }).runs[0]
+    now = new Date('2026-11-01T00:00:00Z')
+    responseDate = '2026-11-01T00:00+09:00'
+    await sync.syncAll({ date: '2026-11-01', cycle: 'monthly', characterId })
+    expect(bosses.list({ date: '2026-11-01', cycle: 'monthly' }).runs[0].id).not.toBe(old.id)
+    expect(bosses.list({ date: query.date, cycle: 'monthly' }).runs[0]).toEqual(old)
+    now = new Date('2026-11-15T00:00:00Z')
+    await expect(sync.syncAll({ date: '2026-10-01', cycle: 'monthly' })).rejects.toThrow('14일')
+  })
   it('자동 추가는 1인으로 등록하고 반복 조회·메모 수정에 확인 체크나 중복 수익이 필요 없다', async () => {
     const first = await sync.syncAll(query)
     expect(first.items[0].added).toBe(1)

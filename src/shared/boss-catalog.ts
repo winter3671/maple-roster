@@ -1,4 +1,5 @@
 import { AppError } from './errors'
+import type { BossCycle } from './boss-period'
 
 export interface WeeklyBoss {
   name: string
@@ -44,17 +45,33 @@ export const WEEKLY_BOSSES: readonly WeeklyBoss[] = [
   { name: '유피테르', difficulties: ['노멀', '하드'], maxPartySize: 3 }
 ]
 
+export const MONTHLY_BOSSES: readonly WeeklyBoss[] = [
+  { name: '검은 마법사', difficulties: ['하드', '익스트림'], maxPartySize: 6 }
+]
+export function bossCatalog(cycle: BossCycle = 'weekly'): readonly WeeklyBoss[] {
+  return cycle === 'monthly' ? MONTHLY_BOSSES : WEEKLY_BOSSES
+}
+export function findBoss(name: string): WeeklyBoss | undefined {
+  return [...WEEKLY_BOSSES, ...MONTHLY_BOSSES].find((boss) => boss.name === name)
+}
+export function validateBossCycle(name: string, cycle: BossCycle): void {
+  if (!bossCatalog(cycle).some((boss) => boss.name === name))
+    throw new AppError(
+      'VALIDATION_ERROR',
+      `${cycle === 'monthly' ? '월간' : '주간'} 보스를 목록에서 선택해 주세요.`
+    )
+}
 export function findWeeklyBoss(name: string): WeeklyBoss | undefined {
   return WEEKLY_BOSSES.find((boss) => boss.name === name)
 }
 
 export function defaultBossDifficulty(name: string): string {
-  const boss = findWeeklyBoss(name)
+  const boss = findBoss(name)
   return boss?.difficulties.includes('노멀') ? '노멀' : (boss?.difficulties[0] ?? '')
 }
 
 export function bossPartyLimit(name: string, difficulty: string): number {
-  const boss = findWeeklyBoss(name)
+  const boss = findBoss(name)
   return boss?.partySizeByDifficulty?.[difficulty] ?? boss?.maxPartySize ?? 6
 }
 
@@ -78,7 +95,7 @@ export function validateBossParty(
 }
 
 export function validateBossSelection(name: string, difficulty: string): void {
-  const boss = findWeeklyBoss(name)
+  const boss = findBoss(name)
   if (!boss) throw new AppError('VALIDATION_ERROR', '주간 보스를 목록에서 선택해 주세요.')
   if (!boss.difficulties.includes(difficulty))
     throw new AppError('VALIDATION_ERROR', '선택한 보스의 주간 난이도를 목록에서 선택해 주세요.')

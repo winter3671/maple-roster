@@ -59,7 +59,9 @@ const prices: readonly (readonly [string, string, number, number])[] = [
   ['발드릭스', '노멀', 1320000000, 1368000000],
   ['발드릭스', '하드', 3078000000, 3078000000],
   ['유피테르', '노멀', 1560000000, 1615000000],
-  ['유피테르', '하드', 4845000000, 4845000000]
+  ['유피테르', '하드', 4845000000, 4845000000],
+  ['검은 마법사', '하드', 465000000, 665000000],
+  ['검은 마법사', '익스트림', 5680000000, 8740000000]
 ]
 
 export const BUILTIN_CRYSTAL_HISTORY: readonly CrystalPriceEntry[] = prices.flatMap(
@@ -67,7 +69,7 @@ export const BUILTIN_CRYSTAL_HISTORY: readonly CrystalPriceEntry[] = prices.flat
     const source =
       bossName === '벨로나' && difficulty === '하드'
         ? '보조 확인: https://matsu1207.tistory.com/m/757'
-        : bossName === '벨로나'
+        : bossName === '벨로나' || bossName === '검은 마법사'
           ? '변경 전 가격 확인: https://maplestory.nexon.com/News/Update/813'
           : '6월 공지/기존 가격 대조: https://maplestory.nexon.com/News/Update/806 · https://maplewhoru.kr/boss/'
     return [
@@ -86,7 +88,7 @@ export const BUILTIN_CRYSTAL_HISTORY: readonly CrystalPriceEntry[] = prices.flat
         bossName,
         difficulty,
         amount: current,
-        effectiveOn: CRYSTAL_PRICE_CHANGE_DATE,
+        effectiveOn: bossName === '검은 마법사' ? '2026-10-01' : CRYSTAL_PRICE_CHANGE_DATE,
         checkedOn: CRYSTAL_PRICES_CHECKED_ON,
         source:
           bossName === '벨로나' && difficulty === '하드'
@@ -127,7 +129,7 @@ export function requireCrystalPrice(
   if (!price)
     throw new AppError(
       'VALIDATION_ERROR',
-      '해당 보스·난이도·날짜의 결정 가격표가 없습니다. 지원되는 주차를 선택해 주세요.'
+      '해당 보스·난이도·날짜의 결정 가격표가 없습니다. 지원되는 기간을 선택해 주세요.'
     )
   return price.amount
 }

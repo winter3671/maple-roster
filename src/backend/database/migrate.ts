@@ -15,6 +15,7 @@ import imageLengthSql from './migrations/012_character_image_url_length.sql?raw'
 import expensePointsSql from './migrations/013_expense_maple_points.sql?raw'
 import weeklySnapshotsSql from './migrations/014_weekly_snapshots.sql?raw'
 import incomeSql from './migrations/015_manual_incomes.sql?raw'
+import monthlyBossesSql from './migrations/016_monthly_bosses.sql?raw'
 
 const migrations = [
   { version: 1, name: 'characters', sql: charactersSql },
@@ -31,7 +32,8 @@ const migrations = [
   { version: 12, name: 'character_image_url_length', sql: imageLengthSql },
   { version: 13, name: 'expense_maple_points', sql: expensePointsSql },
   { version: 14, name: 'weekly_snapshots', sql: weeklySnapshotsSql },
-  { version: 15, name: 'manual_incomes', sql: incomeSql }
+  { version: 15, name: 'manual_incomes', sql: incomeSql },
+  { version: 16, name: 'monthly_bosses', sql: monthlyBossesSql }
 ]
 
 export class NewerDatabaseError extends Error {

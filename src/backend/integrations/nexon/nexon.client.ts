@@ -88,7 +88,8 @@ export class NexonClient {
   async scheduler(
     value: unknown,
     date: string,
-    today = getKstDate()
+    today = getKstDate(),
+    cycleType: 'weekly' | 'monthly' = 'weekly'
   ): Promise<{ date: string; bosses: SchedulerBoss[] }> {
     const ocid = readOcid(value)
     readDate(date)
@@ -117,7 +118,14 @@ export class NexonClient {
     for (const entry of row.boss_contents) {
       const boss = object(entry)
       const cycle = text(boss.cycle, 40)
-      if (!['bossWeekly', 'weekly', '주간'].includes(cycle)) continue
+      if (
+        !(
+          cycleType === 'monthly'
+            ? ['bossMonthly', 'monthly', '월간']
+            : ['bossWeekly', 'weekly', '주간']
+        ).includes(cycle)
+      )
+        continue
       const bossName = text(boss.content_name, 60).normalize('NFC')
       const rawDifficulty = text(boss.difficulty, 40)
       const difficulty = difficulties[rawDifficulty.toLowerCase()] ?? rawDifficulty

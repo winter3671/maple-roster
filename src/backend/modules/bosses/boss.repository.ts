@@ -1,6 +1,7 @@
 import type { DatabaseSync, SQLOutputValue } from 'node:sqlite'
 import type { BossPreset, BossRun, CrystalInput } from '../../../shared/contracts/boss.contract'
 import { crystalShare } from '../../domain/boss-profit'
+import type { BossCycle } from '../../../shared/boss-period'
 
 type Row = Record<string, SQLOutputValue>
 function details(row: Row) {
@@ -21,6 +22,7 @@ function details(row: Row) {
 function run(row: Row): BossRun {
   return {
     ...details(row),
+    cycle: row.cycle === 'monthly' ? 'monthly' : 'weekly',
     characterWorld: String(row.world_snapshot),
     week: String(row.period_start),
     isCleared: row.is_cleared === 1,
@@ -77,12 +79,12 @@ export class BossRepository {
   removePreset(id: string): void {
     this.database.prepare('DELETE FROM boss_presets WHERE id = ?').run(id)
   }
-  list(week: string, characterId?: string): BossRun[] {
+  list(week: string, characterId?: string, cycle: BossCycle = 'weekly'): BossRun[] {
     return this.database
       .prepare(
-        `${runSelect} WHERE r.period_start = ? ${characterId ? 'AND r.character_id = ?' : ''} ORDER BY c.name, r.boss_name`
+        `${runSelect} WHERE r.period_start = ? AND r.cycle = ? ${characterId ? 'AND r.character_id = ?' : ''} ORDER BY c.name, r.boss_name`
       )
-      .all(week, ...(characterId ? [characterId] : []))
+      .all(week, cycle, ...(characterId ? [characterId] : []))
       .map(run)
   }
   find(id: string): BossRun | undefined {
@@ -92,7 +94,7 @@ export class BossRepository {
   insertRun(r: BossRun): void {
     this.database
       .prepare(
-        `INSERT INTO boss_runs (id, character_id, world_snapshot, boss_key, boss_name, difficulty, party_size, crystal_price, period_start, is_cleared, notes, created_at, updated_at, party_size_needs_review) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(character_id, boss_key, period_start) DO NOTHING`
+        `INSERT INTO boss_runs (id, character_id, world_snapshot, boss_key, boss_name, difficulty, party_size, crystal_price, period_start, is_cleared, notes, created_at, updated_at, party_size_needs_review, cycle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(character_id, boss_key, period_start) DO NOTHING`
       )
       .run(
         r.id,
@@ -108,7 +110,8 @@ export class BossRepository {
         r.notes,
         r.createdAt,
         r.updatedAt,
-        Number(r.partySizeNeedsReview)
+        Number(r.partySizeNeedsReview),
+        r.cycle ?? 'weekly'
       )
   }
   updateRun(r: BossRun): void {

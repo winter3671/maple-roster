@@ -159,6 +159,7 @@ describe('결정 가격 이력 관리', () => {
     expect(prices.custom()[0]).toMatchObject(input)
     const file = JSON.parse(content)
     file.schemaVersion = 8
+    for (const row of file.tables.boss_runs) delete row.cycle
     delete file.tables.manual_incomes
     for (const row of file.tables.ledger_entries) delete row.manual_income_id
     for (const row of file.tables.characters) delete row.nexon_image_url

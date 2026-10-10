@@ -94,7 +94,11 @@ export interface AppApi {
     cancelSale: (id: string) => Promise<ApiResult<null>>
   }
   bosses: {
-    syncClears: (input: { date: string }) => Promise<ApiResult<BossBatchSyncResult>>
+    syncClears: (input: {
+      date: string
+      cycle?: 'weekly' | 'monthly'
+      characterId?: string
+    }) => Promise<ApiResult<BossBatchSyncResult>>
     previewClears: (input: {
       date: string
       characterId: string
