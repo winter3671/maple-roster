@@ -64,11 +64,6 @@ export function useCrystalPrices() {
   return {
     ...value,
     findPrice: (boss: string, difficulty: string, date: string) =>
-      findCrystalPrice(
-        boss,
-        difficulty,
-        date,
-        value.history.filter((row) => row.isCustom)
-      )
+      findCrystalPrice(boss, difficulty, date)
   }
 }

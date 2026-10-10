@@ -17,8 +17,6 @@ export const IPC_CHANNELS = {
   backupAutomaticNow: 'backup:automatic-now',
   bossesUpdateIncomeDate: 'bosses:update-income-date',
   pricesList: 'prices:list',
-  pricesSave: 'prices:save',
-  pricesRemove: 'prices:remove',
   dashboardSummary: 'dashboard:summary',
   ledgerExportCsv: 'ledger:export-csv',
   backupExport: 'backup:export',

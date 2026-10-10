@@ -4,7 +4,7 @@ import { getBridge } from '../../lib/bridge'
 import { NexonConnection } from '../nexon/NexonConnection'
 import { BackupManager } from './BackupManager'
 import { AutomaticBackupManager } from './AutomaticBackupManager'
-import { CrystalPriceManager } from './CrystalPriceManager'
+import { CrystalPriceInfo } from './CrystalPriceInfo'
 import { UpdateManager } from './UpdateManager'
 import { ReleaseNotes } from './ReleaseNotes'
 import { ThemeSettings } from './ThemeSettings'
@@ -51,7 +51,7 @@ export function SettingsPage() {
       <UpdateManager />
       <ReleaseNotes currentVersion={info?.version} />
       <NexonConnection />
-      <CrystalPriceManager />
+      <CrystalPriceInfo />
       <AutomaticBackupManager />
       <BackupManager />
     </div>

@@ -40,17 +40,6 @@ export function AppLayout({ page, onNavigate, children }: AppLayoutProps) {
             </button>
           ))}
         </nav>
-        <div className="mt-auto rounded-xl border border-line p-4">
-          <p className="flex items-center gap-2 text-xs font-medium">
-            <span className="size-1.5 rounded-full bg-brand" />
-            장부 자동 저장
-          </p>
-          <p className="mt-2 text-xs leading-5 text-muted">
-            기록은 이 기기에 보관됩니다.
-            <br />
-            설정에서 백업을 관리하세요.
-          </p>
-        </div>
       </aside>
       <main className="min-w-0 flex-1">
         <div className="flex h-16 items-center justify-between border-b border-line bg-surface/70 px-9">
@@ -58,9 +47,6 @@ export function AppLayout({ page, onNavigate, children }: AppLayoutProps) {
             가계부 <span className="mx-2 text-line">/</span>
             <span className="font-medium text-ink">{selected.label}</span>
           </p>
-          <span className="rounded-full border border-line px-3 py-1 text-[11px] text-muted">
-            수익 · 지출 관리
-          </span>
         </div>
         <div className="mx-auto max-w-7xl px-9 py-8">
           <header className="mb-8">

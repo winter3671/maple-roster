@@ -9,7 +9,7 @@ import { useCrystalPrices } from '../prices/CrystalPriceProvider'
 const labels: { key: keyof BackupCounts; label: string }[] = [
   { key: 'manualExpenses', label: '직접 지출' },
   { key: 'manualIncomes', label: '직접 수익' },
-  { key: 'customPrices', label: '수동 결정석 가격표' },
+  { key: 'customPrices', label: '이전 가격표 기록' },
   { key: 'characters', label: '캐릭터' },
   { key: 'templates', label: '보스 묶음 프리셋' },
   { key: 'bossRuns', label: '주간 보스 기록' },

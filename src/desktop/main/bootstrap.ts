@@ -20,7 +20,7 @@ import { dirname, join } from 'node:path'
 import { BackupService } from '../../backend/modules/backup/backup.service'
 import { saveRecoveryBackup } from '../../backend/modules/backup/backup.files'
 import { AutomaticBackupService } from '../../backend/modules/backup/automatic-backup.service'
-import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.service'
+import { BUILTIN_CRYSTAL_HISTORY } from '../../shared/crystal-prices'
 
 import { ExpenseService } from '../../backend/modules/ledger/expense.service'
 import { IncomeService } from '../../backend/modules/ledger/income.service'
@@ -42,17 +42,7 @@ export function createServices(
   const transactions = new UnitOfWork(database)
   const characterService = new CharacterService(characters)
   const nexonClient = new NexonClient(() => (keyStore ? keyStore.getKey() : nexonKey.key))
-  const prices = new CrystalPriceService(database)
-  const history = () => prices.custom()
-  const bossService = new BossService(
-    bosses,
-    characters,
-    ledger,
-    transactions,
-    drops,
-    undefined,
-    history
-  )
+  const bossService = new BossService(bosses, characters, ledger, transactions, drops, undefined)
   const backup = new BackupService(database, (content) =>
     saveRecoveryBackup(join(dirname(databasePath), '..', 'backups'), content)
   )
@@ -61,13 +51,13 @@ export function createServices(
       join(dirname(databasePath), '..', 'backups', 'automatic'),
       () => backup.export()
     ),
-    prices,
+    prices: { list: () => [...BUILTIN_CRYSTAL_HISTORY] },
     weekly: new WeeklyService(nexonClient, characters, undefined, new WeeklyRepository(database)),
     backup,
     system: { getInfo: () => getAppInfo(version) },
     characters: characterService,
     bosses: bossService,
-    bossSync: new BossSyncService(nexonClient, characters, bossService, undefined, history),
+    bossSync: new BossSyncService(nexonClient, characters, bossService),
     nexon: new NexonService(
       nexonClient,
       nexonKey,

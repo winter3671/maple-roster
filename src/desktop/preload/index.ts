@@ -10,9 +10,7 @@ const api: AppApi = {
     install: () => ipcRenderer.invoke(IPC_CHANNELS.updatesInstall)
   },
   prices: {
-    list: () => ipcRenderer.invoke(IPC_CHANNELS.pricesList),
-    save: (input) => ipcRenderer.invoke(IPC_CHANNELS.pricesSave, input),
-    remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.pricesRemove, id)
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.pricesList)
   },
   dashboard: { summary: (query) => ipcRenderer.invoke(IPC_CHANNELS.dashboardSummary, query) },
   backup: {

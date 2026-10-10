@@ -2,7 +2,7 @@ import type { Character, CharacterInput, CharacterUpdate } from './character.con
 import type { ApiResult } from '../errors'
 import type { WeeklyOverview } from './weekly.contract'
 import type { DashboardStats } from './dashboard.contract'
-import type { CrystalPriceEntry, CrystalPriceInput } from './crystal-price.contract'
+import type { CrystalPriceEntry } from './crystal-price.contract'
 import type { CsvSaved } from './csv.contract'
 import type {
   BackupPreview,
@@ -67,8 +67,6 @@ export interface AppApi {
   }
   prices: {
     list: () => Promise<ApiResult<CrystalPriceEntry[]>>
-    save: (input: CrystalPriceInput) => Promise<ApiResult<CrystalPriceEntry[]>>
-    remove: (id: string) => Promise<ApiResult<CrystalPriceEntry[]>>
   }
   dashboard: { summary: (query: RecordQuery) => Promise<ApiResult<DashboardStats>> }
   backup: {
