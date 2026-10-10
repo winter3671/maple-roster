@@ -14,11 +14,17 @@ export interface NexonProfile extends NexonCharacter {
   fetchedAt: string
 }
 export interface NexonStatus {
+  accounts?: { id: string; label: string }[]
+  activeAccountId?: string | null
   configured: boolean
   issue: 'missing' | 'unreadable' | 'invalid' | null
   keySource?: 'saved' | 'env' | null
   hasSavedKey?: boolean
   encryptionAvailable?: boolean
+}
+export interface NexonKeyRegistration {
+  label: string
+  key: string
 }
 export interface NexonRegistration {
   character: Character

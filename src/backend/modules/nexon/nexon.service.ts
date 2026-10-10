@@ -33,12 +33,28 @@ export class NexonService {
   saveKey(value: unknown): NexonStatus {
     if (!this.keyStore)
       throw new AppError('API_KEY_STORAGE_ERROR', 'API 키 저장소를 사용할 수 없습니다.')
-    return this.keyStore.save(value)
+    const result = this.keyStore.save(value)
+    this.lastAutomaticAttempt = -Infinity
+    return result
   }
-  removeKey(): NexonStatus {
+  activateKey(value: unknown): NexonStatus {
     if (!this.keyStore)
       throw new AppError('API_KEY_STORAGE_ERROR', 'API 키 저장소를 사용할 수 없습니다.')
-    return this.keyStore.remove()
+    const result = this.keyStore.activate(value)
+    this.lastAutomaticAttempt = -Infinity
+    return result
+  }
+  renameKey(value: unknown): NexonStatus {
+    if (!this.keyStore)
+      throw new AppError('API_KEY_STORAGE_ERROR', 'API 키 저장소를 사용할 수 없습니다.')
+    return this.keyStore.rename(value)
+  }
+  removeKey(value?: unknown): NexonStatus {
+    if (!this.keyStore)
+      throw new AppError('API_KEY_STORAGE_ERROR', 'API 키 저장소를 사용할 수 없습니다.')
+    const result = this.keyStore.remove(value)
+    this.lastAutomaticAttempt = -Infinity
+    return result
   }
   list() {
     return this.client.list()

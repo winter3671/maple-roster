@@ -41,6 +41,7 @@ import type {
 } from './boss.contract'
 import type {
   NexonStatus,
+  NexonKeyRegistration,
   NexonCharacter,
   NexonProfile,
   NexonRegistration,
@@ -114,8 +115,10 @@ export interface AppApi {
       characterIds?: string[]
     }) => Promise<ApiResult<NexonSyncResult>>
     unlink: (characterId: string) => Promise<ApiResult<Character>>
-    saveKey: (key: string) => Promise<ApiResult<NexonStatus>>
-    removeKey: () => Promise<ApiResult<NexonStatus>>
+    saveKey: (input: NexonKeyRegistration) => Promise<ApiResult<NexonStatus>>
+    activateKey: (id: string) => Promise<ApiResult<NexonStatus>>
+    renameKey: (input: { id: string; label: string }) => Promise<ApiResult<NexonStatus>>
+    removeKey: (id?: string) => Promise<ApiResult<NexonStatus>>
     status: () => Promise<ApiResult<NexonStatus>>
     list: () => Promise<ApiResult<NexonCharacter[]>>
     basic: (ocid: string) => Promise<ApiResult<NexonProfile>>

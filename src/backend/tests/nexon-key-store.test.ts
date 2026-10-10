@@ -39,6 +39,124 @@ afterEach(() => {
 })
 
 describe('암호화 API 키 저장소', () => {
+  it('여러 계정의 이름과 키를 암호화하며 활성 계정 전환을 재실행 후에도 유지한다', async () => {
+    const file = fixture(),
+      store = new NexonKeyStore(file, cipher, missing)
+    const first = store.save({ label: '본계정', key: 'fake-main-secret' }).activeAccountId!
+    const second = store.save({ label: '부계정1', key: 'fake-second-secret' }).accounts![1].id
+    expect(store.status().activeAccountId).toBe(first)
+    expect(store.getKey()).toBe('fake-main-secret')
+    const transport = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => new Response('{"account_list":[]}'))
+    const client = new NexonClient(() => store.getKey(), transport, 0)
+    await client.list()
+    store.activate(second)
+    await client.list()
+    expect(transport.mock.calls.map(([, options]) => options?.headers)).toEqual([
+      { 'x-nxopen-api-key': 'fake-main-secret' },
+      { 'x-nxopen-api-key': 'fake-second-secret' }
+    ])
+    const reopened = new NexonKeyStore(file, cipher, missing)
+    expect(reopened.getKey()).toBe('fake-second-secret')
+    expect(reopened.status()).toMatchObject({
+      activeAccountId: second,
+      accounts: [
+        { id: first, label: '본계정' },
+        { id: second, label: '부계정1' }
+      ]
+    })
+    for (const key of ['fake-main-secret', 'fake-second-secret']) {
+      expect(JSON.stringify(reopened.status())).not.toContain(key)
+      expect(readFileSync(file).includes(Buffer.from(key))).toBe(false)
+    }
+    expect(readFileSync(file).includes(Buffer.from('본계정'))).toBe(false)
+  })
+  it('기존 단일 키를 기존 계정으로 읽고 이름 변경 시 새 형식으로 안전하게 저장한다', () => {
+    const file = fixture()
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, cipher.encrypt('fake-legacy-secret'))
+    const original = readFileSync(file),
+      store = new NexonKeyStore(file, cipher, env)
+    const id = store.status().accounts![0].id
+    expect(store.status().accounts![0].label).toBe('기존 계정')
+    expect(store.getKey()).toBe('fake-legacy-secret')
+    expect(readFileSync(file)).toEqual(original)
+    store.rename({ id, label: '본계정' })
+    const reopened = new NexonKeyStore(file, cipher, missing)
+    expect(reopened.getKey()).toBe('fake-legacy-secret')
+    expect(reopened.status()).toMatchObject({
+      activeAccountId: id,
+      accounts: [{ id, label: '본계정' }]
+    })
+  })
+  it('중복 이름·키와 잘못된 입력·존재하지 않는 계정 전환을 거부하고 파일을 유지한다', () => {
+    const file = fixture(),
+      store = new NexonKeyStore(file, cipher, missing)
+    const id = store.save({ label: 'Main', key: 'fake-main' }).activeAccountId!
+    const other = store.save({ label: '부계정', key: 'fake-secondary' }).accounts![1].id
+    const before = readFileSync(file)
+    expect(() => store.save({ label: 'main', key: 'fake-new' })).toThrow('계정 이름')
+    expect(() => store.save({ label: '새 계정', key: 'fake-main' })).toThrow('이미 등록된 API 키')
+    expect(() => store.save({ label: '', key: 'fake-new' })).toThrow()
+    expect(() => store.save({ label: 'x'.repeat(31), key: 'fake-new' })).toThrow()
+    expect(() => store.save({ label: '새 계정', key: '키\n' })).toThrow()
+    expect(() => store.rename({ id: other, label: 'Main' })).toThrow('계정 이름')
+    expect(() => store.activate('00000000-0000-4000-8000-000000000099')).toThrow('찾을 수 없습니다')
+    expect(store.status().activeAccountId).toBe(id)
+    expect(readFileSync(file)).toEqual(before)
+  })
+  it('비활성 계정 삭제는 선택을 유지하고 활성 계정 삭제는 남은 계정으로 전환한다', () => {
+    const file = fixture(),
+      store = new NexonKeyStore(file, cipher, env)
+    const first = store.save({ label: '본계정', key: 'fake-main' }).activeAccountId!
+    const second = store.save({ label: '부계정1', key: 'fake-secondary' }).accounts![1].id
+    store.remove(second)
+    expect(store.status().activeAccountId).toBe(first)
+    const next = store.save({ label: '부계정2', key: 'fake-next' }).accounts![1].id
+    store.remove(first)
+    expect(store.status().activeAccountId).toBe(next)
+    expect(store.getKey()).toBe('fake-next')
+    expect(new NexonKeyStore(file, cipher, env).getKey()).toBe('fake-next')
+    store.remove(next)
+    expect(store.getKey()).toBe(env.key)
+    expect(store.status().accounts).toEqual([])
+    expect(existsSync(file)).toBe(false)
+  })
+  it('암호화 실패 시 계정 전환·이름 변경·개별 삭제를 적용하지 않는다', () => {
+    const file = fixture(),
+      broken = { ...cipher, encrypt: vi.fn(cipher.encrypt) },
+      store = new NexonKeyStore(file, broken, missing)
+    const first = store.save({ label: '본계정', key: 'fake-main' }).activeAccountId!
+    const second = store.save({ label: '부계정', key: 'fake-secondary' }).accounts![1].id
+    const before = readFileSync(file)
+    broken.encrypt.mockImplementation(() => {
+      throw new Error('secret failure')
+    })
+    expect(() => store.activate(second)).toThrow('기존 설정은 유지')
+    expect(() => store.rename({ id: first, label: '새 이름' })).toThrow('기존 설정은 유지')
+    expect(() => store.remove(first)).toThrow('기존 설정은 유지')
+    expect(store.status().activeAccountId).toBe(first)
+    expect(store.status().accounts).toHaveLength(2)
+    expect(store.getKey()).toBe('fake-main')
+    expect(readFileSync(file)).toEqual(before)
+  })
+  it('손상된 계정 파일의 활성 ID가 유효하지 않으면 개발 키를 사용하지 않는다', () => {
+    const file = fixture(),
+      store = new NexonKeyStore(file, cipher, env)
+    store.save({ label: '본계정', key: 'fake-main' })
+    const vault = JSON.parse(cipher.decrypt(readFileSync(file)))
+    vault.activeId = '00000000-0000-4000-8000-000000000099'
+    writeFileSync(file, cipher.encrypt(JSON.stringify(vault)))
+    const reopened = new NexonKeyStore(file, cipher, env)
+    expect(reopened.status()).toMatchObject({
+      configured: false,
+      issue: 'unreadable',
+      accounts: []
+    })
+    expect(reopened.getKey()).toBeUndefined()
+    expect(() => reopened.save({ label: '복구', key: 'fake-new' })).toThrow('손상된 설정')
+  })
   it('암호문만 저장하며 재실행에서 복원하고 상태 응답에 키를 노출하지 않는다', () => {
     const file = fixture(),
       store = new NexonKeyStore(file, cipher, env)
