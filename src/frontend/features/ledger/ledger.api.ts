@@ -3,8 +3,12 @@ import { unwrap } from '../../lib/api'
 import { getBridge } from '../../lib/bridge'
 
 import type { ExpenseCreate, ExpenseUpdate } from '../../../shared/contracts/expense.contract'
+import type { IncomeCreate, IncomeUpdate } from '../../../shared/contracts/income.contract'
 
 export const ledgerApi = {
+  createIncome: (input: IncomeCreate) => unwrap(getBridge().ledger.createIncome(input)),
+  updateIncome: (input: IncomeUpdate) => unwrap(getBridge().ledger.updateIncome(input)),
+  removeIncome: (id: string) => unwrap(getBridge().ledger.removeIncome(id)),
   createExpense: (input: ExpenseCreate) => unwrap(getBridge().ledger.createExpense(input)),
   updateExpense: (input: ExpenseUpdate) => unwrap(getBridge().ledger.updateExpense(input)),
   removeExpense: (id: string) => unwrap(getBridge().ledger.removeExpense(id)),

@@ -49,7 +49,7 @@ describe('대시보드 수익 집계', () => {
       { period: '2026-10-09', income: 0, expense: 0, net: 0, count: 0 },
       { period: '2026-10-10', income: 350, expense: 0, net: 350, count: 2 }
     ])
-    expect(stats.sources.map((row) => row.net)).toEqual([-100, 300, 50, 0])
+    expect(stats.sources.map((row) => row.net)).toEqual([-100, 300, 50, 0, 0])
   })
   it('사냥 드랍 판매는 사냥에 합산하고 보스 드랍만 드랍 판매로 집계한다', () => {
     const records = list([
@@ -90,7 +90,8 @@ describe('대시보드 수익 집계', () => {
       { source: 'hunting', income: 150, expense: 0, net: 150, count: 3 },
       { source: 'crystal', income: 200, expense: 0, net: 200, count: 1 },
       { source: 'drop', income: 300, expense: 0, net: 300, count: 1 },
-      { source: 'manual', income: 0, expense: 25, net: -25, count: 1 }
+      { source: 'manual', income: 0, expense: 25, net: -25, count: 1 },
+      { source: 'manualIncome', income: 0, expense: 0, net: 0, count: 0 }
     ])
     expect(stats.summary).toEqual({ income: 650, expense: 25, net: 625, count: 6 })
     expect(stats.characters[0]).toMatchObject({ income: 650, expense: 25, net: 625, count: 6 })

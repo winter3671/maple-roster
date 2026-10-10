@@ -3,12 +3,19 @@ import type { DashboardStats } from '../../../shared/contracts/dashboard.contrac
 import { formatMeso } from '../../lib/format'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
 
-const sourceNames = { hunting: '사냥', crystal: '결정석', drop: '드랍 판매', manual: '직접 지출' }
+const sourceNames = {
+  hunting: '사냥',
+  crystal: '결정석',
+  drop: '드랍 판매',
+  manual: '직접 지출',
+  manualIncome: '직접 수익'
+}
 const sourceDetails = {
   hunting: '획득 메소와 솔 에르다 조각 등 사냥 드랍 판매 포함',
   crystal: '보스 클리어 결정석 수익',
   drop: '보스 드랍 아이템 판매 수익',
-  manual: '직접 기록한 지출'
+  manual: '직접 기록한 지출',
+  manualIncome: '보스·사냥 외 직접 기록한 수익'
 }
 export function DashboardBreakdown({
   data,

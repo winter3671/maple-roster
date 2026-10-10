@@ -1,4 +1,7 @@
 export const IPC_CHANNELS = {
+  ledgerCreateIncome: 'ledger:create-income',
+  ledgerUpdateIncome: 'ledger:update-income',
+  ledgerRemoveIncome: 'ledger:remove-income',
   weeklyList: 'weekly:list',
   weeklySync: 'weekly:sync',
   charactersAvatar: 'characters:avatar',

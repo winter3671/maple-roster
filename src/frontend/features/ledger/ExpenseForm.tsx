@@ -93,7 +93,6 @@ export function ExpenseForm({
               지출 캐릭터
             </label>
             <select
-              autoFocus
               id={`${id}-character`}
               value={draft.characterId}
               onChange={(event) => change('characterId', event.target.value)}

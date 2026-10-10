@@ -6,7 +6,7 @@ SQLite 파일은 Electron `app.getPath('userData')` 아래 `data/maple-roster.sq
 
 ## 적용된 마이그레이션
 
-`001_characters.sql`부터 `009_crystal_price_history.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 9번 버전까지 순서대로 갱신한다.
+`001_characters.sql`부터 `015_manual_incomes.sql`까지 빌드 시 문자열로 포함한다. 실행 시 `schema_migrations`에 적용 이력을 기록하고, 이미 적용한 SQL은 재실행하지 않는다. 각 마이그레이션 SQL과 적용 이력은 하나의 트랜잭션으로 처리한다. 앱이 지원하는 버전보다 새로운 DB는 열지 않는다. 기존 DB는 캐릭터·사냥·결정석·거래 정보를 유지하면서 15번 버전까지 순서대로 갱신한다.
 
 ## characters
 
@@ -124,3 +124,7 @@ UI 자동 확인은 `MAPLE_ROSTER_DATA_DIR`로 일반 사용자 데이터와 분
 ## 주간 콘텐츠 조회 기록
 
 14번 마이그레이션은 캐릭터 ID·주차를 복합 키로 하는 `weekly_content_snapshots`를 추가한다. OCID, 지하수로·플래그의 필요한 수치만 담은 JSON, 마지막 조회 시각을 저장한다. 캐릭터 삭제는 CASCADE로 함께 정리한다. 이번 주와 지난주만 유지하고 앱 실행·조회 때 오래된 행을 삭제한다. 이전 `is_hidden` 값은 모두 0으로 전환하며 해당 열은 이전 백업 호환용으로만 남긴다. 화면·IPC·캐릭터 계약에서는 제거했다.
+
+## manual_incomes
+
+15번 마이그레이션은 직접 수익 원본을 저장하는 `manual_incomes`를 추가한다. 캐릭터 FK(RESTRICT), 거래 당시 서버, 날짜, 분류, 양의 안전한 정수 금액, 메모와 시각을 보관한다. `ledger_entries`의 UNIQUE FK `manual_income_id`(CASCADE)로 연결하며 방향은 income이다. 다섯 출처 중 정확히 하나만 연결한다. 기존 거래 값과 ID를 보존한다. 저장·수정은 하나의 트랜잭션이며 삭제는 대응 거래도 제거한다.

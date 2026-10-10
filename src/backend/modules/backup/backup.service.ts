@@ -9,6 +9,7 @@ import { bossWeek } from '../../../shared/boss-period'
 import { validateBossSelection } from '../../../shared/boss-catalog'
 import { parseBossMembers } from '../../../shared/contracts/boss-roster.contract'
 import { parseExpenseInput } from '../../../shared/contracts/expense.contract'
+import { parseIncomeInput } from '../../../shared/contracts/income.contract'
 import { readOcid } from '../../../shared/contracts/nexon.contract'
 import { characterImageUrl, MAX_CHARACTER_IMAGE_URL_LENGTH } from '../../../shared/character-image'
 import type {
@@ -30,6 +31,7 @@ const TABLES = [
   'drop_lots',
   'drop_sales',
   'manual_expenses',
+  'manual_incomes',
   'ledger_entries'
 ] as const
 type Table = (typeof TABLES)[number]
@@ -53,6 +55,7 @@ const digest = (tables: Tables) => createHash('sha256').update(JSON.stringify(ta
 function counts(tables: Tables): BackupCounts {
   return {
     manualExpenses: tables.manual_expenses.length,
+    manualIncomes: tables.manual_incomes.length,
     customPrices: tables.crystal_price_history.length,
     characters: tables.characters.length,
     bossRuns: tables.boss_runs.length,
@@ -230,15 +233,30 @@ function validateRelations(database: DatabaseSync, tables: Tables): void {
     if (expense.amount !== row.amount) invalid()
     add(`manual:${row.id}:expense`, row, row.occurred_on, row.amount)
   }
+  for (const row of tables.manual_incomes) {
+    parseIncomeInput(
+      {
+        characterId: row.character_id,
+        date: row.occurred_on,
+        category: row.category,
+        amount: row.amount,
+        notes: row.notes
+      },
+      '9999-12-31'
+    )
+    add(`manualIncome:${row.id}:income`, row, row.occurred_on, row.amount)
+  }
   for (const row of tables.ledger_entries) {
     const key =
-      row.manual_expense_id !== null
-        ? `manual:${row.manual_expense_id}:${row.direction}`
-        : row.hunting_session_id !== null
-          ? `hunting:${row.hunting_session_id}:${row.direction}`
-          : row.crystal_settlement_id !== null
-            ? `crystal:${row.crystal_settlement_id}:income`
-            : `drop:${row.drop_sale_id}:income`
+      row.manual_income_id !== null
+        ? `manualIncome:${row.manual_income_id}:${row.direction}`
+        : row.manual_expense_id !== null
+          ? `manual:${row.manual_expense_id}:${row.direction}`
+          : row.hunting_session_id !== null
+            ? `hunting:${row.hunting_session_id}:${row.direction}`
+            : row.crystal_settlement_id !== null
+              ? `crystal:${row.crystal_settlement_id}:income`
+              : `drop:${row.drop_sale_id}:income`
     const entry = expected.get(key)
     if (
       !entry ||
@@ -286,7 +304,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, 10, 11, 12, 13, schemaVersion(this.database)].includes(
+        ![7, 8, 9, 10, 11, 12, 13, 14, schemaVersion(this.database)].includes(
           raw.schemaVersion as number
         )
       )
@@ -304,14 +322,17 @@ export class BackupService {
       const legacyExpense = Number(raw.schemaVersion) < 10
       const legacyImages = Number(raw.schemaVersion) < 11
       const legacyPoints = Number(raw.schemaVersion) < 13
+      const legacyIncome = Number(raw.schemaVersion) < 15
       const expectedTables = TABLES.filter(
         (table) =>
           !(older && table === 'crystal_price_history') &&
-          !(legacyExpense && table === 'manual_expenses')
+          !(legacyExpense && table === 'manual_expenses') &&
+          !(legacyIncome && table === 'manual_incomes')
       )
       if (Object.keys(tables).sort().join(',') !== [...expectedTables].sort().join(',')) invalid()
       if (older) tables.crystal_price_history = []
       if (legacyExpense) tables.manual_expenses = []
+      if (legacyIncome) tables.manual_incomes = []
       staging = openDatabase(':memory:')
       let total = 0
       for (const table of TABLES) {
@@ -336,15 +357,20 @@ export class BackupService {
                   (name) => !['currency', 'point_amount', 'points_per_100m'].includes(name)
                 )
               : baseNames
+          const incomeNames =
+            legacyIncome && table === 'ledger_entries'
+              ? schemaNames.filter((name) => name !== 'manual_income_id')
+              : schemaNames
           const expectedNames =
             raw.schemaVersion === 7 && table === 'boss_runs'
-              ? schemaNames.filter((name) => name !== 'party_size_needs_review')
+              ? incomeNames.filter((name) => name !== 'party_size_needs_review')
               : legacyExpense && table === 'ledger_entries'
-                ? schemaNames.filter((name) => name !== 'manual_expense_id')
-                : schemaNames
+                ? incomeNames.filter((name) => name !== 'manual_expense_id')
+                : incomeNames
           if (Object.keys(row).sort().join(',') !== [...expectedNames].sort().join(',')) invalid()
           if (raw.schemaVersion === 7 && table === 'boss_runs') row.party_size_needs_review = 0
           if (legacyExpense && table === 'ledger_entries') row.manual_expense_id = null
+          if (legacyIncome && table === 'ledger_entries') row.manual_income_id = null
           if (legacyImages && table === 'characters') row.nexon_image_url = null
           if (table === 'characters') {
             if (row.is_hidden !== 0 && row.is_hidden !== 1) invalid()

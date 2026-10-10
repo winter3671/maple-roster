@@ -13,13 +13,15 @@ export interface LedgerEntry {
   crystalSettlementId: string | null
   dropSaleId: string | null
   manualExpenseId?: string | null
+  manualIncomeId?: string | null
+  incomeCategory?: string
   expenseCategory?: string
   expenseCurrency?: 'meso' | 'maplePoint'
   pointAmount?: number | null
   pointsPer100m?: number | null
   notes?: string
-  source: 'hunting' | 'crystal' | 'drop' | 'manual'
-  activity: 'boss' | 'hunting' | 'expense'
+  source: 'hunting' | 'crystal' | 'drop' | 'manual' | 'manualIncome'
+  activity: 'boss' | 'hunting' | 'expense' | 'income'
   characterId: string
   characterName: string
   characterWorld: string

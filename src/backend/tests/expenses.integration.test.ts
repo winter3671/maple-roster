@@ -126,6 +126,8 @@ describe('직접 지출 장부', () => {
     const saved = expenses.create(input())
     const legacy = JSON.parse(backup.export())
     legacy.schemaVersion = 12
+    delete legacy.tables.manual_incomes
+    for (const row of legacy.tables.ledger_entries) delete row.manual_income_id
     for (const row of legacy.tables.manual_expenses) {
       delete row.currency
       delete row.point_amount
@@ -162,7 +164,7 @@ describe('직접 지출 장부', () => {
       notes: '스타포스 비용',
       direction: 'expense'
     })
-    expect(groupLedgerIncome(list.entries).map((group) => group.amount)).toEqual([0, 0])
+    expect(groupLedgerIncome(list.entries).map((group) => group.amount)).toEqual([0, 0, 0])
     const stats = ledger.dashboard(query)
     expect(stats.sources.find((row) => row.source === 'manual')).toMatchObject({
       expense: 123456789,
@@ -293,6 +295,8 @@ describe('직접 지출 장부', () => {
   it.each([7, 8, 9])('이전 %i번 백업은 빈 직접 지출로 복원한다', (version) => {
     const file = JSON.parse(backup.export())
     file.schemaVersion = version
+    delete file.tables.manual_incomes
+    for (const row of file.tables.ledger_entries) delete row.manual_income_id
     for (const row of file.tables.characters) delete row.nexon_image_url
     delete file.tables.manual_expenses
     if (version < 9) delete file.tables.crystal_price_history

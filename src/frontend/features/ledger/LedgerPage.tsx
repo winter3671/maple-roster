@@ -13,9 +13,11 @@ import { groupLedgerIncome } from '../../../shared/ledger-income'
 import type { LedgerEntry } from '../../../shared/contracts/ledger.contract'
 import type { ExpenseInput } from '../../../shared/contracts/expense.contract'
 import { ExpenseForm } from './ExpenseForm'
+import { IncomeForm } from './IncomeForm'
+import type { IncomeInput } from '../../../shared/contracts/income.contract'
 
 export function LedgerPage() {
-  const [editor, setEditor] = useState<LedgerEntry | 'new' | null>(null)
+  const [editor, setEditor] = useState<LedgerEntry | 'new-expense' | 'new-income' | null>(null)
   const [deleting, setDeleting] = useState<LedgerEntry | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -24,7 +26,10 @@ export function LedgerPage() {
   const [query, setQuery] = useState(thisMonthQuery)
   const state = useLedger(query)
   const incomeGroups = groupLedgerIncome(state.data?.entries ?? [])
-  const expenses = state.data?.entries.filter((entry) => entry.direction === 'expense') ?? []
+  const detailEntries =
+    state.data?.entries.filter(
+      (entry) => entry.direction === 'expense' || entry.source === 'manualIncome'
+    ) ?? []
   const characters = useCharacters()
   const [exporting, setExporting] = useState(false),
     [exportError, setExportError] = useState(''),
@@ -37,45 +42,54 @@ export function LedgerPage() {
       mounted.current = false
     }
   }, [])
-  async function saveExpense(input: ExpenseInput, requestId: string): Promise<boolean> {
+  async function saveEntry(input: ExpenseInput | IncomeInput, requestId: string): Promise<boolean> {
     if (mutationLock.current) return false
     mutationLock.current = true
     setSaving(true)
     setSaveError('')
     try {
-      if (editor && editor !== 'new')
-        await ledgerApi.updateExpense({ ...input, id: editor.manualExpenseId! })
-      else await ledgerApi.createExpense({ ...input, requestId })
+      const isIncome =
+        editor === 'new-income' || (typeof editor === 'object' && editor?.source === 'manualIncome')
+      if (isIncome) {
+        if (typeof editor === 'object' && editor)
+          await ledgerApi.updateIncome({ ...(input as IncomeInput), id: editor.manualIncomeId! })
+        else await ledgerApi.createIncome({ ...(input as IncomeInput), requestId })
+      } else {
+        if (typeof editor === 'object' && editor)
+          await ledgerApi.updateExpense({ ...(input as ExpenseInput), id: editor.manualExpenseId! })
+        else await ledgerApi.createExpense({ ...(input as ExpenseInput), requestId })
+      }
       setEditor(null)
       setNotice(
         input.date < query.from ||
           input.date > query.to ||
           (query.characterId && query.characterId !== input.characterId)
-          ? '지출을 저장했습니다. 현재 조회 조건 밖의 기록이므로 기간·캐릭터를 변경해 확인하세요.'
-          : '지출을 저장했습니다.'
+          ? `${isIncome ? '수익' : '지출'}을 저장했습니다. 현재 조회 조건 밖의 기록이므로 기간·캐릭터를 변경해 확인하세요.`
+          : `${isIncome ? '수익' : '지출'}을 저장했습니다.`
       )
       state.reload()
       return true
     } catch (caught) {
-      setSaveError(caught instanceof Error ? caught.message : '지출을 저장하지 못했습니다.')
+      setSaveError(caught instanceof Error ? caught.message : '거래를 저장하지 못했습니다.')
       return false
     } finally {
       mutationLock.current = false
       setSaving(false)
     }
   }
-  async function removeExpense() {
-    if (mutationLock.current || !deleting?.manualExpenseId) return
+  async function removeEntry() {
+    if (mutationLock.current || (!deleting?.manualExpenseId && !deleting?.manualIncomeId)) return
     mutationLock.current = true
     setSaving(true)
     setSaveError('')
     try {
-      await ledgerApi.removeExpense(deleting.manualExpenseId)
+      if (deleting!.manualIncomeId) await ledgerApi.removeIncome(deleting!.manualIncomeId)
+      else await ledgerApi.removeExpense(deleting!.manualExpenseId!)
       setDeleting(null)
-      setNotice('지출을 삭제했습니다.')
+      setNotice(`${deleting!.direction === 'income' ? '수익' : '지출'}을 삭제했습니다.`)
       state.reload()
     } catch (caught) {
-      setSaveError(caught instanceof Error ? caught.message : '지출을 삭제하지 못했습니다.')
+      setSaveError(caught instanceof Error ? caught.message : '거래를 삭제하지 못했습니다.')
     } finally {
       mutationLock.current = false
       setSaving(false)
@@ -114,6 +128,83 @@ export function LedgerPage() {
           setQuery(next)
         }}
       />
+      <section
+        aria-label="거래 추가"
+        className="space-y-4 rounded-2xl border border-line bg-surface p-6"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold">거래 기록</h2>
+            <p className="mt-2 text-xs text-muted">보스·사냥 외 수익과 지출을 직접 기록하세요.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              disabled={
+                state.loading ||
+                characters.loading ||
+                exporting ||
+                saving ||
+                !characters.characters.length
+              }
+              onClick={() => {
+                setEditor('new-income')
+                setDeleting(null)
+                setSaveError('')
+                setNotice('')
+              }}
+            >
+              수익 추가
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={
+                state.loading ||
+                characters.loading ||
+                exporting ||
+                saving ||
+                !characters.characters.length
+              }
+              onClick={() => {
+                setEditor('new-expense')
+                setDeleting(null)
+                setSaveError('')
+                setNotice('')
+              }}
+            >
+              지출 추가
+            </Button>
+          </div>
+        </div>
+        {editor &&
+          (editor === 'new-income' ||
+          (typeof editor === 'object' && editor.source === 'manualIncome') ? (
+            <IncomeForm
+              key={typeof editor === 'object' ? editor.id : editor}
+              characters={characters.characters}
+              initial={typeof editor === 'object' ? editor : undefined}
+              preferredCharacterId={query.characterId}
+              busy={saving || exporting}
+              onSave={saveEntry}
+              onCancel={() => {
+                setEditor(null)
+                setSaveError('')
+              }}
+            />
+          ) : (
+            <ExpenseForm
+              key={typeof editor === 'object' ? editor.id : editor}
+              characters={characters.characters}
+              initial={typeof editor === 'object' ? editor : undefined}
+              preferredCharacterId={query.characterId}
+              busy={saving || exporting}
+              onSave={saveEntry}
+              onCancel={() => {
+                setEditor(null)
+                setSaveError('')
+              }}
+            />
+          ))}
+      </section>
       {exportNotice && (
         <p
           role="status"
@@ -142,28 +233,15 @@ export function LedgerPage() {
           {notice}
         </p>
       )}
-      {editor && (
-        <ExpenseForm
-          key={editor === 'new' ? 'new' : editor.id}
-          characters={characters.characters}
-          initial={editor === 'new' ? undefined : editor}
-          preferredCharacterId={query.characterId}
-          busy={saving || exporting}
-          onSave={saveExpense}
-          onCancel={() => {
-            setEditor(null)
-            setSaveError('')
-          }}
-        />
-      )}
       {deleting && (
-        <section aria-label="지출 삭제 확인" className="rounded-xl border border-expense p-4">
+        <section aria-label="거래 삭제 확인" className="rounded-xl border border-expense p-4">
           <p className="text-xs">
             {deleting.date} · {deleting.characterName} · {ledgerLabel(deleting)} ·{' '}
-            {formatMeso(deleting.amount)} 메소 지출을 삭제할까요?
+            {formatMeso(deleting.amount)} 메소 {deleting.direction === 'income' ? '수익' : '지출'}을
+            삭제할까요?
           </p>
           <div className="mt-3 flex gap-2">
-            <Button variant="danger" disabled={saving} onClick={() => void removeExpense()}>
+            <Button variant="danger" disabled={saving} onClick={() => void removeEntry()}>
               삭제 확인
             </Button>
             <Button
@@ -183,14 +261,18 @@ export function LedgerPage() {
       <section aria-label="묶음 수익" className="rounded-2xl border border-line bg-surface p-6">
         <h2 className="text-sm font-semibold">수익 요약</h2>
         <p className="mt-2 text-[11px] leading-5 text-muted">
-          조회 기간·캐릭터의 수입을 두 묶음으로 표시합니다. 보스 수익은 결정석과 보스 드랍 판매,
-          사냥 수익은 획득 메소와 사냥 드랍 판매를 포함합니다.
+          조회 기간·캐릭터의 수입을 보스·사냥·직접 수익으로 표시합니다. 보스 수익은 결정석과 보스
+          드랍 판매, 사냥 수익은 획득 메소와 사냥 드랍 판매를 포함합니다.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {incomeGroups.map((group) => (
             <article key={group.activity} className="rounded-xl bg-brand-soft p-4">
               <h3 className="text-xs font-semibold">
-                {group.activity === 'boss' ? '보스 수익' : '사냥 수익'}
+                {group.activity === 'boss'
+                  ? '보스 수익'
+                  : group.activity === 'hunting'
+                    ? '사냥 수익'
+                    : '직접 수익'}
               </h3>
               <p className="mt-3 text-lg font-semibold tabular-nums text-brand">
                 {state.loading ? '—' : formatMeso(group.amount)}{' '}
@@ -207,9 +289,9 @@ export function LedgerPage() {
       <section className="rounded-2xl border border-line bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-5">
           <div>
-            <h2 className="text-sm font-semibold">지출 내역</h2>
+            <h2 className="text-sm font-semibold">수익·지출 내역</h2>
             <p className="mt-2 text-[11px] leading-5 text-muted">
-              장비 구매·강화 등 사용한 메소나 메이플포인트를 직접 기록하세요. 포인트는 입력한
+              직접 기록한 수익과 지출을 확인하고 수정·삭제할 수 있습니다. 메이플포인트 지출은 입력한
               환전비로 메소에 합산합니다. 이전 사냥 비용은 사냥 장부에서 관리합니다.
             </p>
             <p className="mt-2 text-[11px] leading-5 text-muted">
@@ -218,23 +300,6 @@ export function LedgerPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={
-                state.loading ||
-                characters.loading ||
-                exporting ||
-                saving ||
-                !characters.characters.length
-              }
-              onClick={() => {
-                setEditor('new')
-                setDeleting(null)
-                setSaveError('')
-                setNotice('')
-              }}
-            >
-              지출 추가
-            </Button>
             <Button
               disabled={state.loading || characters.loading || exporting || saving || !state.data}
               onClick={() => void exportCsv()}
@@ -254,7 +319,7 @@ export function LedgerPage() {
           <p role="status" className="p-10 text-center text-sm text-muted">
             거래 내역을 불러오는 중…
           </p>
-        ) : expenses.length ? (
+        ) : detailEntries.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] text-left text-xs">
               <thead className="border-b border-line bg-canvas/60 text-muted">
@@ -267,7 +332,7 @@ export function LedgerPage() {
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((entry) => (
+                {detailEntries.map((entry) => (
                   <tr key={entry.id} className="border-b border-line last:border-0">
                     <td className="px-6 py-4">{entry.date}</td>
                     <td className="px-6 py-4">
@@ -302,7 +367,7 @@ export function LedgerPage() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {entry.source === 'manual' ? (
+                      {entry.source === 'manual' || entry.source === 'manualIncome' ? (
                         <div className="flex gap-2">
                           <Button
                             variant="secondary"
@@ -341,8 +406,8 @@ export function LedgerPage() {
         ) : (
           <EmptyState
             icon="ledger"
-            title="조회 기간에 지출 내역이 없어요"
-            description="지출 추가 버튼으로 사용한 메소를 기록하세요. 캐릭터가 없다면 먼저 등록해 주세요."
+            title="조회 기간에 직접 수익·지출 내역이 없어요"
+            description="위의 수익 추가·지출 추가 버튼으로 거래를 기록하세요. 캐릭터가 없다면 먼저 등록해 주세요."
           />
         )}
       </section>

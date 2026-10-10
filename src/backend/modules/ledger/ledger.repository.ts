@@ -1,4 +1,5 @@
 import type { Expense } from '../../../shared/contracts/expense.contract'
+import type { Income } from '../../../shared/contracts/income.contract'
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
@@ -8,6 +9,24 @@ import type { DropLot, DropSale } from '../../../shared/contracts/drop.contract'
 
 export class LedgerRepository {
   constructor(private readonly database: DatabaseSync) {}
+
+  syncIncome(income: Income): void {
+    this.database
+      .prepare(
+        `INSERT INTO ledger_entries(id,manual_income_id,character_id,world_snapshot,occurred_on,direction,amount,created_at,updated_at)
+      VALUES (?,?,?,?,?,'income',?,?,?) ON CONFLICT(manual_income_id) DO UPDATE SET character_id=excluded.character_id,world_snapshot=excluded.world_snapshot,occurred_on=excluded.occurred_on,amount=excluded.amount,updated_at=excluded.updated_at`
+      )
+      .run(
+        randomUUID(),
+        income.id,
+        income.characterId,
+        income.characterWorld,
+        income.date,
+        income.amount,
+        income.createdAt,
+        income.updatedAt
+      )
+  }
 
   syncExpense(expense: Expense): void {
     this.database
@@ -63,9 +82,10 @@ export class LedgerRepository {
     return this.database
       .prepare(
         `SELECT e.*, c.name AS character_name, dl.boss_run_id AS drop_boss_run_id, me.category AS expense_category, me.notes AS expense_notes,
-      me.currency AS expense_currency, me.point_amount, me.points_per_100m
+      me.currency AS expense_currency, me.point_amount, me.points_per_100m, mi.category AS income_category, mi.notes AS income_notes
       FROM ledger_entries e JOIN characters c ON c.id = e.character_id
       LEFT JOIN manual_expenses me ON me.id = e.manual_expense_id
+      LEFT JOIN manual_incomes mi ON mi.id = e.manual_income_id
       LEFT JOIN drop_sales ds ON ds.id = e.drop_sale_id
       LEFT JOIN drop_lots dl ON dl.id = ds.drop_lot_id
       WHERE e.occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''} ORDER BY e.occurred_on DESC, e.created_at DESC, e.id`
@@ -73,6 +93,8 @@ export class LedgerRepository {
       .all(query.from, query.to, ...(query.characterId ? [query.characterId] : []))
       .map((row) => ({
         id: String(row.id),
+        manualIncomeId: row.manual_income_id == null ? null : String(row.manual_income_id),
+        incomeCategory: row.income_category == null ? undefined : String(row.income_category),
         manualExpenseId: row.manual_expense_id == null ? null : String(row.manual_expense_id),
         expenseCategory: row.expense_category == null ? undefined : String(row.expense_category),
         expenseCurrency:
@@ -81,25 +103,34 @@ export class LedgerRepository {
             : (row.expense_currency as 'meso' | 'maplePoint'),
         pointAmount: row.point_amount == null ? null : Number(row.point_amount),
         pointsPer100m: row.points_per_100m == null ? null : Number(row.points_per_100m),
-        notes: row.expense_notes == null ? '' : String(row.expense_notes),
+        notes:
+          row.income_notes != null
+            ? String(row.income_notes)
+            : row.expense_notes == null
+              ? ''
+              : String(row.expense_notes),
         activity:
-          row.manual_expense_id != null
-            ? 'expense'
-            : row.crystal_settlement_id !== null || row.drop_boss_run_id != null
-              ? 'boss'
-              : 'hunting',
+          row.manual_income_id != null
+            ? 'income'
+            : row.manual_expense_id != null
+              ? 'expense'
+              : row.crystal_settlement_id !== null || row.drop_boss_run_id != null
+                ? 'boss'
+                : 'hunting',
         huntingSessionId: row.hunting_session_id === null ? null : String(row.hunting_session_id),
         crystalSettlementId:
           row.crystal_settlement_id === null ? null : String(row.crystal_settlement_id),
         dropSaleId: row.drop_sale_id == null ? null : String(row.drop_sale_id),
         source:
-          row.manual_expense_id != null
-            ? 'manual'
-            : row.drop_sale_id != null
-              ? 'drop'
-              : row.crystal_settlement_id === null
-                ? 'hunting'
-                : 'crystal',
+          row.manual_income_id != null
+            ? 'manualIncome'
+            : row.manual_expense_id != null
+              ? 'manual'
+              : row.drop_sale_id != null
+                ? 'drop'
+                : row.crystal_settlement_id === null
+                  ? 'hunting'
+                  : 'crystal',
         characterId: String(row.character_id),
         characterName: String(row.character_name),
         characterWorld: String(row.world_snapshot),

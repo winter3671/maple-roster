@@ -7,6 +7,9 @@ import { saveAtomicTextFile } from '../../../backend/files/atomic-text-file'
 
 export function registerLedgerHandlers(window: BrowserWindow, services: Services): () => void {
   return registerRoutes(window, [
+    [IPC_CHANNELS.ledgerCreateIncome, (input) => services.incomes.create(input)],
+    [IPC_CHANNELS.ledgerUpdateIncome, (input) => services.incomes.update(input)],
+    [IPC_CHANNELS.ledgerRemoveIncome, (input) => services.incomes.remove(input)],
     [IPC_CHANNELS.ledgerCreateExpense, (input) => services.expenses.create(input)],
     [IPC_CHANNELS.ledgerUpdateExpense, (input) => services.expenses.update(input)],
     [IPC_CHANNELS.ledgerRemoveExpense, (input) => services.expenses.remove(input)],

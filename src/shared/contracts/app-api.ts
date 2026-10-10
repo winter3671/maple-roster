@@ -49,6 +49,7 @@ import type {
 } from './nexon.contract'
 
 import type { Expense, ExpenseCreate, ExpenseUpdate } from './expense.contract'
+import type { Income, IncomeCreate, IncomeUpdate } from './income.contract'
 import type { UpdateStatus } from './update.contract'
 
 export interface AppInfo {
@@ -140,6 +141,9 @@ export interface AppApi {
     remove: (id: string) => Promise<ApiResult<null>>
   }
   ledger: {
+    createIncome: (input: IncomeCreate) => Promise<ApiResult<Income>>
+    updateIncome: (input: IncomeUpdate) => Promise<ApiResult<Income>>
+    removeIncome: (id: string) => Promise<ApiResult<null>>
     createExpense: (input: ExpenseCreate) => Promise<ApiResult<Expense>>
     updateExpense: (input: ExpenseUpdate) => Promise<ApiResult<Expense>>
     removeExpense: (id: string) => Promise<ApiResult<null>>

@@ -77,6 +77,9 @@ const api: AppApi = {
     remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.huntingRemove, id)
   },
   ledger: {
+    createIncome: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerCreateIncome, input),
+    updateIncome: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerUpdateIncome, input),
+    removeIncome: (id) => ipcRenderer.invoke(IPC_CHANNELS.ledgerRemoveIncome, id),
     createExpense: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerCreateExpense, input),
     updateExpense: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerUpdateExpense, input),
     removeExpense: (id) => ipcRenderer.invoke(IPC_CHANNELS.ledgerRemoveExpense, id),

@@ -2,7 +2,7 @@ import type { LedgerEntry } from './contracts/ledger.contract'
 import { AppError } from './errors'
 
 export function groupLedgerIncome(entries: LedgerEntry[]) {
-  return (['boss', 'hunting'] as const).map((activity) => {
+  return (['boss', 'hunting', 'income'] as const).map((activity) => {
     const rows = entries.filter(
       (entry) => entry.direction === 'income' && entry.activity === activity
     )

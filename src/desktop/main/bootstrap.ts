@@ -23,6 +23,7 @@ import { AutomaticBackupService } from '../../backend/modules/backup/automatic-b
 import { CrystalPriceService } from '../../backend/modules/prices/crystal-price.service'
 
 import { ExpenseService } from '../../backend/modules/ledger/expense.service'
+import { IncomeService } from '../../backend/modules/ledger/income.service'
 import { WeeklyService } from '../../backend/modules/weekly/weekly.service'
 import { WeeklyRepository } from '../../backend/modules/weekly/weekly.repository'
 
@@ -78,6 +79,7 @@ export function createServices(
     hunting: new HuntingService(hunting, characters, ledger, transactions, drops),
     drops: new DropService(drops, hunting, bosses, ledger, transactions),
     expenses: new ExpenseService(database, characters, ledger, transactions),
+    incomes: new IncomeService(database, characters, ledger, transactions),
     ledger: new LedgerService(ledger),
     close: () => database.close()
   }

@@ -25,7 +25,7 @@ export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardS
   }
   const characters = new Map<string, DashboardStats['characters'][number]>()
   const sources = new Map(
-    ['hunting', 'crystal', 'drop', 'manual'].map((source) => [source, empty()])
+    ['hunting', 'crystal', 'drop', 'manual', 'manualIncome'].map((source) => [source, empty()])
   )
   for (const entry of list.entries) {
     let character = characters.get(entry.characterId)
@@ -58,7 +58,7 @@ export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardS
         a.characterId.localeCompare(b.characterId)
     ),
     sources: [...sources].map(([source, totals]) => ({
-      source: source as 'hunting' | 'crystal' | 'drop' | 'manual',
+      source: source as DashboardStats['sources'][number]['source'],
       ...totals
     })),
     trend: [...trend].map(([period, totals]) => ({ period, ...totals })),

@@ -1,5 +1,6 @@
 export interface BackupCounts {
   manualExpenses: number
+  manualIncomes: number
   customPrices: number
   characters: number
   bossRuns: number

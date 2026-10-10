@@ -135,7 +135,8 @@ describe('획득 묶음과 드랍 부분 판매', () => {
     const groups = groupLedgerIncome(list.entries)
     expect(groups).toEqual([
       { activity: 'boss', amount: cleared.settlement!.amount + 500, count: 2 },
-      { activity: 'hunting', amount: 1000 + huntingSale.netShare, count: 2 }
+      { activity: 'hunting', amount: 1000 + huntingSale.netShare, count: 2 },
+      { activity: 'income', amount: 0, count: 0 }
     ])
     expect(groups.reduce((sum, group) => sum + group.amount, 0)).toBe(list.summary.income)
     expect(list.summary.expense).toBe(100)
@@ -143,7 +144,8 @@ describe('획득 묶음과 드랍 부분 판매', () => {
       groupLedgerIncome(ledger.list({ from: '2026-10-13', to: '2026-10-13' }).entries)
     ).toEqual([
       { activity: 'boss', amount: 0, count: 0 },
-      { activity: 'hunting', amount: huntingSale.netShare, count: 1 }
+      { activity: 'hunting', amount: huntingSale.netShare, count: 1 },
+      { activity: 'income', amount: 0, count: 0 }
     ])
     drops.cancelSale(bossSale.id)
     expect(groupLedgerIncome(ledger.list(month).entries)[0]).toEqual({
@@ -557,7 +559,14 @@ describe('획득 묶음과 드랍 부분 판매', () => {
         upgraded
           .prepare('SELECT * FROM ledger_entries ORDER BY id')
           .all()
-          .map(({ drop_sale_id: _drop, manual_expense_id: _expense, ...row }) => row)
+          .map(
+            ({
+              drop_sale_id: _drop,
+              manual_expense_id: _expense,
+              manual_income_id: _income,
+              ...row
+            }) => row
+          )
       ).toEqual(entries)
       expect(
         new DropRepository(upgraded)

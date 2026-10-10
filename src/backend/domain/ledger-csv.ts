@@ -28,15 +28,17 @@ export function ledgerCsv(entries: LedgerEntry[]): string {
   const lines = [headings.map(cell).join(',')]
   for (const entry of entries) {
     const source =
-      entry.source === 'manual'
-        ? (entry.expenseCategory ?? '직접 지출')
-        : entry.source === 'hunting'
-          ? entry.direction === 'income'
-            ? '사냥 메소'
-            : '사냥 비용'
-          : entry.source === 'crystal'
-            ? '결정석 수익'
-            : '드랍 판매'
+      entry.source === 'manualIncome'
+        ? (entry.incomeCategory ?? '직접 수익')
+        : entry.source === 'manual'
+          ? (entry.expenseCategory ?? '직접 지출')
+          : entry.source === 'hunting'
+            ? entry.direction === 'income'
+              ? '사냥 메소'
+              : '사냥 비용'
+            : entry.source === 'crystal'
+              ? '결정석 수익'
+              : '드랍 판매'
     lines.push(
       [
         entry.date,
@@ -51,6 +53,7 @@ export function ledgerCsv(entries: LedgerEntry[]): string {
           entry.crystalSettlementId ??
           entry.dropSaleId ??
           entry.manualExpenseId ??
+          entry.manualIncomeId ??
           '',
         entry.notes ?? '',
         entry.source === 'manual'

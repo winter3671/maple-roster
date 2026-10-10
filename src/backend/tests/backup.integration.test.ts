@@ -104,6 +104,8 @@ describe('JSON 장부 백업과 전체 복원', () => {
     expect(characters.list()[0].nexon?.profile?.imageUrl).toContain('/backup-avatar')
     const legacy = JSON.parse(content)
     legacy.schemaVersion = 10
+    delete legacy.tables.manual_incomes
+    for (const row of legacy.tables.ledger_entries) delete row.manual_income_id
     for (const row of legacy.tables.characters) delete row.nexon_image_url
     backup.restore({ previewId: backup.prepare(JSON.stringify(legacy), '이전10.json').id })
     expect(characters.list()[0]).toMatchObject({
@@ -130,6 +132,8 @@ describe('JSON 장부 백업과 전체 복원', () => {
   it('이전 백업의 숨김 캐릭터도 표시하며 복원할 때 단기 주간 캐시는 비운다', () => {
     const file = JSON.parse(backup.export())
     file.schemaVersion = 13
+    delete file.tables.manual_incomes
+    for (const row of file.tables.ledger_entries) delete row.manual_income_id
     file.tables.characters[0].is_hidden = 1
     database
       .prepare('INSERT INTO weekly_content_snapshots VALUES (?,?,?,?,?)')
@@ -151,6 +155,8 @@ describe('JSON 장부 백업과 전체 복원', () => {
     backup.restore({ previewId: refreshed.id })
     expect(bosses.list({ date: '2026-10-15' }).runs[0].partySizeNeedsReview).toBe(true)
     file.schemaVersion = 7
+    delete file.tables.manual_incomes
+    for (const row of file.tables.ledger_entries) delete row.manual_income_id
     delete file.tables.crystal_price_history
     for (const row of file.tables.characters) delete row.nexon_image_url
     delete file.tables.manual_expenses
@@ -167,6 +173,8 @@ describe('JSON 장부 백업과 전체 복원', () => {
     file.tables.boss_runs[0].party_size_needs_review = 2
     expect(() => backup.prepare(JSON.stringify(file), '잘못된.json')).toThrow('올바르지')
     file.schemaVersion = 7
+    delete file.tables.manual_incomes
+    for (const row of file.tables.ledger_entries) delete row.manual_income_id
     expect(() => backup.prepare(JSON.stringify(file), '잘못된이전.json')).toThrow('올바르지')
   })
   it('모든 기록·연결·ID·프리셋·수동 수익을 그대로 백업하고 전체 복원한다', () => {
