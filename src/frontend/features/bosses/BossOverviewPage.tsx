@@ -136,11 +136,11 @@ export function BossOverviewPage({
         </article>
         {[
           {
-            title: '이 주차 결정 수익',
+            title: '주간 보스 결정 수익',
             amount: w?.settled
           },
           {
-            title: '이달 결정 수익',
+            title: '월간 보스 결정 수익',
             amount: m?.settled
           }
         ].map((card) => (
