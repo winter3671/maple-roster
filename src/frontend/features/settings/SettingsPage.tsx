@@ -41,10 +41,6 @@ export function SettingsPage() {
             <dt className="text-muted">버전</dt>
             <dd>{info ? `v${info.version}` : error ? '확인 불가' : '확인 중'}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-muted">저장 방식</dt>
-            <dd className="text-brand">이 기기에 자동 저장</dd>
-          </div>
         </dl>
       </section>
       <ThemeSettings />
