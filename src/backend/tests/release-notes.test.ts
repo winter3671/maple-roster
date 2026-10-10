@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest'
 
 const script = fileURLToPath(new URL('../../../scripts/release-notes.mjs', import.meta.url))
 describe('릴리스 게시 전 작성 내역 검사', () => {
-  it('현재 배포 버전의 내역을 GitHub용 Markdown으로 출력한다', () => {
-    const result = spawnSync(process.execPath, [script], { encoding: 'utf8' })
+  it('확정된 v0.2.1 내역을 기능별 GitHub Markdown으로 출력한다', () => {
+    const result = spawnSync(process.execPath, [script, '0.2.1'], { encoding: 'utf8' })
     expect(result.status).toBe(0)
     expect(result.stderr).toBe('')
     expect(result.stdout).toContain('# Maple Roster v')
