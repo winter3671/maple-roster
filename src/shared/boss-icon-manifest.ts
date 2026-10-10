@@ -570,5 +570,27 @@ export const BOSS_ICON_MANIFEST = [
     width: 118,
     height: 118,
     badge: false
+  },
+  {
+    bossName: '검은 마법사',
+    difficulty: '하드',
+    file: 'black-mage-hard.png',
+    source: 'codex-clipboard-bfd4471c-2d4f-467b-8fa0-d2d42afd63b2.png',
+    x: 295,
+    y: 403,
+    width: 118,
+    height: 118,
+    badge: false
+  },
+  {
+    bossName: '검은 마법사',
+    difficulty: '익스트림',
+    file: 'black-mage-extreme.png',
+    source: 'codex-clipboard-022bfbde-eb7b-46d8-8998-341fb861896e.png',
+    x: 99,
+    y: 219,
+    width: 118,
+    height: 118,
+    badge: false
   }
 ] as const
