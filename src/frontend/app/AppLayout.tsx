@@ -19,11 +19,11 @@ export function AppLayout({ page, onNavigate, children }: AppLayoutProps) {
           </span>
           <div>
             <p className="text-base font-bold tracking-tight">Maple Roster</p>
-            <p className="mt-0.5 text-[11px] text-muted">나의 메이플 기록장</p>
+            <p className="mt-0.5 text-[11px] text-muted">메이플스토리 가계부</p>
           </div>
         </div>
         <p className="mb-3 mt-12 px-4 text-[10px] font-semibold tracking-[0.15em] text-muted">
-          WORKSPACE
+          장부 관리
         </p>
         <nav aria-label="주 메뉴" className="space-y-1.5">
           {navigation.map((item) => (
@@ -43,23 +43,23 @@ export function AppLayout({ page, onNavigate, children }: AppLayoutProps) {
         <div className="mt-auto rounded-xl border border-line p-4">
           <p className="flex items-center gap-2 text-xs font-medium">
             <span className="size-1.5 rounded-full bg-brand" />
-            개인용 기록장
+            장부 자동 저장
           </p>
           <p className="mt-2 text-xs leading-5 text-muted">
-            나의 캐릭터, 나의 플레이.
+            기록은 이 기기에 보관됩니다.
             <br />
-            차곡차곡 쌓이는 기록.
+            설정에서 백업을 관리하세요.
           </p>
         </div>
       </aside>
       <main className="min-w-0 flex-1">
         <div className="flex h-16 items-center justify-between border-b border-line bg-surface/70 px-9">
           <p className="text-xs text-muted">
-            내 기록 <span className="mx-2 text-line">/</span>
+            가계부 <span className="mx-2 text-line">/</span>
             <span className="font-medium text-ink">{selected.label}</span>
           </p>
           <span className="rounded-full border border-line px-3 py-1 text-[11px] text-muted">
-            개발 중 · 초기 버전
+            수익 · 지출 관리
           </span>
         </div>
         <div className="mx-auto max-w-7xl px-9 py-8">

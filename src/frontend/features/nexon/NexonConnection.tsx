@@ -81,7 +81,7 @@ export function NexonConnection() {
             ? status.configured
               ? status.keySource === 'saved'
                 ? '암호화 키 사용 중'
-                : '개발용 .env 키 사용 중'
+                : '환경 파일(.env) 키 사용 중'
               : '키 설정 필요'
             : '확인 중'}
         </span>
@@ -95,7 +95,7 @@ export function NexonConnection() {
           {status.issue === 'unreadable'
             ? status.hasSavedKey
               ? '저장된 키를 읽지 못했습니다. 키를 다시 저장하거나 삭제해 주세요.'
-              : '개발용 .env 파일을 읽지 못했습니다. 설정에서 키를 저장할 수 있습니다.'
+              : '환경 파일(.env) 파일을 읽지 못했습니다. 설정에서 키를 저장할 수 있습니다.'
             : status.issue === 'invalid'
               ? '.env의 API 키 형식을 확인해 주세요.'
               : '아래에 발급받은 넥슨 API 키를 입력해 저장하세요.'}
@@ -131,12 +131,12 @@ export function NexonConnection() {
         )}
         {status?.keySource === 'env' && (
           <p className="text-xs leading-5 text-muted">
-            현재 개발용 .env 키를 사용합니다. 설정에 저장한 키가 우선 적용됩니다.
+            현재 환경 파일(.env) 키를 사용합니다. 설정에 저장한 키가 우선 적용됩니다.
           </p>
         )}
         {status?.hasSavedKey && (
           <p className="text-xs leading-5 text-muted">
-            저장된 키를 삭제하면 개발용 .env 키가 있는 경우 그 키로 돌아갑니다. 캐릭터와 장부는
+            저장된 키를 삭제하면 환경 파일(.env) 키가 있는 경우 그 키로 돌아갑니다. 캐릭터와 장부는
             유지됩니다.
           </p>
         )}

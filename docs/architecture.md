@@ -1,14 +1,14 @@
 # Maple Roster 파일 구조 및 아키텍처 기획
 
-작성일: 2026-10-07 (KST). 개인 연습용 앱을 위한 설계안. 현재 기본 골격과 캐릭터 수동 등록·수정·삭제, SQLite 저장을 구현했다. 아래 전체 파일 구조는 목표 구조이며 장부·API 파일은 기능 개발 단계에서 추가한다.
+작성일: 2026-10-07 (KST). 메이플스토리 가계부의 구조와 설계 원칙을 정리한다. 캐릭터·보스·사냥·지출 장부, API 연동과 백업은 구현되어 있다. 아래 파일 트리에는 설계 시 검토한 확장 항목도 포함하며 실제 구현은 저장소의 src와 각 기능 문서를 기준으로 확인한다.
 
 ## 개발 방향
 
 프론트엔드는 React + TypeScript + Tailwind CSS, 백엔드는 TypeScript + SQLite로 구성한다. 백엔드 코드는 Electron main 프로세스에서 실행하고, 화면은 renderer 프로세스에서 실행한다. 프론트엔드와 백엔드는 폴더, 빌드 경계, 공개 인터페이스로 분리한다.
 
-첫 버전은 하나의 저장소와 하나의 package.json을 사용한다. Electron이 앱 실행과 창 관리를 담당하며, backend는 계산·저장·API 연동을 담당한다. 별도의 HTTP 서버나 로그인 서버는 첫 버전에 추가하지 않는다. HTTP API 연습이 필요해지면 backend 서비스 앞에 HTTP 어댑터를 추가할 수 있도록 Electron 의존 코드를 desktop에 둔다.
+앱은 하나의 저장소와 하나의 package.json을 사용한다. Electron이 앱 실행과 창 관리를 담당하며, backend는 계산·저장·API 연동을 담당한다. 별도의 HTTP 서버나 로그인 서버는 사용하지 않는다. HTTP API가 필요해지면 backend 서비스 앞에 HTTP 어댑터를 추가할 수 있도록 Electron 의존 코드를 desktop에 둔다.
 
-학습할 주요 흐름은 화면 입력 → 요청 검증 → 업무 처리 → DB 저장 → 결과 표시다. 처음부터 모든 기능의 빈 파일을 만들지 않고, 기능 하나를 이 흐름으로 완성한 다음 확장한다.
+주요 처리 흐름은 화면 입력 → 요청 검증 → 업무 처리 → DB 저장 → 결과 표시다. 처음부터 모든 기능의 빈 파일을 만들지 않고, 기능 하나를 이 흐름으로 완성한 다음 확장한다.
 
 ## 선택 기술과 범위
 
@@ -18,7 +18,7 @@
 | UI | React + TypeScript | 화면과 입력 컴포넌트 |
 | 스타일 | Tailwind CSS v4 | 공통 색상·간격과 화면 스타일 |
 | 개발 빌드 | electron-vite | main·preload·renderer 빌드 구성 |
-| DB | SQLite + Node.js 내장 node:sqlite | SQL과 트랜잭션을 직접 연습 |
+| DB | SQLite + Node.js 내장 node:sqlite | 로컬 저장과 원자적인 거래 처리 |
 | 검증 | 공유 계약의 런타임 검증 함수 | IPC 입력값과 백업 데이터 검증 |
 | 테스트 | Vitest | 정산 규칙과 DB 통합 테스트 |
 
@@ -233,7 +233,7 @@ window.maple은 characters.list/create/syncProfile, bosses.listPeriod/savePreset
 
 IPC 요청의 반환값은 성공 데이터 또는 정해진 오류 코드·메시지로 통일한다. 예: VALIDATION_ERROR, API_UNAVAILABLE, PERMISSION_DENIED, INSUFFICIENT_DROP_QUANTITY, DATABASE_ERROR. 원본 스택과 키를 화면에 반환하지 않는다. 등록·판매 요청에는 요청 ID를 사용해 재시도와 중복 클릭으로 같은 거래가 생기지 않게 한다.
 
-현재 드랍 구현은 `drops.list/createLot/updateLot/removeLot/createSale/updateSale/cancelSale`을 preload에 제공한다. 화면은 `frontend/features/drops`, 업무 규칙·SQL은 `backend/modules/drops`, 입력 계약은 `shared/contracts/drop.contract.ts`에 둔다. 초기 버전은 한 판매를 한 획득 묶음에 연결하고 판매 수량을 `drop_sales`에 저장한다. 아래의 `drop_sale_allocations`는 여러 묶음을 한 판매로 정산할 때 확장할 계획이다. 현재 테이블 구조는 [데이터베이스](database.md), 계산·보호 규칙은 [드랍 판매](drop-sales.md)를 참고한다.
+현재 드랍 구현은 `drops.list/createLot/updateLot/removeLot/createSale/updateSale/cancelSale`을 preload에 제공한다. 화면은 `frontend/features/drops`, 업무 규칙·SQL은 `backend/modules/drops`, 입력 계약은 `shared/contracts/drop.contract.ts`에 둔다. 현재 구현은 한 판매를 한 획득 묶음에 연결하고 판매 수량을 `drop_sales`에 저장한다. 아래의 `drop_sale_allocations`는 여러 묶음을 한 판매로 정산할 때 확장할 계획이다. 현재 테이블 구조는 [데이터베이스](database.md), 계산·보호 규칙은 [드랍 판매](drop-sales.md)를 참고한다.
 
 ## DB 모델의 기본 관계
 
@@ -269,7 +269,7 @@ Button·Input·Dialog 같은 공통 컴포넌트는 Tailwind 클래스로 작성
 
 런타임 DB는 Electron app.getPath('userData') 아래 data/maple-roster.sqlite에 저장한다. 안전하게 암호화한 API 키도 userData 내 별도 파일에 보관한다. bootstrap이 이 경로와 SecretStore 구현을 backend에 전달한다. 소스 폴더나 Git 저장소에 실사용 데이터와 키를 저장하지 않는다.
 
-백업 JSON에는 schemaVersion과 기록을 포함하고 키는 제외한다. 복원 전에 스키마·참조 관계·금액·수량을 검증하고 기존 데이터의 백업을 만든다. 초기 복원은 전체 교체만 지원하고 확인 화면을 거친다. 원자적으로 적용해 실패 시 기존 장부를 보존한다. 실행 중 DB 파일 단순 복사 대신 DB 드라이버의 일관된 백업 기능이나 논리적 JSON 내보내기를 사용한다.
+백업 JSON에는 schemaVersion과 기록을 포함하고 키는 제외한다. 복원 전에 스키마·참조 관계·금액·수량을 검증하고 기존 데이터의 백업을 만든다. 장부 복원은 전체 교체만 지원하고 확인 화면을 거친다. 원자적으로 적용해 실패 시 기존 장부를 보존한다. 실행 중 DB 파일 단순 복사 대신 DB 드라이버의 일관된 백업 기능이나 논리적 JSON 내보내기를 사용한다.
 
 현재 JSON 백업·복원은 `backend/modules/backup`, `desktop/main/ipc/backup.handlers.ts`, `frontend/features/settings/BackupManager.tsx`에 구현했다. 메모리 DB의 제약과 업무 정산 검증을 통과한 파일만 확인 토큰을 발급한다. 장부 변경·진행 중 IPC 요청을 확인하고 복원 전 안전 백업을 저장한 뒤 전체 교체한다. 자세한 지원 형식과 흐름은 [백업과 복원](backup.md)에 정리했다.
 
@@ -277,7 +277,7 @@ Button·Input·Dialog 같은 공통 컴포넌트는 Tailwind 클래스로 작성
 
 1. Electron + React + Tailwind 기본 실행과 AppLayout. 임시 데이터로 메뉴와 표를 만든다.
 2. characters 수동 등록을 shared → desktop → backend → frontend 순서로 연결한다. 재실행 후 유지되는지 확인한다.
-3. hunting 회차 저장으로 DB 트랜잭션과 수입·지출 집계를 연습한다.
+3. hunting 회차 저장으로 DB 트랜잭션과 수입·지출 집계를 구현한다.
 4. bosses 프리셋·기간 기록·결정석 판매를 구현한다.
 5. drops와 ledger를 연결해 일부 판매와 분배·수수료 정산을 구현한다.
 6. 개인 키 보관과 NEXON 프로필·완료 상태 연동을 추가한다.

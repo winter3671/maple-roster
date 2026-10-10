@@ -42,14 +42,8 @@ export function SettingsPage() {
             <dd>{info ? `v${info.version}` : error ? '확인 불가' : '확인 중'}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted">현재 상태</dt>
-            <dd className={error ? 'text-expense' : 'text-brand'} role="status">
-              {error
-                ? '앱 정보를 불러오지 못했습니다'
-                : info
-                  ? '캐릭터·보스·사냥 장부·API 조회 사용 가능'
-                  : '확인 중'}
-            </dd>
+            <dt className="text-muted">저장 방식</dt>
+            <dd className="text-brand">이 기기에 자동 저장</dd>
           </div>
         </dl>
       </section>
