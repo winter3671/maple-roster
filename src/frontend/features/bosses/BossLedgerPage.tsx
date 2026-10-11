@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { lazy, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { BossOverviewPage } from './BossOverviewPage'
-import { BossesPage } from './BossesPage'
+import { PageContent } from '../../components/PageContent'
+
+const BossesPage = lazy(() =>
+  import('./BossesPage').then((module) => ({ default: module.BossesPage }))
+)
 
 type BossView = 'overview' | 'weekly' | 'monthly'
 const views: { id: BossView; label: string }[] = [
@@ -34,11 +38,13 @@ export function BossLedgerPage() {
         ))}
       </div>
       <section id="boss-ledger-content" aria-label={views.find((item) => item.id === view)!.label}>
-        {view === 'overview' ? (
-          <BossOverviewPage onSyncBusyChange={setSyncBusy} />
-        ) : (
-          <BossesPage key={view} cycle={view} />
-        )}
+        <PageContent key={view}>
+          {view === 'overview' ? (
+            <BossOverviewPage onSyncBusyChange={setSyncBusy} />
+          ) : (
+            <BossesPage key={view} cycle={view} />
+          )}
+        </PageContent>
       </section>
     </div>
   )

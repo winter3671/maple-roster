@@ -33,6 +33,6 @@ export default defineConfig(({ command }) => ({
         }
       }
     ],
-    build: { rollupOptions: { input: fromRoot('./src/frontend/index.html') } }
+    build: { manifest: true, rollupOptions: { input: fromRoot('./src/frontend/index.html') } }
   }
 }))
