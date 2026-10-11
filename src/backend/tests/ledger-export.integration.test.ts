@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dashboardStats } from '../domain/dashboard'
 import { seedPerformanceLedger } from './fixtures/ledger-performance'
+import { groupLedgerIncome } from '../../shared/ledger-income'
 import { openDatabase } from '../database/connection'
 import { UnitOfWork } from '../database/unit-of-work'
 import { CharacterRepository } from '../modules/characters/character.repository'
@@ -125,6 +126,19 @@ describe('조회 조건을 반영하는 거래 CSV', () => {
       { from: '2026-08-01', to: '2026-08-31' }
     ])
       expect(ledger.dashboard(query)).toEqual(dashboardStats(ledger.list(query), query))
+  })
+  it('페이지 조회도 결정·보스 드랍·과거 사냥 지출의 분류를 유지한다', () => {
+    const query = { from: '2026-09-01', to: '2026-10-15' }
+    const full = ledger.list(query),
+      page = ledger.page({ ...query, page: 1 })
+    expect(page.summary).toEqual(full.summary)
+    expect(page.incomeGroups).toEqual(groupLedgerIncome(full.entries))
+    expect(page.entries).toEqual(
+      full.entries.filter(
+        (entry) => entry.direction === 'expense' || entry.source === 'manualIncome'
+      )
+    )
+    expect(page.entries.every((entry) => entry.activity === 'hunting')).toBe(true)
   })
   it('대시보드에서는 상세 정보 조회를 5건으로 제한하고 CSV는 전체를 내보낸다', () => {
     const repository = new LedgerRepository(database)

@@ -30,7 +30,7 @@ import type {
   DropSaleUpdate
 } from './drop.contract'
 import type { HuntingCreate, HuntingUpdate, HuntingSession, HuntingList } from './hunting.contract'
-import type { LedgerList, RecordQuery } from './ledger.contract'
+import type { LedgerList, LedgerPage, LedgerPageQuery, RecordQuery } from './ledger.contract'
 import type {
   BossList,
   BossQuery,
@@ -151,6 +151,7 @@ export interface AppApi {
     remove: (id: string) => Promise<ApiResult<null>>
   }
   ledger: {
+    page: (query: LedgerPageQuery) => Promise<ApiResult<LedgerPage>>
     createIncome: (input: IncomeCreate) => Promise<ApiResult<Income>>
     updateIncome: (input: IncomeUpdate) => Promise<ApiResult<Income>>
     removeIncome: (id: string) => Promise<ApiResult<null>>

@@ -1,4 +1,4 @@
-import type { RecordQuery } from '../../../shared/contracts/ledger.contract'
+import type { LedgerPageQuery, RecordQuery } from '../../../shared/contracts/ledger.contract'
 import { unwrap } from '../../lib/api'
 import { getBridge } from '../../lib/bridge'
 
@@ -6,6 +6,7 @@ import type { ExpenseCreate, ExpenseUpdate } from '../../../shared/contracts/exp
 import type { IncomeCreate, IncomeUpdate } from '../../../shared/contracts/income.contract'
 
 export const ledgerApi = {
+  page: (query: LedgerPageQuery) => unwrap(getBridge().ledger.page(query)),
   createIncome: (input: IncomeCreate) => unwrap(getBridge().ledger.createIncome(input)),
   updateIncome: (input: IncomeUpdate) => unwrap(getBridge().ledger.updateIncome(input)),
   removeIncome: (id: string) => unwrap(getBridge().ledger.removeIncome(id)),

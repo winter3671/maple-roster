@@ -7,7 +7,9 @@ const result = spawnSync(
     fileURLToPath(new URL('../node_modules/vitest/vitest.mjs', import.meta.url)),
     'run',
     '--disableConsoleIntercept',
-    'src/backend/tests/ledger.performance.test.ts'
+    process.argv.includes('--pages')
+      ? 'src/backend/tests/ledger-page.performance.test.ts'
+      : 'src/backend/tests/ledger.performance.test.ts'
   ],
   { stdio: 'inherit', env: { ...process.env, MAPLE_RUN_LEDGER_PERF: '1' } }
 )

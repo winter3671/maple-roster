@@ -7,6 +7,17 @@ import type { LedgerEntry, RecordQuery } from '../../../shared/contracts/ledger.
 import type { BossRun } from '../../../shared/contracts/boss.contract'
 import type { DropLot, DropSale } from '../../../shared/contracts/drop.contract'
 import type { DashboardEntry } from '../../domain/dashboard'
+import type { LedgerSummaryEntry } from '../../domain/ledger-summary'
+
+const classificationColumns = `
+  CASE WHEN e.manual_income_id IS NOT NULL THEN 'manualIncome'
+       WHEN e.manual_expense_id IS NOT NULL THEN 'manual'
+       WHEN e.drop_sale_id IS NOT NULL THEN 'drop'
+       WHEN e.crystal_settlement_id IS NOT NULL THEN 'crystal' ELSE 'hunting' END AS source,
+  CASE WHEN e.manual_income_id IS NOT NULL THEN 'income'
+       WHEN e.manual_expense_id IS NOT NULL THEN 'expense'
+       WHEN e.crystal_settlement_id IS NOT NULL OR dl.boss_run_id IS NOT NULL THEN 'boss'
+       ELSE 'hunting' END AS activity`
 
 export class LedgerRepository {
   constructor(private readonly database: DatabaseSync) {}
@@ -84,14 +95,7 @@ export class LedgerRepository {
       .prepare(
         `SELECT e.character_id, c.name AS character_name, e.world_snapshot, e.occurred_on,
        e.direction, e.amount,
-       CASE WHEN e.manual_income_id IS NOT NULL THEN 'manualIncome'
-            WHEN e.manual_expense_id IS NOT NULL THEN 'manual'
-            WHEN e.drop_sale_id IS NOT NULL THEN 'drop'
-            WHEN e.crystal_settlement_id IS NOT NULL THEN 'crystal' ELSE 'hunting' END AS source,
-       CASE WHEN e.manual_income_id IS NOT NULL THEN 'income'
-            WHEN e.manual_expense_id IS NOT NULL THEN 'expense'
-            WHEN e.crystal_settlement_id IS NOT NULL OR dl.boss_run_id IS NOT NULL THEN 'boss'
-            ELSE 'hunting' END AS activity
+       ${classificationColumns}
        FROM ledger_entries e JOIN characters c ON c.id = e.character_id
        LEFT JOIN drop_sales ds ON ds.id = e.drop_sale_id
        LEFT JOIN drop_lots dl ON dl.id = ds.drop_lot_id
@@ -114,6 +118,44 @@ export class LedgerRepository {
   }
 
   list(query: RecordQuery, limit?: number): LedgerEntry[] {
+    return this.readEntries(query, limit)
+  }
+
+  listDetails(query: RecordQuery, page: number, pageSize: number): LedgerEntry[] {
+    return this.readEntries(query, pageSize, (page - 1) * pageSize, true)
+  }
+
+  revision(): string {
+    const changes = this.database.prepare('SELECT total_changes() AS changes').get()!.changes
+    const version = this.database.prepare('PRAGMA data_version').get()!.data_version
+    return `${changes}:${version}`
+  }
+
+  *summaryEntries(query: RecordQuery): IterableIterator<LedgerSummaryEntry> {
+    const rows = this.database
+      .prepare(
+        `SELECT e.amount, e.direction, ${classificationColumns}
+      FROM ledger_entries e
+      LEFT JOIN drop_sales ds ON ds.id = e.drop_sale_id
+      LEFT JOIN drop_lots dl ON dl.id = ds.drop_lot_id
+      WHERE e.occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''}`
+      )
+      .iterate(query.from, query.to, ...(query.characterId ? [query.characterId] : []))
+    for (const row of rows)
+      yield {
+        amount: Number(row.amount),
+        direction: row.direction as LedgerSummaryEntry['direction'],
+        source: row.source as LedgerSummaryEntry['source'],
+        activity: row.activity as LedgerSummaryEntry['activity']
+      }
+  }
+
+  private readEntries(
+    query: RecordQuery,
+    limit?: number,
+    offset = 0,
+    detailsOnly = false
+  ): LedgerEntry[] {
     return this.database
       .prepare(
         `${
@@ -122,7 +164,8 @@ export class LedgerRepository {
             : `WITH selected_entries AS MATERIALIZED (
         SELECT e.* FROM ledger_entries e WHERE e.occurred_on BETWEEN ? AND ?
         ${query.characterId ? 'AND e.character_id = ?' : ''}
-        ORDER BY e.occurred_on DESC, e.created_at DESC, e.id LIMIT ?
+        ${detailsOnly ? "AND (e.direction = 'expense' OR e.manual_income_id IS NOT NULL)" : ''}
+        ORDER BY e.occurred_on DESC, e.created_at DESC, e.id LIMIT ? OFFSET ?
       )`
         } SELECT e.*, c.name AS character_name, dl.boss_run_id AS drop_boss_run_id, me.category AS expense_category, me.notes AS expense_notes,
       me.currency AS expense_currency, me.point_amount, me.points_per_100m, mi.category AS income_category, mi.notes AS income_notes
@@ -138,7 +181,7 @@ export class LedgerRepository {
         query.from,
         query.to,
         ...(query.characterId ? [query.characterId] : []),
-        ...(limit === undefined ? [] : [limit])
+        ...(limit === undefined ? [] : [limit, offset])
       )
       .map((row) => ({
         id: String(row.id),

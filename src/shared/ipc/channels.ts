@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  ledgerPage: 'ledger:page',
   bossesSyncPeriods: 'bosses:sync-periods',
   nexonOpenKeyGuide: 'nexon:open-key-guide',
   nexonActivateKey: 'nexon:activate-key',

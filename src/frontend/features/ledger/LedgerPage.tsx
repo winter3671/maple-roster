@@ -8,7 +8,6 @@ import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
 import { useCharacters } from '../characters/useCharacters'
 import { useLedger } from './useLedger'
 import { ledgerApi } from './ledger.api'
-import { groupLedgerIncome } from '../../../shared/ledger-income'
 
 import type { LedgerEntry } from '../../../shared/contracts/ledger.contract'
 import type { ExpenseInput } from '../../../shared/contracts/expense.contract'
@@ -24,12 +23,26 @@ export function LedgerPage() {
   const [notice, setNotice] = useState('')
   const mutationLock = useRef(false)
   const [query, setQuery] = useState(thisMonthQuery)
-  const state = useLedger(query)
-  const incomeGroups = groupLedgerIncome(state.data?.entries ?? [])
-  const detailEntries =
-    state.data?.entries.filter(
-      (entry) => entry.direction === 'expense' || entry.source === 'manualIncome'
-    ) ?? []
+  const [page, setPage] = useState(1)
+  const state = useLedger(query, page)
+  const incomeGroups =
+    state.data?.incomeGroups ??
+    (['boss', 'hunting', 'income'] as const).map((activity) => ({ activity, amount: 0, count: 0 }))
+  const detailEntries = state.data?.entries ?? []
+  const pagination = state.data?.pagination
+  const detailSection = useRef<HTMLElement>(null)
+  const scrollAfterPage = useRef(false)
+  useEffect(() => {
+    if (state.error) scrollAfterPage.current = false
+    if (state.data && !state.loading && scrollAfterPage.current) {
+      detailSection.current?.scrollIntoView({ block: 'start' })
+      scrollAfterPage.current = false
+    }
+  }, [state.data, state.loading, state.error])
+  function changePage(next: number) {
+    scrollAfterPage.current = true
+    setPage(next)
+  }
   const characters = useCharacters()
   const [exporting, setExporting] = useState(false),
     [exportError, setExportError] = useState(''),
@@ -60,6 +73,7 @@ export function LedgerPage() {
         else await ledgerApi.createExpense({ ...(input as ExpenseInput), requestId })
       }
       setEditor(null)
+      if (typeof editor === 'string') setPage(1)
       setNotice(
         input.date < query.from ||
           input.date > query.to ||
@@ -126,6 +140,8 @@ export function LedgerPage() {
           setExportNotice('')
           setExportError('')
           setQuery(next)
+          setPage(1)
+          scrollAfterPage.current = false
         }}
       />
       <section
@@ -286,7 +302,12 @@ export function LedgerPage() {
           ))}
         </div>
       </section>
-      <section className="rounded-2xl border border-line bg-surface">
+      <section
+        ref={detailSection}
+        aria-label="수익·지출 내역"
+        aria-busy={state.loading}
+        className="rounded-2xl border border-line bg-surface"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-5">
           <div>
             <h2 className="text-sm font-semibold">수익·지출 내역</h2>
@@ -409,6 +430,49 @@ export function LedgerPage() {
             title="조회 기간에 직접 수익·지출 내역이 없어요"
             description="위의 수익 추가·지출 추가 버튼으로 거래를 기록하세요. 캐릭터가 없다면 먼저 등록해 주세요."
           />
+        )}
+        {pagination && pagination.total > 0 && (
+          <nav
+            aria-label="거래 내역 페이지"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-6 py-4"
+          >
+            <p role="status" className="text-xs tabular-nums text-muted">
+              총 {formatMeso(pagination.total)}건 중{' '}
+              {(pagination.page - 1) * pagination.pageSize + 1}–
+              {Math.min(pagination.page * pagination.pageSize, pagination.total)}건 ·{' '}
+              {pagination.page} / {pagination.totalPages}페이지
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                disabled={
+                  state.loading ||
+                  saving ||
+                  exporting ||
+                  !!editor ||
+                  !!deleting ||
+                  pagination.page <= 1
+                }
+                onClick={() => changePage(pagination.page - 1)}
+              >
+                이전
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={
+                  state.loading ||
+                  saving ||
+                  exporting ||
+                  !!editor ||
+                  !!deleting ||
+                  pagination.page >= pagination.totalPages
+                }
+                onClick={() => changePage(pagination.page + 1)}
+              >
+                다음
+              </Button>
+            </div>
+          </nav>
         )}
       </section>
     </div>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { LedgerList, RecordQuery } from '../../../shared/contracts/ledger.contract'
+import type { LedgerPage, RecordQuery } from '../../../shared/contracts/ledger.contract'
 import { AppError } from '../../../shared/errors'
 import { ledgerApi } from './ledger.api'
 
-export function useLedger(query: RecordQuery) {
-  const [data, setData] = useState<LedgerList>()
+export function useLedger(query: RecordQuery, page: number) {
+  const [data, setData] = useState<LedgerPage>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [revision, setRevision] = useState(0)
@@ -14,7 +14,7 @@ export function useLedger(query: RecordQuery) {
     setError(null)
     setData(undefined)
     Promise.resolve()
-      .then(() => ledgerApi.list(query))
+      .then(() => ledgerApi.page({ ...query, page }))
       .then((list) => {
         if (active) setData(list)
       })
@@ -28,6 +28,6 @@ export function useLedger(query: RecordQuery) {
     return () => {
       active = false
     }
-  }, [query, revision])
+  }, [query, page, revision])
   return { data, loading, error, reload: () => setRevision((value) => value + 1) }
 }
