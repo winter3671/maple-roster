@@ -58,12 +58,12 @@ export const BOSS_ICON_MANIFEST = [
     bossName: '스우',
     difficulty: '하드',
     file: 'lotus-hard.png',
-    source: 'codex-clipboard-a0477cc6-f042-46c6-ac49-4e5c0d4cb9c1.png',
-    x: 302,
-    y: 228,
-    width: 118,
-    height: 90,
-    badge: true
+    source: 'codex-clipboard-442396b5-6976-4161-af03-707fabb6019f.png',
+    x: 173,
+    y: 19,
+    width: 126,
+    height: 126,
+    badge: false
   },
   {
     bossName: '데미안',
