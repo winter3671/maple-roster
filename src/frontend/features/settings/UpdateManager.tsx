@@ -3,8 +3,10 @@ import type { UpdateStatus } from '../../../shared/contracts/update.contract'
 import { getBridge } from '../../lib/bridge'
 import { unwrap } from '../../lib/api'
 import { Button } from '../../components/ui/Button'
+import { useInputProtection } from '../../components/InputProtection'
 
 export function UpdateManager() {
+  const { request } = useInputProtection()
   const [status, setStatus] = useState<UpdateStatus>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -28,7 +30,11 @@ export function UpdateManager() {
       clearInterval(timer)
     }
   }, [])
-  async function action(kind: 'check' | 'download' | 'install') {
+  function action(kind: 'check' | 'download' | 'install') {
+    if (kind === 'install') request(() => void runAction(kind), undefined, 'exit')
+    else void runAction(kind)
+  }
+  async function runAction(kind: 'check' | 'download' | 'install') {
     if (lock.current) return
     lock.current = true
     setBusy(true)

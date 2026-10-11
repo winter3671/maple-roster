@@ -11,6 +11,7 @@ import { parseDigits, formatMeso } from '../../lib/format'
 import { pointsToMesos } from '../../../shared/expense-currency'
 import { Button } from '../../components/ui/Button'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
+import { useProtectedDraft, DraftRestoredNotice } from '../../components/InputProtection'
 
 const fieldClass =
   'mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:opacity-50'
@@ -30,21 +31,25 @@ export function ExpenseForm({
   onCancel: () => void
 }) {
   const options = characters
-  const [draft, setDraft] = useState(() => ({
-    characterId:
-      initial?.characterId ??
-      options.find((row) => row.id === preferredCharacterId)?.id ??
-      options[0]?.id ??
-      '',
-    date: initial?.date ?? getKstDate(),
-    category: initial?.expenseCategory ?? '기타',
-    currency: initial?.expenseCurrency ?? 'meso',
-    amount: initial
-      ? String(initial.expenseCurrency === 'maplePoint' ? initial.pointAmount : initial.amount)
-      : '',
-    pointsPer100m: initial?.pointsPer100m ? String(initial.pointsPer100m) : '',
-    notes: initial?.notes ?? ''
-  }))
+  const [draft, setDraft, protection] = useProtectedDraft(
+    initial ? undefined : 'expense',
+    () => ({
+      characterId:
+        initial?.characterId ??
+        options.find((row) => row.id === preferredCharacterId)?.id ??
+        options[0]?.id ??
+        '',
+      date: initial?.date ?? getKstDate(),
+      category: initial?.expenseCategory ?? '기타',
+      currency: initial?.expenseCurrency ?? 'meso',
+      amount: initial
+        ? String(initial.expenseCurrency === 'maplePoint' ? initial.pointAmount : initial.amount)
+        : '',
+      pointsPer100m: initial?.pointsPer100m ? String(initial.pointsPer100m) : '',
+      notes: initial?.notes ?? ''
+    }),
+    busy
+  )
   const [error, setError] = useState('')
   const retry = useRef({ fingerprint: '', id: '' })
   const id = useId()
@@ -75,7 +80,7 @@ export function ExpenseForm({
       const fingerprint = JSON.stringify(input)
       if (retry.current.fingerprint !== fingerprint)
         retry.current = { fingerprint, id: crypto.randomUUID() }
-      await onSave(input, retry.current.id)
+      await protection.save(() => onSave(input, retry.current.id))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '입력값을 확인해 주세요.')
     }
@@ -86,7 +91,12 @@ export function ExpenseForm({
       className="rounded-2xl border border-line bg-surface p-6"
     >
       <h2 className="mb-4 text-sm font-semibold">{initial ? '지출 수정' : '지출 추가'}</h2>
-      <form onSubmit={(event) => void submit(event)} className="space-y-4">
+      <form
+        {...protection.formProps}
+        onSubmit={(event) => void submit(event)}
+        className="space-y-4"
+      >
+        <DraftRestoredNotice visible={protection.restored} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor={`${id}-character`} className="text-xs font-semibold">
@@ -230,7 +240,7 @@ export function ExpenseForm({
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" disabled={busy} onClick={onCancel}>
+          <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
             취소
           </Button>
           <Button type="submit" disabled={busy || options.length === 0}>

@@ -5,6 +5,7 @@ import {
 } from '../../../shared/contracts/character.contract'
 import { Button } from '../../components/ui/Button'
 import { MAPLE_WORLDS } from '../../../shared/maple-worlds'
+import { useProtectedDraft, DraftRestoredNotice } from '../../components/InputProtection'
 
 const inputClass =
   'mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm placeholder:text-muted/70 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:opacity-50'
@@ -18,7 +19,11 @@ interface CharacterFormProps {
 }
 
 export function CharacterForm({ initial, busy, onSave, onCancel }: CharacterFormProps) {
-  const [input, setInput] = useState<CharacterInput>(initial ?? emptyInput)
+  const [input, setInput, protection] = useProtectedDraft<CharacterInput>(
+    initial ? undefined : 'character',
+    initial ?? emptyInput,
+    busy
+  )
   const [error, setError] = useState<string | null>(null)
   const id = useId()
 
@@ -27,14 +32,15 @@ export function CharacterForm({ initial, busy, onSave, onCancel }: CharacterForm
     setError(null)
     try {
       const value = parseCharacterInput(input)
-      if ((await onSave(value)) && !initial) setInput(emptyInput)
+      if ((await protection.save(() => onSave(value))) && !initial) setInput(emptyInput)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '입력값을 확인해 주세요.')
     }
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-5">
+    <form {...protection.formProps} onSubmit={(event) => void submit(event)} className="space-y-5">
+      <DraftRestoredNotice visible={protection.restored} />
       <div>
         <label htmlFor={`${id}-name`} className="text-xs font-semibold">
           캐릭터 이름 <span className="text-brand">*</span>
@@ -103,7 +109,7 @@ export function CharacterForm({ initial, busy, onSave, onCancel }: CharacterForm
       )}
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button variant="secondary" onClick={onCancel} disabled={busy}>
+          <Button variant="secondary" onClick={() => protection.cancel(onCancel)} disabled={busy}>
             취소
           </Button>
         )}

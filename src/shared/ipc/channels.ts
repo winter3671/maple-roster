@@ -1,4 +1,7 @@
 export const IPC_CHANNELS = {
+  inputProtectionReady: 'system:input-protection-ready',
+  closeRequested: 'system:close-requested',
+  allowClose: 'system:allow-close',
   ledgerPage: 'ledger:page',
   bossesSyncPeriods: 'bosses:sync-periods',
   nexonOpenKeyGuide: 'nexon:open-key-guide',

@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { formatMeso } from '../../lib/format'
 import { bossPartyLimit } from '../../../shared/boss-catalog'
 import { crystalShare } from '../../../shared/crystal-prices'
+import { useFormProtection } from '../../components/InputProtection'
 
 const labels = {
   ready: 'API 완료 · 반영 가능',
@@ -22,11 +23,11 @@ export function BossClearPreview({
 }: {
   preview: BossSyncPreview
   busy: boolean
-  onApply: (ids: string[], date: string) => Promise<void>
+  onApply: (ids: string[], date: string) => Promise<boolean>
   onReplace: (
     members: { bossName: string; difficulty: string; partySize: number }[],
     date: string
-  ) => Promise<void>
+  ) => Promise<boolean>
   onCancel: () => void
 }) {
   const [selected, setSelected] = useState(
@@ -35,6 +36,7 @@ export function BossClearPreview({
   const [date, setDate] = useState(preview.incomeDate)
   const [replace, setReplace] = useState(false)
   const [members, setMembers] = useState(preview.replacement.members)
+  const protection = useFormProtection({ selected: [...selected], date, replace, members }, busy)
   const amount = replace
     ? members
         .filter((row) => !row.isCleared)
@@ -45,14 +47,20 @@ export function BossClearPreview({
   function submit(event: FormEvent) {
     event.preventDefault()
     if (replace)
-      void onReplace(
-        members.map(({ bossName, difficulty, partySize }) => ({ bossName, difficulty, partySize })),
-        date
+      void protection.save(() =>
+        onReplace(
+          members.map(({ bossName, difficulty, partySize }) => ({
+            bossName,
+            difficulty,
+            partySize
+          })),
+          date
+        )
       )
-    else void onApply([...selected], date)
+    else void protection.save(() => onApply([...selected], date))
   }
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form {...protection.formProps} onSubmit={submit} className="space-y-4">
       <p className="text-sm font-semibold">
         {preview.characterName} · {preview.characterWorld}
       </p>
@@ -258,7 +266,7 @@ export function BossClearPreview({
         {formatMeso(amount)} 메소
       </p>
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
           닫기
         </Button>
         <Button

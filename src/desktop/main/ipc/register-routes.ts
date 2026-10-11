@@ -3,6 +3,16 @@ import { AppError, type ApiResult } from '../../../shared/errors'
 
 type Route = readonly [channel: string, handle: (input: unknown) => unknown]
 let activeRequests = 0
+export function hasActiveRequests(): boolean {
+  return activeRequests > 0
+}
+export function requireIdleClose(): void {
+  if (activeRequests > 1)
+    throw new AppError(
+      'REQUEST_CONFLICT',
+      '저장이나 API 작업이 진행 중입니다. 완료 후 다시 종료해 주세요.'
+    )
+}
 export function requireIdleKeyChange(): void {
   if (activeRequests > 1)
     throw new AppError(

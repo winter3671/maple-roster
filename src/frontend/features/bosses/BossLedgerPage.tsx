@@ -2,6 +2,7 @@ import { lazy, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { BossOverviewPage } from './BossOverviewPage'
 import { PageContent } from '../../components/PageContent'
+import { useInputProtection } from '../../components/InputProtection'
 
 const BossesPage = lazy(() =>
   import('./BossesPage').then((module) => ({ default: module.BossesPage }))
@@ -16,6 +17,7 @@ const views: { id: BossView; label: string }[] = [
 
 export function BossLedgerPage() {
   const [view, setView] = useState<BossView>('overview')
+  const { request } = useInputProtection()
   const [syncBusy, setSyncBusy] = useState(false)
   return (
     <div className="space-y-5">
@@ -31,7 +33,9 @@ export function BossLedgerPage() {
             variant={view === item.id ? 'primary' : 'secondary'}
             aria-pressed={view === item.id}
             aria-controls="boss-ledger-content"
-            onClick={() => setView(item.id)}
+            onClick={() => {
+              if (view !== item.id) request(() => setView(item.id))
+            }}
           >
             {item.label}
           </Button>

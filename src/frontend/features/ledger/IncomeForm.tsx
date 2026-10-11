@@ -10,6 +10,7 @@ import { getKstDate } from '../../../shared/dates'
 import { parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
+import { useProtectedDraft, DraftRestoredNotice } from '../../components/InputProtection'
 
 const field =
   'mt-2 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 disabled:opacity-50'
@@ -29,17 +30,21 @@ export function IncomeForm({
   onCancel: () => void
 }) {
   const id = useId()
-  const [draft, setDraft] = useState(() => ({
-    characterId:
-      initial?.characterId ??
-      characters.find((row) => row.id === preferredCharacterId)?.id ??
-      characters[0]?.id ??
-      '',
-    date: initial?.date ?? getKstDate(),
-    category: initial?.incomeCategory ?? '기타',
-    amount: initial ? String(initial.amount) : '',
-    notes: initial?.notes ?? ''
-  }))
+  const [draft, setDraft, protection] = useProtectedDraft(
+    initial ? undefined : 'income',
+    () => ({
+      characterId:
+        initial?.characterId ??
+        characters.find((row) => row.id === preferredCharacterId)?.id ??
+        characters[0]?.id ??
+        '',
+      date: initial?.date ?? getKstDate(),
+      category: initial?.incomeCategory ?? '기타',
+      amount: initial ? String(initial.amount) : '',
+      notes: initial?.notes ?? ''
+    }),
+    busy
+  )
   const [error, setError] = useState('')
   const retry = useRef({ fingerprint: '', id: '' })
   const change = (key: keyof typeof draft, value: string) =>
@@ -53,7 +58,7 @@ export function IncomeForm({
       const fingerprint = JSON.stringify(input)
       if (retry.current.fingerprint !== fingerprint)
         retry.current = { fingerprint, id: crypto.randomUUID() }
-      await onSave(input, retry.current.id)
+      await protection.save(() => onSave(input, retry.current.id))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '입력값을 확인해 주세요.')
     }
@@ -64,7 +69,12 @@ export function IncomeForm({
       className="rounded-xl border border-line bg-canvas p-5"
     >
       <h3 className="mb-4 text-sm font-semibold">{initial ? '수익 수정' : '수익 추가'}</h3>
-      <form onSubmit={(event) => void submit(event)} className="space-y-4">
+      <form
+        {...protection.formProps}
+        onSubmit={(event) => void submit(event)}
+        className="space-y-4"
+      >
+        <DraftRestoredNotice visible={protection.restored} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor={`${id}-character`} className="text-xs font-semibold">
@@ -161,7 +171,7 @@ export function IncomeForm({
           <Button disabled={busy || !characters.length} type="submit">
             {busy ? '저장 중…' : '수익 저장'}
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={onCancel}>
+          <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
             취소
           </Button>
         </div>

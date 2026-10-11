@@ -5,6 +5,7 @@ import { AppError } from '../../../shared/errors'
 import { Button } from '../../components/ui/Button'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { parseDigits } from '../../lib/format'
+import { useFormProtection } from '../../components/InputProtection'
 
 const field =
   'mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
@@ -33,6 +34,7 @@ export function BossDropForm({
   const [rows, setRows] = useState<Row[]>(() => [newRow()])
   const [details, setDetails] = useState(false)
   const [error, setError] = useState('')
+  const protection = useFormProtection(rows, busy)
   const pending = useRef(false)
   const retry = useRef<{ fingerprint: string; ids: string[] } | null>(null)
   const choices = bossDropChoices(boss.name)
@@ -60,10 +62,12 @@ export function BossDropForm({
       const fingerprint = JSON.stringify({ source, items })
       if (retry.current?.fingerprint !== fingerprint)
         retry.current = { fingerprint, ids: items.map(() => crypto.randomUUID()) }
-      await onSave({
-        source,
-        items: items.map((item, index) => ({ ...item, requestId: retry.current!.ids[index] }))
-      })
+      await protection.save(() =>
+        onSave({
+          source,
+          items: items.map((item, index) => ({ ...item, requestId: retry.current!.ids[index] }))
+        })
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '획득 아이템을 확인해 주세요.')
     } finally {
@@ -72,6 +76,7 @@ export function BossDropForm({
   }
   return (
     <form
+      {...protection.formProps}
       aria-label="보스 드랍 일괄 기록"
       onSubmit={(event) => void submit(event)}
       className="space-y-4 rounded-xl border border-brand/20 bg-brand-soft/20 p-4"
@@ -199,7 +204,7 @@ export function BossDropForm({
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
           취소
         </Button>
         <Button type="submit" disabled={busy}>

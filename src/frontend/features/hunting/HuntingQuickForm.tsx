@@ -5,6 +5,7 @@ import { getKstDate } from '../../../shared/dates'
 import { parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
+import { useProtectedDraft, DraftRestoredNotice } from '../../components/InputProtection'
 
 const characterPreference = 'maple-roster:hunting-quick-character'
 const fieldClass =
@@ -27,9 +28,19 @@ export function HuntingQuickForm({
   busy: boolean
   onSave: (input: HuntingInput) => Promise<boolean>
 }) {
-  const [characterId, setCharacterId] = useState(lastCharacter)
-  const [mesos, setMesos] = useState('')
-  const [fragments, setFragments] = useState('')
+  const [draft, setDraft, protection] = useProtectedDraft(
+    'hunting-quick',
+    () => ({ characterId: lastCharacter(), mesos: '', fragments: '' }),
+    busy
+  )
+  const { characterId, mesos, fragments } = draft
+  const setCharacterId = (update: string | ((current: string) => string)) =>
+    setDraft((current) => ({
+      ...current,
+      characterId: typeof update === 'function' ? update(current.characterId) : update
+    }))
+  const setMesos = (value: string) => setDraft((current) => ({ ...current, mesos: value }))
+  const setFragments = (value: string) => setDraft((current) => ({ ...current, fragments: value }))
   const [error, setError] = useState('')
   const [focusAfterSave, setFocusAfterSave] = useState(false)
   const pending = useRef(false)
@@ -67,7 +78,7 @@ export function HuntingQuickForm({
         nodestones: 0,
         notes: ''
       })
-      if (await onSave(input)) {
+      if (await protection.save(() => onSave(input))) {
         try {
           localStorage.setItem(characterPreference, characterId)
         } catch {
@@ -86,10 +97,12 @@ export function HuntingQuickForm({
 
   return (
     <form
+      {...protection.formProps}
       aria-label="30분 사냥 빠른 기록"
       onSubmit={(event) => void submit(event)}
       className="space-y-4"
     >
+      <DraftRestoredNotice visible={protection.restored} />
       <div>
         <label htmlFor={`${id}-character`} className="text-xs font-semibold">
           사냥 캐릭터

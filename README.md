@@ -171,6 +171,7 @@ API 키 없이도 수동 장부를 사용할 수 있습니다. 설정에 저장�
 - [앱 업데이트](docs/app-updates.md): 설정의 업데이트 버튼, 첫 재설치와 GitHub 릴리스 게시 방법
 - [릴리스 노트](docs/release-notes.md): 업데이트 내역 작성과 기능 완성 후 배포하는 방법
 - [캐릭터 이미지](docs/character-images.md): 이미지 갱신, 표시와 백업·이전 장부 호환
+- [입력 보호](docs/input-protection.md): 저장 전 확인, 메뉴 이동 후 임시 입력 복원과 적용 범위
 
 ## 참고 자료
 

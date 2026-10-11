@@ -5,6 +5,7 @@ import { CrystalPriceProvider } from './features/prices/CrystalPriceProvider'
 import './styles/index.css'
 import { PageContent } from './components/PageContent'
 import { applyTheme, readTheme } from './lib/theme'
+import { InputProtectionProvider } from './components/InputProtection'
 
 applyTheme(readTheme())
 
@@ -16,14 +17,16 @@ const UpdateRecovery = lazy(() =>
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {window.location.hash === '#update-recovery' ? (
-      <PageContent>
-        <UpdateRecovery />
-      </PageContent>
-    ) : (
-      <CrystalPriceProvider>
-        <App />
-      </CrystalPriceProvider>
-    )}
+    <InputProtectionProvider>
+      {window.location.hash === '#update-recovery' ? (
+        <PageContent>
+          <UpdateRecovery />
+        </PageContent>
+      ) : (
+        <CrystalPriceProvider>
+          <App />
+        </CrystalPriceProvider>
+      )}
+    </InputProtectionProvider>
   </StrictMode>
 )

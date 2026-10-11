@@ -4,6 +4,7 @@ import { parseHuntingInput, type HuntingInput } from '../../../shared/contracts/
 import { getKstDate } from '../../../shared/dates'
 import { parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
+import { useProtectedDraft, DraftRestoredNotice } from '../../components/InputProtection'
 
 type Draft = { [Key in keyof HuntingInput]: string }
 const fieldClass =
@@ -18,18 +19,25 @@ interface Props {
 }
 
 export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel }: Props) {
-  const [draft, setDraft] = useState<Draft>(() => ({
-    characterId: initial?.characterId ?? '',
-    date: initial?.date ?? getKstDate(),
-    minutes: String(initial?.minutes ?? 30),
-    mesos: String(initial?.mesos ?? 0),
-    cost: String(initial?.cost ?? 0),
-    solFragments: String(initial?.solFragments ?? 0),
-    nodestones: String(initial?.nodestones ?? 0),
-    notes: initial?.notes ?? ''
-  }))
+  const [draft, setDraft, protection] = useProtectedDraft<Draft & { recordNodestones: boolean }>(
+    initial ? undefined : 'hunting-detail',
+    () => ({
+      characterId: initial?.characterId ?? '',
+      date: initial?.date ?? getKstDate(),
+      minutes: String(initial?.minutes ?? 30),
+      mesos: String(initial?.mesos ?? 0),
+      cost: String(initial?.cost ?? 0),
+      solFragments: String(initial?.solFragments ?? 0),
+      nodestones: String(initial?.nodestones ?? 0),
+      notes: initial?.notes ?? '',
+      recordNodestones: (initial?.nodestones ?? 0) > 0
+    }),
+    busy
+  )
   const [error, setError] = useState<string | null>(null)
-  const [recordNodestones, setRecordNodestones] = useState((initial?.nodestones ?? 0) > 0)
+  const recordNodestones = draft.recordNodestones
+  const setRecordNodestones = (value: boolean) =>
+    setDraft((current) => ({ ...current, recordNodestones: value }))
   const id = useId()
   const options = characters
   useEffect(() => {
@@ -60,7 +68,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
         solFragments: parseDigits(draft.solFragments),
         nodestones: recordNodestones ? parseDigits(draft.nodestones) : 0
       })
-      if ((await onSave(input)) && !initial)
+      if ((await protection.save(() => onSave(input))) && !initial)
         setDraft((current) => ({
           ...current,
           mesos: '0',
@@ -75,7 +83,8 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-4">
+    <form {...protection.formProps} onSubmit={(event) => void submit(event)} className="space-y-4">
+      <DraftRestoredNotice visible={protection.restored} />
       <div>
         <label htmlFor={`${id}-character`} className="text-xs font-semibold">
           사냥 캐릭터
@@ -233,7 +242,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
       )}
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button variant="secondary" onClick={onCancel} disabled={busy}>
+          <Button variant="secondary" onClick={() => protection.cancel(onCancel)} disabled={busy}>
             취소
           </Button>
         )}

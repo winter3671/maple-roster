@@ -4,6 +4,7 @@ import { getKstDate, readDate } from '../../../shared/dates'
 import { formatMeso } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { bossFieldClass } from './BossDetailsFields'
+import { useFormProtection } from '../../components/InputProtection'
 
 export function BossIncomeDateForm({
   run,
@@ -18,18 +19,20 @@ export function BossIncomeDateForm({
 }) {
   const [date, setDate] = useState(run.settlement?.date ?? run.week),
     [error, setError] = useState('')
+  const protection = useFormProtection(date, busy)
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
     try {
       if (!run.settlement) throw new Error('수익이 반영된 기록을 선택해 주세요.')
-      await onSave({ id: run.id, date: readDate(date), expectedDate: run.settlement.date })
+      const input = { id: run.id, date: readDate(date), expectedDate: run.settlement.date }
+      await protection.save(() => onSave(input))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '날짜를 확인해 주세요.')
     }
   }
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-4">
+    <form {...protection.formProps} onSubmit={(event) => void submit(event)} className="space-y-4">
       <p className="text-sm font-semibold">
         {run.characterName} · {run.bossName} · {run.difficulty}
       </p>
@@ -62,7 +65,7 @@ export function BossIncomeDateForm({
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
           취소
         </Button>
         <Button type="submit" disabled={busy}>

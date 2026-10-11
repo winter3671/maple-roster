@@ -14,8 +14,10 @@ import type { ExpenseInput } from '../../../shared/contracts/expense.contract'
 import { ExpenseForm } from './ExpenseForm'
 import { IncomeForm } from './IncomeForm'
 import type { IncomeInput } from '../../../shared/contracts/income.contract'
+import { useInputProtection } from '../../components/InputProtection'
 
 export function LedgerPage() {
+  const { request } = useInputProtection()
   const [editor, setEditor] = useState<LedgerEntry | 'new-expense' | 'new-income' | null>(null)
   const [deleting, setDeleting] = useState<LedgerEntry | null>(null)
   const [saving, setSaving] = useState(false)
@@ -162,12 +164,14 @@ export function LedgerPage() {
                 saving ||
                 !characters.characters.length
               }
-              onClick={() => {
-                setEditor('new-income')
-                setDeleting(null)
-                setSaveError('')
-                setNotice('')
-              }}
+              onClick={() =>
+                request(() => {
+                  setEditor('new-income')
+                  setDeleting(null)
+                  setSaveError('')
+                  setNotice('')
+                })
+              }
             >
               수익 추가
             </Button>
@@ -180,12 +184,14 @@ export function LedgerPage() {
                 saving ||
                 !characters.characters.length
               }
-              onClick={() => {
-                setEditor('new-expense')
-                setDeleting(null)
-                setSaveError('')
-                setNotice('')
-              }}
+              onClick={() =>
+                request(() => {
+                  setEditor('new-expense')
+                  setDeleting(null)
+                  setSaveError('')
+                  setNotice('')
+                })
+              }
             >
               지출 추가
             </Button>
@@ -393,24 +399,32 @@ export function LedgerPage() {
                           <Button
                             variant="secondary"
                             disabled={saving || exporting || state.loading}
-                            onClick={() => {
-                              setEditor(entry)
-                              setDeleting(null)
-                              setSaveError('')
-                              setNotice('')
-                            }}
+                            onClick={() =>
+                              request(() => {
+                                setEditor(entry)
+                                setDeleting(null)
+                                setSaveError('')
+                                setNotice('')
+                              })
+                            }
                           >
                             수정
                           </Button>
                           <Button
                             variant="danger"
                             disabled={saving || exporting || state.loading}
-                            onClick={() => {
-                              setDeleting(entry)
-                              setEditor(null)
-                              setSaveError('')
-                              setNotice('')
-                            }}
+                            onClick={() =>
+                              request(
+                                () => {
+                                  setDeleting(entry)
+                                  setEditor(null)
+                                  setSaveError('')
+                                  setNotice('')
+                                },
+                                undefined,
+                                'discard'
+                              )
+                            }
                           >
                             삭제
                           </Button>

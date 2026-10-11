@@ -64,7 +64,16 @@ const api: AppApi = {
     register: (ocid) => ipcRenderer.invoke(IPC_CHANNELS.nexonRegister, ocid),
     registerMany: (ocids) => ipcRenderer.invoke(IPC_CHANNELS.nexonRegisterMany, ocids)
   },
-  system: { getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.systemGetInfo) },
+  system: {
+    getInfo: () => ipcRenderer.invoke(IPC_CHANNELS.systemGetInfo),
+    protectionReady: () => ipcRenderer.invoke(IPC_CHANNELS.inputProtectionReady),
+    allowClose: () => ipcRenderer.invoke(IPC_CHANNELS.allowClose),
+    onCloseRequested: (callback) => {
+      const listener = () => callback()
+      ipcRenderer.on(IPC_CHANNELS.closeRequested, listener)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.closeRequested, listener)
+    }
+  },
   characters: {
     avatar: (id) => ipcRenderer.invoke(IPC_CHANNELS.charactersAvatar, id),
     list: () => ipcRenderer.invoke(IPC_CHANNELS.charactersList),

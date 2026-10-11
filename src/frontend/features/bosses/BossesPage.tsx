@@ -361,6 +361,7 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
                 setApiPreview(null)
                 if (added > 0 && newSolo) setPartyNotice(true)
               }
+              return saved
             }}
             onApply={async (ids, date) => {
               const saved = await state.mutate(
@@ -368,6 +369,7 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
                 'API에서 확인한 클리어와 결정 수익을 반영했습니다.'
               )
               if (saved) setApiPreview(null)
+              return saved
             }}
           />
         </Dialog>

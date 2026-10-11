@@ -5,7 +5,8 @@ import { registerCharacterHandlers } from './character.handlers'
 import { registerHuntingHandlers } from './hunting.handlers'
 import { registerNexonHandlers } from './nexon.handlers'
 import { registerBossHandlers } from './boss.handlers'
-import { registerRoutes } from './register-routes'
+import { registerRoutes, requireIdleClose } from './register-routes'
+import { enableInputProtection, approveWindowClose, approveWindowRestart } from '../window'
 import { registerBackupHandlers } from './backup.handlers'
 import { registerLedgerHandlers } from './ledger.handlers'
 import type { UpdateService } from '../update.service'
@@ -18,13 +19,35 @@ export function registerHandlers(
   avatars: CharacterAvatarService
 ): void {
   const disposeUpdates = registerRoutes(window, [
+    [
+      IPC_CHANNELS.inputProtectionReady,
+      () => {
+        enableInputProtection(window)
+        return null
+      }
+    ],
+    [
+      IPC_CHANNELS.allowClose,
+      () => {
+        requireIdleClose()
+        approveWindowClose(window)
+        return null
+      }
+    ],
     [IPC_CHANNELS.weeklyList, () => services.weekly.list()],
     [IPC_CHANNELS.weeklySync, () => services.weekly.sync()],
     [IPC_CHANNELS.charactersAvatar, (id) => avatars.get(id)],
     [IPC_CHANNELS.updatesStatus, () => updates.status()],
     [IPC_CHANNELS.updatesCheck, () => updates.check()],
     [IPC_CHANNELS.updatesDownload, () => updates.download()],
-    [IPC_CHANNELS.updatesInstall, () => updates.install()]
+    [
+      IPC_CHANNELS.updatesInstall,
+      () => {
+        const result = updates.install()
+        approveWindowRestart(window, () => updates.status().phase === 'installing')
+        return result
+      }
+    ]
   ])
   const disposeCharacters = registerCharacterHandlers(window, services)
   const disposeHunting = registerHuntingHandlers(window, services)

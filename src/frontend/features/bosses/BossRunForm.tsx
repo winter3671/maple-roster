@@ -15,6 +15,7 @@ import { readText } from '../../../shared/validation'
 import { parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { BossDetailsFields, bossFieldClass } from './BossDetailsFields'
+import { useFormProtection } from '../../components/InputProtection'
 
 export function BossRunForm({
   run,
@@ -38,6 +39,7 @@ export function BossRunForm({
     incomeDate: run.settlement?.date ?? run.week
   })
   const [error, setError] = useState('')
+  const protection = useFormProtection(draft, busy)
   const change = (key: keyof typeof draft, value: string) =>
     setDraft((current) =>
       key === 'bossName'
@@ -59,22 +61,24 @@ export function BossRunForm({
     event.preventDefault()
     setError('')
     try {
-      await onSave({
-        id: run.id,
-        bossName: draft.bossName,
-        ...parseBossDetails({
-          ...draft,
-          partySize: parseDigits(draft.partySize)
-        }),
-        notes: readText(draft.notes, '메모', 500, false, true),
-        ...(run.isCleared ? { incomeDate: draft.incomeDate } : {})
-      })
+      await protection.save(() =>
+        onSave({
+          id: run.id,
+          bossName: draft.bossName,
+          ...parseBossDetails({
+            ...draft,
+            partySize: parseDigits(draft.partySize)
+          }),
+          notes: readText(draft.notes, '메모', 500, false, true),
+          ...(run.isCleared ? { incomeDate: draft.incomeDate } : {})
+        })
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '입력값을 확인해 주세요.')
     }
   }
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-4">
+    <form {...protection.formProps} onSubmit={(event) => void submit(event)} className="space-y-4">
       <p className="text-sm font-semibold">
         {run.characterName} · {run.characterWorld}
       </p>
@@ -162,7 +166,7 @@ export function BossRunForm({
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
           취소
         </Button>
         <Button type="submit" disabled={busy}>

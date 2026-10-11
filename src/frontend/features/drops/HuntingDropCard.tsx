@@ -8,6 +8,7 @@ import { getKstDate } from '../../../shared/dates'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { Button } from '../../components/ui/Button'
+import { useFormProtection } from '../../components/InputProtection'
 
 export function HuntingDropCard({
   lot,
@@ -28,6 +29,7 @@ export function HuntingDropCard({
       : ''
   )
   const [error, setError] = useState('')
+  const protection = useFormProtection({ sold, amount, unitPrice }, busy)
   const [requestId] = useState(() => crypto.randomUUID())
   const field =
     'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
@@ -44,10 +46,15 @@ export function HuntingDropCard({
         .map((sale) => sale.date)
         .sort()
         .at(-1) ?? getKstDate()
-    await onSave({ lotId: lot.id, sold, date, grossAmount, requestId })
+    try {
+      await protection.save(() => onSave({ lotId: lot.id, sold, date, grossAmount, requestId }))
+    } catch {
+      setError('판매 상태를 저장하지 못했습니다. 다시 시도해 주세요.')
+    }
   }
   return (
     <form
+      {...protection.formProps}
       onSubmit={(event) => void submit(event)}
       className="space-y-4 rounded-xl border border-line p-4"
     >

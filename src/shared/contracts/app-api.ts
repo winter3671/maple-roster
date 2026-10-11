@@ -61,6 +61,7 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  // Only close-control events are exposed; no arbitrary IPC access.
   updates: {
     status: () => Promise<ApiResult<UpdateStatus>>
     check: () => Promise<ApiResult<UpdateStatus>>
@@ -136,6 +137,9 @@ export interface AppApi {
   }
   system: {
     getInfo: () => Promise<AppInfo>
+    protectionReady: () => Promise<ApiResult<null>>
+    onCloseRequested: (callback: () => void) => () => void
+    allowClose: () => Promise<ApiResult<null>>
   }
   characters: {
     avatar: (id: string) => Promise<ApiResult<string | null>>

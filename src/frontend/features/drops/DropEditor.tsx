@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { FragmentSaleForm } from './FragmentSaleForm'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
+import { useFormProtection } from '../../components/InputProtection'
 
 const field =
   'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
@@ -43,6 +44,7 @@ export function DropEditor({
     manualShare: String(sale?.manualShare ?? 0)
   })
   const [error, setError] = useState('')
+  const protection = useFormProtection(draft, busy && !simpleFragment)
   const prefix = editor.kind === 'sale' ? '판매' : '획득'
   function change(key: string, value: string) {
     setDraft((current) => ({ ...current, [key]: value }))
@@ -71,15 +73,17 @@ export function DropEditor({
     event.preventDefault()
     setError('')
     try {
-      await onSave({
-        ...draft,
-        quantity: parseDigits(draft.quantity),
-        estimatedUnitPrice: parseDigits(draft.estimatedUnitPrice),
-        grossAmount: parseDigits(draft.grossAmount),
-        feeAmount: parseDigits(draft.feeAmount),
-        partySize: parseDigits(draft.partySize),
-        manualShare: parseDigits(draft.manualShare)
-      })
+      await protection.save(() =>
+        onSave({
+          ...draft,
+          quantity: parseDigits(draft.quantity),
+          estimatedUnitPrice: parseDigits(draft.estimatedUnitPrice),
+          grossAmount: parseDigits(draft.grossAmount),
+          feeAmount: parseDigits(draft.feeAmount),
+          partySize: parseDigits(draft.partySize),
+          manualShare: parseDigits(draft.manualShare)
+        })
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '입력값을 확인해 주세요.')
     }
@@ -102,6 +106,7 @@ export function DropEditor({
     )
   return (
     <form
+      {...protection.formProps}
       className="space-y-3 rounded-xl border border-brand/20 bg-brand-soft/20 p-4"
       onSubmit={(event) => void submit(event)}
     >
@@ -191,7 +196,7 @@ export function DropEditor({
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
           돌아가기
         </Button>
         <Button type="submit" disabled={busy}>

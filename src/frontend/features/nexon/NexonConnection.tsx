@@ -3,6 +3,7 @@ import type { NexonStatus } from '../../../shared/contracts/nexon.contract'
 import { Button } from '../../components/ui/Button'
 import { nexonApi } from './nexon.api'
 import { NexonKeyGuide } from './NexonKeyGuide'
+import { useFormProtection, useInputProtection } from '../../components/InputProtection'
 
 const field = 'w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm'
 export function NexonConnection() {
@@ -16,6 +17,15 @@ export function NexonConnection() {
   const [showKeyGuide, setShowKeyGuide] = useState(false)
   const [renaming, setRenaming] = useState<{ id: string; label: string } | null>(null)
   const [deleting, setDeleting] = useState<{ id: string; label: string } | null>(null)
+  // Credentials are never placed in the temporary draft store.
+  const protection = useFormProtection({ key, label }, busy)
+  const renameProtection = useFormProtection(renaming, busy)
+  const { request } = useInputProtection()
+  const switchRename = (action: () => void) => {
+    const scope = renameProtection.formProps.ref.current
+    if (scope) request(action, scope, 'discard')
+    else action()
+  }
   const active = useRef(false)
   const pending = useRef(false)
   const accounts = status?.accounts ?? []
@@ -92,9 +102,11 @@ export function NexonConnection() {
     const name = label.trim()
     setKey('')
     if (
-      await changeKey(
-        () => nexonApi.saveKey(input),
-        `${name} 계정을 등록했습니다. 사용할 계정은 목록에서 선택하세요.`
+      await protection.save(() =>
+        changeKey(
+          () => nexonApi.saveKey(input),
+          `${name} 계정을 등록했습니다. 사용할 계정은 목록에서 선택하세요.`
+        )
       )
     )
       setLabel('')
@@ -136,7 +148,11 @@ export function NexonConnection() {
       {status?.issue === 'invalid' && (
         <p className="mt-3 text-xs text-expense">환경 파일(.env)의 API 키 형식을 확인해 주세요.</p>
       )}
-      <form onSubmit={(event) => void save(event)} className="mt-5 space-y-3">
+      <form
+        {...protection.formProps}
+        onSubmit={(event) => void save(event)}
+        className="mt-5 space-y-3"
+      >
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="sm:col-span-3">
             <div className="mb-2 flex items-center gap-2">
@@ -235,24 +251,28 @@ export function NexonConnection() {
                   <Button
                     variant="secondary"
                     disabled={busy}
-                    onClick={() => {
-                      setRenaming(account)
-                      setDeleting(null)
-                      setError('')
-                      setMessage('')
-                    }}
+                    onClick={() =>
+                      switchRename(() => {
+                        setRenaming(account)
+                        setDeleting(null)
+                        setError('')
+                        setMessage('')
+                      })
+                    }
                   >
                     이름 변경
                   </Button>
                   <Button
                     variant="danger"
                     disabled={busy}
-                    onClick={() => {
-                      setDeleting(account)
-                      setRenaming(null)
-                      setError('')
-                      setMessage('')
-                    }}
+                    onClick={() =>
+                      switchRename(() => {
+                        setDeleting(account)
+                        setRenaming(null)
+                        setError('')
+                        setMessage('')
+                      })
+                    }
                   >
                     삭제
                   </Button>
@@ -265,12 +285,15 @@ export function NexonConnection() {
         )}
         {renaming && (
           <form
+            {...renameProtection.formProps}
             className="mt-4 space-y-3 rounded-xl bg-canvas p-4"
             onSubmit={(event) => {
               event.preventDefault()
-              void changeKey(
-                () => nexonApi.renameKey(renaming.id, renaming.label),
-                '계정 이름을 변경했습니다.'
+              void renameProtection.save(() =>
+                changeKey(
+                  () => nexonApi.renameKey(renaming.id, renaming.label),
+                  '계정 이름을 변경했습니다.'
+                )
               )
             }}
           >
@@ -290,7 +313,11 @@ export function NexonConnection() {
               <Button type="submit" disabled={busy}>
                 이름 저장
               </Button>
-              <Button variant="secondary" disabled={busy} onClick={() => setRenaming(null)}>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => renameProtection.cancel(() => setRenaming(null))}
+              >
                 취소
               </Button>
             </div>

@@ -4,6 +4,7 @@ import { getKstDate } from '../../../shared/dates'
 import { formatMeso, parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
+import { useFormProtection } from '../../components/InputProtection'
 
 export function FragmentSaleForm({
   lot,
@@ -25,6 +26,7 @@ export function FragmentSaleForm({
   )
   const [amount, setAmount] = useState(String(sale?.grossAmount ?? 0))
   const [error, setError] = useState('')
+  const protection = useFormProtection({ date, quantity, unitPrice, amount }, busy)
   function calculate(nextQuantity: string, nextPrice: string) {
     const total = parseDigits(nextQuantity) * parseDigits(nextPrice)
     setAmount(Number.isSafeInteger(total) && total >= 0 ? String(total) : '')
@@ -33,15 +35,17 @@ export function FragmentSaleForm({
     event.preventDefault()
     setError('')
     try {
-      await onSave({
-        date,
-        quantity: parseDigits(quantity),
-        grossAmount: parseDigits(amount),
-        feeAmount: 0,
-        partySize: 1,
-        shareMode: 'equal',
-        manualShare: null
-      })
+      await protection.save(() =>
+        onSave({
+          date,
+          quantity: parseDigits(quantity),
+          grossAmount: parseDigits(amount),
+          feeAmount: 0,
+          partySize: 1,
+          shareMode: 'equal',
+          manualShare: null
+        })
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '입력값을 확인해 주세요.')
     }
@@ -50,6 +54,7 @@ export function FragmentSaleForm({
     'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
   return (
     <form
+      {...protection.formProps}
       onSubmit={(event) => void submit(event)}
       className="space-y-3 rounded-xl border border-brand/20 bg-brand-soft/20 p-4"
     >
@@ -129,7 +134,7 @@ export function FragmentSaleForm({
         </p>
       )}
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" disabled={busy} onClick={onCancel}>
+        <Button variant="secondary" disabled={busy} onClick={() => protection.cancel(onCancel)}>
           돌아가기
         </Button>
         <Button type="submit" disabled={busy}>

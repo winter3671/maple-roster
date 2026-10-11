@@ -3,6 +3,7 @@ import { AppLayout } from './AppLayout'
 import type { PageId } from './navigation'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { PageContent } from '../components/PageContent'
+import { useInputProtection } from '../components/InputProtection'
 
 const BossLedgerPage = lazy(() =>
   import('../features/bosses/BossLedgerPage').then((module) => ({ default: module.BossLedgerPage }))
@@ -27,8 +28,12 @@ const WeeklyPage = lazy(() =>
 
 export function App() {
   const [page, setPage] = useState<PageId>('dashboard')
+  const { request } = useInputProtection()
+  const navigate = (next: PageId) => {
+    if (next !== page) request(() => setPage(next))
+  }
   const pages = {
-    dashboard: <DashboardPage onNavigate={setPage} />,
+    dashboard: <DashboardPage onNavigate={navigate} />,
     weekly: <WeeklyPage />,
     bosses: <BossLedgerPage />,
     hunting: <HuntingPage />,
@@ -38,7 +43,7 @@ export function App() {
   }
 
   return (
-    <AppLayout page={page} onNavigate={setPage}>
+    <AppLayout page={page} onNavigate={navigate}>
       <PageContent key={page}>{pages[page]}</PageContent>
     </AppLayout>
   )

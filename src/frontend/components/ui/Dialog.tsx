@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useInputProtection } from '../InputProtection'
 
 interface DialogProps {
   title: string
@@ -10,6 +11,10 @@ interface DialogProps {
 
 export function Dialog({ title, children, onClose, busy = false, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
+  const { request } = useInputProtection()
+  const close = () => {
+    if (!busy) request(onClose, ref.current, 'discard')
+  }
   const titleId = useId()
   useEffect(() => {
     const dialog = ref.current!
@@ -23,7 +28,7 @@ export function Dialog({ title, children, onClose, busy = false, wide = false }:
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault()
-        if (!busy) onClose()
+        close()
       }}
       className={`m-auto max-h-[90vh] ${wide ? 'w-[min(95vw,800px)]' : 'w-[min(90vw,520px)]'} overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/30`}
     >
@@ -33,7 +38,7 @@ export function Dialog({ title, children, onClose, busy = false, wide = false }:
         </h2>
         <button
           type="button"
-          onClick={onClose}
+          onClick={close}
           disabled={busy}
           aria-label="닫기"
           className="rounded-md px-2 py-1 text-muted hover:bg-canvas disabled:opacity-50"
