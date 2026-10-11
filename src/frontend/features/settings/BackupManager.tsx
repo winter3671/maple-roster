@@ -9,16 +9,18 @@ import { useTaskNotifications } from '../../components/TaskNotifications'
 import type { TaskHandle } from '../../../shared/task-notifications'
 
 const labels: { key: keyof BackupCounts; label: string }[] = [
-  { key: 'manualExpenses', label: '직접 지출' },
-  { key: 'manualIncomes', label: '직접 수익' },
-  { key: 'customPrices', label: '이전 가격표 기록' },
   { key: 'characters', label: '캐릭터' },
-  { key: 'templates', label: '보스 묶음 프리셋' },
-  { key: 'bossRuns', label: '주간 보스 기록' },
+  { key: 'bossRuns', label: '주간·월간 보스 기록' },
   { key: 'huntingSessions', label: '사냥 기록' },
-  { key: 'dropLots', label: '드랍 획득 묶음' },
+  { key: 'dropLots', label: '드랍 획득 기록' },
   { key: 'dropSales', label: '드랍 판매' },
+  { key: 'manualIncomes', label: '직접 수익' },
+  { key: 'manualExpenses', label: '직접 지출' },
   { key: 'ledgerEntries', label: '수입·지출 거래' }
+]
+const legacyLabels: typeof labels = [
+  { key: 'templates', label: '이전 보스 구성' },
+  { key: 'customPrices', label: '이전 수동 가격표' }
 ]
 export function BackupManager() {
   const tasks = useTaskNotifications()
@@ -65,12 +67,16 @@ export function BackupManager() {
     <section className="rounded-2xl border border-line bg-surface p-6">
       <h2 className="text-sm font-semibold">백업과 복원</h2>
       <p className="mt-3 text-sm leading-6 text-muted">
-        캐릭터·프리셋·보스·사냥·드랍 판매·거래 기록을 JSON 파일로 보관합니다. API 키는 제외하며, API
-        연결 정보와 캐릭터 프로필은 포함합니다.
+        캐릭터·주간 및 월간 보스·사냥·드랍 획득과 판매·직접 수익과 지출·거래 기록을 JSON 파일로
+        저장합니다. 저장할 위치를 직접 선택해 다른 기기로 옮기거나 별도로 보관할 수 있습니다.
       </p>
       <p className="mt-2 text-xs leading-6 text-muted">
-        복원은 현재 장부 전체를 교체합니다. 복원 직전 장부를 자동으로 안전 백업하고, 파일을 검증한
-        뒤 적용합니다. API 키 설정은 유지됩니다.
+        캐릭터의 API 연결 정보와 프로필은 포함하며 API 키는 제외합니다. 주간 콘텐츠 조회 결과와 앱
+        설정은 포함하지 않습니다.
+      </p>
+      <p className="mt-2 text-xs leading-6 text-muted">
+        복원할 때는 파일 검증과 기록 수 확인 후 현재 장부 전체를 교체합니다. 적용 직전 기존 장부를
+        안전 백업하며, 이 PC의 API 키 설정은 유지합니다.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
@@ -147,12 +153,39 @@ export function BackupManager() {
                   <td className="tabular-nums">{preview.incoming[key].toLocaleString('ko-KR')}</td>
                 </tr>
               ))}
+              {legacyLabels.some(({ key }) => preview.current[key] || preview.incoming[key]) && (
+                <tr>
+                  <th
+                    colSpan={3}
+                    className="border-t border-line pt-4 pb-2 font-semibold text-muted"
+                  >
+                    이전 버전 호환 기록
+                  </th>
+                </tr>
+              )}
+              {legacyLabels
+                .filter(({ key }) => preview.current[key] || preview.incoming[key])
+                .map(({ key, label }) => (
+                  <tr key={key} className="text-muted">
+                    <th scope="row" className="py-2 font-normal">
+                      {label}
+                    </th>
+                    <td className="tabular-nums">{preview.current[key].toLocaleString('ko-KR')}</td>
+                    <td className="tabular-nums">
+                      {preview.incoming[key].toLocaleString('ko-KR')}
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
+          <p className="mt-2 text-xs leading-6 text-muted">
+            보스 기록은 주간·월간 합계입니다. 거래는 각 장부의 수익과 직접 수익·지출을 반영한 별도
+            기록이므로 항목별 기록 수를 합산해 거래 건수로 보지 않습니다.
+          </p>
           <p className="mt-4 text-xs leading-6 text-muted">
             현재 장부를 전체 교체하며 기록을 합치지 않습니다. 기존 장부는 자동으로 안전 백업합니다.
             API 키는 변경하지 않습니다. 확인은 10분 동안 유효하며 장부가 바뀌면 파일을 다시 선택해야
-            합니다.
+            합니다. 주간 콘텐츠 조회 결과는 복원 후 다시 확인해 주세요.
           </p>
           <label className="mt-4 flex items-start gap-2 text-xs leading-6">
             <input
