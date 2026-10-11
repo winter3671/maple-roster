@@ -30,7 +30,7 @@ export class UpdateService {
       phase: engine ? 'idle' : 'disabled',
       progress: 0,
       message: engine
-        ? '업데이트 확인 버튼을 눌러 최신 버전을 확인하세요.'
+        ? '앱 실행 시 최신 버전을 확인합니다. 설정에서도 업데이트를 확인할 수 있습니다.'
         : '앱 내 업데이트는 Windows 설치 버전에서 사용할 수 있습니다.'
     }
     if (!engine) return
