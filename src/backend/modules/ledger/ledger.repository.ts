@@ -6,6 +6,7 @@ import type { HuntingSession } from '../../../shared/contracts/hunting.contract'
 import type { LedgerEntry, RecordQuery } from '../../../shared/contracts/ledger.contract'
 import type { BossRun } from '../../../shared/contracts/boss.contract'
 import type { DropLot, DropSale } from '../../../shared/contracts/drop.contract'
+import type { DashboardEntry } from '../../domain/dashboard'
 
 export class LedgerRepository {
   constructor(private readonly database: DatabaseSync) {}
@@ -78,19 +79,67 @@ export class LedgerRepository {
     }
   }
 
-  list(query: RecordQuery): LedgerEntry[] {
+  *dashboardEntries(query: RecordQuery): IterableIterator<DashboardEntry> {
+    const rows = this.database
+      .prepare(
+        `SELECT e.character_id, c.name AS character_name, e.world_snapshot, e.occurred_on,
+       e.direction, e.amount,
+       CASE WHEN e.manual_income_id IS NOT NULL THEN 'manualIncome'
+            WHEN e.manual_expense_id IS NOT NULL THEN 'manual'
+            WHEN e.drop_sale_id IS NOT NULL THEN 'drop'
+            WHEN e.crystal_settlement_id IS NOT NULL THEN 'crystal' ELSE 'hunting' END AS source,
+       CASE WHEN e.manual_income_id IS NOT NULL THEN 'income'
+            WHEN e.manual_expense_id IS NOT NULL THEN 'expense'
+            WHEN e.crystal_settlement_id IS NOT NULL OR dl.boss_run_id IS NOT NULL THEN 'boss'
+            ELSE 'hunting' END AS activity
+       FROM ledger_entries e JOIN characters c ON c.id = e.character_id
+       LEFT JOIN drop_sales ds ON ds.id = e.drop_sale_id
+       LEFT JOIN drop_lots dl ON dl.id = ds.drop_lot_id
+       WHERE e.occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''}
+       ORDER BY e.occurred_on DESC, e.created_at DESC, e.id`
+      )
+      .iterate(query.from, query.to, ...(query.characterId ? [query.characterId] : []))
+    for (const row of rows) {
+      yield {
+        characterId: String(row.character_id),
+        characterName: String(row.character_name),
+        characterWorld: String(row.world_snapshot),
+        date: String(row.occurred_on),
+        direction: row.direction as DashboardEntry['direction'],
+        amount: Number(row.amount),
+        source: row.source as DashboardEntry['source'],
+        activity: row.activity as DashboardEntry['activity']
+      }
+    }
+  }
+
+  list(query: RecordQuery, limit?: number): LedgerEntry[] {
     return this.database
       .prepare(
-        `SELECT e.*, c.name AS character_name, dl.boss_run_id AS drop_boss_run_id, me.category AS expense_category, me.notes AS expense_notes,
+        `${
+          limit === undefined
+            ? ''
+            : `WITH selected_entries AS MATERIALIZED (
+        SELECT e.* FROM ledger_entries e WHERE e.occurred_on BETWEEN ? AND ?
+        ${query.characterId ? 'AND e.character_id = ?' : ''}
+        ORDER BY e.occurred_on DESC, e.created_at DESC, e.id LIMIT ?
+      )`
+        } SELECT e.*, c.name AS character_name, dl.boss_run_id AS drop_boss_run_id, me.category AS expense_category, me.notes AS expense_notes,
       me.currency AS expense_currency, me.point_amount, me.points_per_100m, mi.category AS income_category, mi.notes AS income_notes
-      FROM ledger_entries e JOIN characters c ON c.id = e.character_id
+      FROM ${limit === undefined ? 'ledger_entries' : 'selected_entries'} e JOIN characters c ON c.id = e.character_id
       LEFT JOIN manual_expenses me ON me.id = e.manual_expense_id
       LEFT JOIN manual_incomes mi ON mi.id = e.manual_income_id
       LEFT JOIN drop_sales ds ON ds.id = e.drop_sale_id
       LEFT JOIN drop_lots dl ON dl.id = ds.drop_lot_id
-      WHERE e.occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''} ORDER BY e.occurred_on DESC, e.created_at DESC, e.id`
+      ${limit === undefined ? `WHERE e.occurred_on BETWEEN ? AND ? ${query.characterId ? 'AND e.character_id = ?' : ''}` : ''}
+      ORDER BY e.occurred_on DESC, e.created_at DESC, e.id`
       )
-      .all(query.from, query.to, ...(query.characterId ? [query.characterId] : []))
+      .all(
+        query.from,
+        query.to,
+        ...(query.characterId ? [query.characterId] : []),
+        ...(limit === undefined ? [] : [limit])
+      )
       .map((row) => ({
         id: String(row.id),
         manualIncomeId: row.manual_income_id == null ? null : String(row.manual_income_id),

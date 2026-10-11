@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { dashboardStats } from '../domain/dashboard'
+import { seedPerformanceLedger } from './fixtures/ledger-performance'
 import { openDatabase } from '../database/connection'
 import { UnitOfWork } from '../database/unit-of-work'
 import { CharacterRepository } from '../modules/characters/character.repository'
@@ -113,5 +115,61 @@ describe('조회 조건을 반영하는 거래 CSV', () => {
     expect(single.trend.find((row) => row.period === '2026-10-15')?.income).toBe(4175500)
     expect(ledger.dashboard({ from: '2026-08-01', to: '2026-08-31' }).summary.count).toBe(0)
     expect(() => ledger.dashboard({ from: '2026-10-16', to: '2026-10-01' })).toThrow('시작일')
+  })
+  it('전체 상세 조회와 대시보드의 집계·최근 거래가 모든 필터에서 동일하다', () => {
+    for (const query of [
+      { from: '2026-09-01', to: '2026-10-15' },
+      { from: '2026-01-01', to: '2026-12-31' },
+      { from: '2026-10-01', to: '2026-10-15', characterId: first },
+      { from: '2026-10-09', to: '2026-10-09', characterId: second },
+      { from: '2026-08-01', to: '2026-08-31' }
+    ])
+      expect(ledger.dashboard(query)).toEqual(dashboardStats(ledger.list(query), query))
+  })
+  it('대시보드에서는 상세 정보 조회를 5건으로 제한하고 CSV는 전체를 내보낸다', () => {
+    const repository = new LedgerRepository(database)
+    const service = new LedgerService(repository)
+    const spy = vi.spyOn(repository, 'list')
+    const query = { from: '2026-09-01', to: '2026-10-15' }
+    expect(service.dashboard(query).summary.count).toBe(8)
+    expect(spy).toHaveBeenCalledExactlyOnceWith(query, 5)
+    expect(service.exportCsv(query).count).toBe(8)
+    expect(spy).toHaveBeenLastCalledWith(query)
+  })
+  it('많은 기록·수동 거래·서버 이동·최근 거래 동률 정렬을 유지한다', () => {
+    const ids = seedPerformanceLedger(database, 1000)
+    database
+      .prepare("UPDATE ledger_entries SET world_snapshot = '레드' WHERE id = 'synthetic-0000997'")
+      .run()
+    const query = { from: '2026-10-01', to: '2026-10-31' }
+    const before = ledger.exportCsv(query)
+    for (const filter of [query, { ...query, characterId: ids[1] }]) {
+      const list = ledger.list(filter)
+      expect(ledger.dashboard(filter)).toEqual(dashboardStats(list, filter))
+      expect(ledger.dashboard(filter).summary).toEqual(list.summary)
+    }
+    expect(
+      ledger.dashboard(query).characters.find((row) => row.characterId === ids[1])?.worlds
+    ).toContain('레드')
+    expect(ledger.exportCsv(query)).toEqual(before)
+    expect(database.prepare('PRAGMA foreign_key_check').all()).toEqual([])
+  })
+  it('소수점 반올림 없이 큰 정수를 집계하고 합계 범위 초과를 거부한다', () => {
+    const query = { from: '2026-09-01', to: '2026-10-15' }
+    const row = database
+      .prepare('SELECT id FROM ledger_entries WHERE direction = ? LIMIT 1')
+      .get('income')!
+    database
+      .prepare('UPDATE ledger_entries SET amount = ? WHERE id = ?')
+      .run(Number.MAX_SAFE_INTEGER - 100000000, row.id)
+    expect(ledger.dashboard(query)).toEqual(dashboardStats(ledger.list(query), query))
+    database
+      .prepare('UPDATE ledger_entries SET amount = ? WHERE id = ?')
+      .run(Number.MAX_SAFE_INTEGER, row.id)
+    expect(() => ledger.dashboard(query)).toThrow('범위')
+    expect(() => ledger.list(query)).toThrow('범위')
+    // A failed aggregation must release its iterator and permit the next read/write.
+    database.prepare('UPDATE ledger_entries SET amount = ? WHERE id = ?').run(1000, row.id)
+    expect(ledger.dashboard(query).summary.count).toBe(8)
   })
 })

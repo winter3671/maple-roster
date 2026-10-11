@@ -1,11 +1,38 @@
-import type { LedgerList, RecordQuery } from '../../shared/contracts/ledger.contract'
+import type {
+  LedgerEntry,
+  LedgerList,
+  LedgerSummary,
+  RecordQuery
+} from '../../shared/contracts/ledger.contract'
 import type { DashboardStats } from '../../shared/contracts/dashboard.contract'
 import { shiftDate } from '../../shared/boss-period'
-import { sumIntegers } from './money'
+import { safeNumber, sumIntegers } from './money'
+
+export type DashboardEntry = Pick<
+  LedgerEntry,
+  | 'characterId'
+  | 'characterName'
+  | 'characterWorld'
+  | 'date'
+  | 'source'
+  | 'activity'
+  | 'direction'
+  | 'amount'
+>
 
 type Totals = { income: number; expense: number; net: number; count: number }
 const empty = (): Totals => ({ income: 0, expense: 0, net: 0, count: 0 })
 export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardStats {
+  return dashboardStatsFromEntries(list.entries, query, list.entries.slice(0, 5), list.summary)
+}
+
+// Consume a single-pass DB iterator without retaining the complete ledger in memory.
+export function dashboardStatsFromEntries(
+  entries: Iterable<DashboardEntry>,
+  query: RecordQuery,
+  recent: LedgerEntry[],
+  summary?: LedgerSummary
+): DashboardStats {
   const granularity =
     (Date.parse(query.to) - Date.parse(query.from)) / 86400000 <= 61 ? 'day' : 'month'
   const trend = new Map<string, Totals>()
@@ -27,7 +54,15 @@ export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardS
   const sources = new Map(
     ['hunting', 'crystal', 'drop', 'manual', 'manualIncome'].map((source) => [source, empty()])
   )
-  for (const entry of list.entries) {
+  let income = 0n
+  let expense = 0n
+  let count = 0
+  for (const entry of entries) {
+    if (!summary) {
+      if (entry.direction === 'income') income += BigInt(entry.amount)
+      else expense += BigInt(entry.amount)
+    }
+    count++
     let character = characters.get(entry.characterId)
     if (!character) {
       character = {
@@ -50,7 +85,12 @@ export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardS
     }
   }
   return {
-    summary: list.summary,
+    summary: summary ?? {
+      income: safeNumber(income),
+      expense: safeNumber(expense),
+      net: safeNumber(income - expense),
+      count
+    },
     characters: [...characters.values()].sort(
       (a, b) =>
         b.net - a.net ||
@@ -63,6 +103,6 @@ export function dashboardStats(list: LedgerList, query: RecordQuery): DashboardS
     })),
     trend: [...trend].map(([period, totals]) => ({ period, ...totals })),
     granularity,
-    recent: list.entries.slice(0, 5)
+    recent
   }
 }
