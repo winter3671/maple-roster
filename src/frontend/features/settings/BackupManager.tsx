@@ -5,6 +5,8 @@ import { unwrap } from '../../lib/api'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { useCrystalPrices } from '../prices/CrystalPriceProvider'
+import { useTaskNotifications } from '../../components/TaskNotifications'
+import type { TaskHandle } from '../../../shared/task-notifications'
 
 const labels: { key: keyof BackupCounts; label: string }[] = [
   { key: 'manualExpenses', label: '직접 지출' },
@@ -19,6 +21,7 @@ const labels: { key: keyof BackupCounts; label: string }[] = [
   { key: 'ledgerEntries', label: '수입·지출 거래' }
 ]
 export function BackupManager() {
+  const tasks = useTaskNotifications()
   const prices = useCrystalPrices()
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -33,15 +36,17 @@ export function BackupManager() {
       mounted.current = false
     }
   }, [])
-  async function run(operation: () => Promise<void>) {
+  async function run(title: string, operation: (task: TaskHandle) => Promise<void>) {
     if (lock.current) return
     lock.current = true
     setBusy(true)
     setError('')
     setNotice('')
+    const task = tasks.begin(title)
     try {
-      await operation()
+      await operation(task)
     } catch (caught) {
+      task.finish('error', '작업을 완료하지 못했습니다. 설정에서 상세 오류를 확인해 주세요.')
       if (mounted.current)
         setError(caught instanceof Error ? caught.message : '백업 작업에 실패했습니다.')
     } finally {
@@ -71,9 +76,11 @@ export function BackupManager() {
         <Button
           disabled={busy}
           onClick={() =>
-            void run(async () => {
+            void run('JSON 백업 저장', async (task) => {
               const saved = await unwrap(getBridge().backup.exportFile())
               if (saved && mounted.current) setNotice(`백업을 저장했습니다: ${saved.filePath}`)
+              if (saved) task.finish('success', '장부를 JSON 파일로 저장했습니다.')
+              else task.cancel()
             })
           }
         >
@@ -83,12 +90,15 @@ export function BackupManager() {
           variant="secondary"
           disabled={busy}
           onClick={() =>
-            void run(async () => {
+            void run('백업 파일 확인', async (task) => {
               const result = await unwrap(getBridge().backup.selectFile())
               if (mounted.current) {
                 setPreview(result)
                 setConfirmed(false)
               }
+              if (result)
+                task.finish('success', '백업 파일을 확인했습니다. 복원할 내용을 검토해 주세요.')
+              else task.cancel()
             })
           }
         >
@@ -168,14 +178,25 @@ export function BackupManager() {
               variant="danger"
               disabled={busy || !confirmed}
               onClick={() =>
-                void run(async () => {
+                void run('장부 전체 복원', async (task) => {
                   const restored = await unwrap(getBridge().backup.restore(preview.id))
-                  await prices.reload()
                   if (mounted.current) {
                     setPreview(null)
                     setConfirmed(false)
                     setNotice(
                       `장부를 복원했습니다. 복원 전 장부의 안전 백업: ${restored.recoveryPath}`
+                    )
+                  }
+                  try {
+                    await prices.reload()
+                    task.finish(
+                      'success',
+                      '장부를 복원했습니다. 복원 전 장부는 안전 백업으로 보관했습니다.'
+                    )
+                  } catch {
+                    task.finish(
+                      'warning',
+                      '장부는 복원했지만 화면 정보를 다시 불러오지 못했습니다. 재조회해 주세요.'
                     )
                   }
                 })

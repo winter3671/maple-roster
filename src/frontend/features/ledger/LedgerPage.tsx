@@ -16,8 +16,10 @@ import { IncomeForm } from './IncomeForm'
 import type { IncomeInput } from '../../../shared/contracts/income.contract'
 import { useInputProtection } from '../../components/InputProtection'
 import { QueryFailure } from '../../components/ui/QueryFailure'
+import { useTaskNotifications } from '../../components/TaskNotifications'
 
 export function LedgerPage() {
+  const tasks = useTaskNotifications()
   const { request } = useInputProtection()
   const [editor, setEditor] = useState<LedgerEntry | 'new-expense' | 'new-income' | null>(null)
   const [deleting, setDeleting] = useState<LedgerEntry | null>(null)
@@ -118,13 +120,17 @@ export function LedgerPage() {
     setExporting(true)
     setExportError('')
     setExportNotice('')
+    const task = tasks.begin('거래 CSV 저장')
     try {
       const result = await ledgerApi.exportCsv(query)
+      if (result) task.finish('success', `거래 ${result.count}건을 CSV 파일로 저장했습니다.`)
+      else task.cancel()
       if (result && mounted.current)
         setExportNotice(
           `${query.from} ~ ${query.to} 거래 ${result.count}건을 저장했습니다: ${result.filePath}`
         )
     } catch (caught) {
+      task.finish('error', 'CSV 파일을 저장하지 못했습니다. 다시 시도해 주세요.')
       if (mounted.current)
         setExportError(caught instanceof Error ? caught.message : 'CSV를 저장하지 못했습니다.')
     } finally {

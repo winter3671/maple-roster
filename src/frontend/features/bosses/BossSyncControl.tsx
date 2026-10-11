@@ -5,6 +5,8 @@ import type { BossBatchSyncResult } from '../../../shared/contracts/boss-sync.co
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { bossesApi } from './bosses.api'
+import { useTaskNotifications } from '../../components/TaskNotifications'
+import { batchTaskStatus } from '../../../shared/task-notifications'
 
 type Outcome = { label: string; result?: BossBatchSyncResult; error?: string }
 export function BossSyncControl({
@@ -20,6 +22,7 @@ export function BossSyncControl({
   onBusyChange: (busy: boolean) => void
   onChanged: () => Promise<void>
 }) {
+  const tasks = useTaskNotifications()
   const [busy, setBusy] = useState(false)
   const [outcomes, setOutcomes] = useState<Outcome[] | null>(null)
   const lock = useRef(false),
@@ -36,6 +39,7 @@ export function BossSyncControl({
     setBusy(true)
     onBusyChange(true)
     setOutcomes(null)
+    const task = tasks.begin('보스 API 클리어 확인')
     const results: Outcome[] = []
     const today = getKstDate()
     try {
@@ -68,7 +72,7 @@ export function BossSyncControl({
               result: outcome?.result,
               error:
                 outcome?.error?.message ??
-                (outcome ? undefined : '조회 결과를 확인하지 못했습니다.')
+                (outcome?.result ? undefined : '조회 결과를 확인하지 못했습니다.')
             })
           }
         } catch (error) {
@@ -88,6 +92,22 @@ export function BossSyncControl({
         await onChanged()
         if (mounted.current) setOutcomes(results)
       }
+      const items = results.flatMap((row) => row.result?.items ?? [])
+      const succeeded = items.filter((item) => item.status === 'synced').length
+      const incomplete =
+        results.filter((row) => row.error).length +
+        items.filter((item) => item.status === 'failed' || item.status === 'notAttempted').length
+      const unlinked = items.filter((item) => item.status === 'unlinked').length
+      task.finish(
+        batchTaskStatus(succeeded, incomplete),
+        `주간·월간 합계 확인 ${succeeded}건 · 실패·미처리 ${incomplete}건 · API 미연결 ${unlinked}건. 상세 결과를 확인해 주세요.`
+      )
+    } catch {
+      if (mounted.current) setOutcomes(results)
+      task.finish(
+        'error',
+        'API 조회 후 화면을 갱신하지 못했습니다. 저장된 기록을 다시 조회해 주세요.'
+      )
     } finally {
       lock.current = false
       if (mounted.current) {

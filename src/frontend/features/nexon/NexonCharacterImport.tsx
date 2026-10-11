@@ -7,6 +7,8 @@ import type {
 } from '../../../shared/contracts/nexon.contract'
 import { Button } from '../../components/ui/Button'
 import { nexonApi } from './nexon.api'
+import { useTaskNotifications } from '../../components/TaskNotifications'
+import { batchTaskStatus, type TaskHandle } from '../../../shared/task-notifications'
 
 interface Props {
   characters: Character[]
@@ -21,6 +23,7 @@ const identity = (row: { name: string; world: string }) =>
   ])
 
 export function NexonCharacterImport({ characters, busy, onRegistered }: Props) {
+  const tasks = useTaskNotifications()
   const [rows, setRows] = useState<NexonCharacter[] | null>(null)
   const [profile, setProfile] = useState<NexonProfile | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -44,15 +47,17 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
   useEffect(() => {
     setCompleted(new Set())
   }, [characters])
-  async function run(operation: () => Promise<void>) {
+  async function run(title: string, operation: (task: TaskHandle) => Promise<void>) {
     if (lock.current) return
     lock.current = true
     setPending(true)
     setError('')
     setNotice('')
+    const task = tasks.begin(title)
     try {
-      await operation()
+      await operation(task)
     } catch (caught) {
+      task.finish('error', '작업을 완료하지 못했습니다. 캐릭터 관리에서 상세 오류를 확인해 주세요.')
       if (active.current)
         setError(caught instanceof Error ? caught.message : '처리에 실패했습니다.')
     } finally {
@@ -85,7 +90,7 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
   async function registerSelection() {
     const selection = selectedRows.map((row) => row.ocid)
     if (!selection.length) return
-    await run(async () => {
+    await run('캐릭터 일괄 등록', async (task) => {
       setRegistering(selection.length)
       setFailures([])
       const result = await nexonApi.registerMany(selection)
@@ -108,6 +113,14 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
         )
       }
       await onRegistered()
+      const succeeded = result.items.filter(
+        (item) => item.status === 'created' || item.status === 'existing'
+      ).length
+      const incomplete = result.items.length - succeeded
+      task.finish(
+        batchTaskStatus(succeeded, incomplete),
+        `등록·연결 ${succeeded}명 · 실패·미처리 ${incomplete}명. 상세 결과를 확인해 주세요.`
+      )
     })
   }
   return (
@@ -123,7 +136,7 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
           variant="secondary"
           disabled={disabled}
           onClick={() =>
-            void run(async () => {
+            void run('넥슨 캐릭터 목록 조회', async (task) => {
               const result = await nexonApi.list()
               if (active.current) {
                 setRows(result)
@@ -134,6 +147,7 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
                     new Set(result.filter((row) => current.has(row.ocid)).map((row) => row.ocid))
                 )
               }
+              task.finish('success', `조회 가능한 캐릭터 ${result.length}명을 확인했습니다.`)
             })
           }
         >
@@ -244,10 +258,11 @@ export function NexonCharacterImport({ characters, busy, onRegistered }: Props) 
                       disabled={disabled}
                       aria-label={`${row.name} 기본 정보`}
                       onClick={() =>
-                        void run(async () => {
+                        void run('캐릭터 기본 정보 조회', async (task) => {
                           setProfile(null)
                           const result = await nexonApi.basic(row.ocid)
                           if (active.current) setProfile(result)
+                          task.finish('success', '캐릭터 기본 정보를 확인했습니다.')
                         })
                       }
                     >

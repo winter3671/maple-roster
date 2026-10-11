@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode
 } from 'react'
 import {
@@ -13,6 +14,7 @@ import {
   type DraftKey
 } from '../../shared/input-protection'
 import { Button } from './ui/Button'
+import { useTaskNotifications } from './TaskNotifications'
 
 type Mode = 'navigate' | 'discard' | 'exit'
 interface Request {
@@ -27,6 +29,8 @@ const Context = createContext<{
 } | null>(null)
 
 export function InputProtectionProvider({ children }: { children: ReactNode }) {
+  const tasks = useTaskNotifications()
+  const taskRows = useSyncExternalStore(tasks.subscribe, tasks.snapshot)
   const [store] = useState(() => new InputProtectionStore<HTMLElement>())
   const [pending, setPending] = useState<Request | null>(null)
   const pendingRef = useRef<Request | null>(null)
@@ -35,22 +39,33 @@ export function InputProtectionProvider({ children }: { children: ReactNode }) {
   const request = (action: () => void, scope?: HTMLElement | null, mode: Mode = 'navigate') => {
     if (pendingRef.current) return
     const state = store.snapshot(scope, mode === 'exit')
-    if (!state.dirty && !state.busy) {
+    const blocked = state.busy || tasks.isRunning()
+    if (!state.dirty && !blocked) {
       action()
       return
     }
-    pendingRef.current = { action, scope, mode, blocked: state.busy }
+    pendingRef.current = { action, scope, mode, blocked }
     setPending(pendingRef.current)
   }
   function dismiss() {
     pendingRef.current = null
     setPending(null)
   }
+  useEffect(() => {
+    // Release the wait dialog before a completed job opens its own result dialog.
+    // The user's navigation/exit action is not replayed automatically.
+    if (
+      pending?.blocked &&
+      !tasks.isRunning() &&
+      !store.snapshot(pending.scope, pending.mode === 'exit').busy
+    )
+      dismiss()
+  }, [taskRows, pending, tasks, store])
   function proceed() {
     const current = pendingRef.current
     if (!current) return
     // Recheck after confirmation: a save may have started while the dialog was open.
-    if (store.snapshot(current.scope, current.mode === 'exit').busy) {
+    if (store.snapshot(current.scope, current.mode === 'exit').busy || tasks.isRunning()) {
       pendingRef.current = { ...current, blocked: true }
       setPending(pendingRef.current)
       return
@@ -81,7 +96,7 @@ export function InputProtectionProvider({ children }: { children: ReactNode }) {
     })
     void system.protectionReady()
     return unsubscribe
-  }, [store])
+  }, [store, tasks])
   return (
     <Context.Provider value={{ store, request }}>
       {children}
@@ -107,11 +122,11 @@ export function InputProtectionProvider({ children }: { children: ReactNode }) {
           className="m-auto w-[min(90vw,460px)] rounded-2xl border border-line bg-surface p-6 text-ink shadow-xl backdrop:bg-black/40"
         >
           <h2 id="input-protection-title" className="font-semibold">
-            {pending.blocked ? '저장 완료를 기다려 주세요' : '저장하지 않은 입력이 있습니다'}
+            {pending.blocked ? '작업 완료를 기다려 주세요' : '저장하지 않은 입력이 있습니다'}
           </h2>
           <p className="mt-4 text-sm leading-6 text-muted">
             {pending.blocked
-              ? '저장 중에는 화면 이동이나 종료를 할 수 없습니다. 작업이 끝난 뒤 다시 시도해 주세요.'
+              ? '처리 중에는 화면 이동이나 종료를 할 수 없습니다. 작업이 끝난 뒤 다시 시도해 주세요.'
               : pending.mode === 'navigate'
                 ? '이동하시겠어요? 새 사냥·수익·지출·캐릭터 입력은 앱을 켜 둔 동안 임시 보관됩니다. 수정 중인 기록과 API 키 입력은 사라집니다.'
                 : pending.mode === 'exit'

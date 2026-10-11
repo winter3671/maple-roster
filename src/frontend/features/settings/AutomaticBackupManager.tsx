@@ -3,8 +3,10 @@ import type { AutomaticBackupStatus } from '../../../shared/contracts/backup.con
 import { getBridge } from '../../lib/bridge'
 import { unwrap } from '../../lib/api'
 import { Button } from '../../components/ui/Button'
+import { useTaskNotifications } from '../../components/TaskNotifications'
 
 export function AutomaticBackupManager() {
+  const tasks = useTaskNotifications()
   const [status, setStatus] = useState<AutomaticBackupStatus | null>(null)
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
@@ -15,12 +17,20 @@ export function AutomaticBackupManager() {
     lock.current = true
     setBusy(true)
     setError('')
+    const task = save ? tasks.begin('자동 백업') : undefined
     try {
       const result = await unwrap(
         save ? getBridge().backup.automaticNow() : getBridge().backup.automaticStatus()
       )
       if (mounted.current) setStatus(result)
+      task?.finish(
+        result.error ? 'error' : 'success',
+        result.error
+          ? '자동 백업에 실패했습니다. 설정에서 상세 오류를 확인해 주세요.'
+          : '백업 확인을 완료했습니다. 변경된 장부가 있으면 새 백업을 보관합니다.'
+      )
     } catch (caught) {
+      task?.finish('error', '자동 백업을 완료하지 못했습니다. 다시 시도해 주세요.')
       if (mounted.current)
         setError(caught instanceof Error ? caught.message : '백업 상태를 확인하지 못했습니다.')
     } finally {

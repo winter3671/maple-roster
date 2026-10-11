@@ -7,6 +7,8 @@ import { formatMeso } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { QueryFailure } from '../../components/ui/QueryFailure'
+import { useTaskNotifications } from '../../components/TaskNotifications'
+import { batchTaskStatus } from '../../../shared/task-notifications'
 
 function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag' }) {
   if (row.error) return <span className="font-semibold text-expense">확인 불가</span>
@@ -33,6 +35,7 @@ function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag
 }
 
 export function WeeklyPage() {
+  const tasks = useTaskNotifications()
   const [data, setData] = useState<WeeklyOverview>()
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
@@ -41,29 +44,41 @@ export function WeeklyPage() {
     pending = useRef(false)
   const failed = useRef(false)
   const lastSync = useRef(false)
-  const load = useCallback(async (sync: boolean) => {
-    if (pending.current) return
-    pending.current = true
-    lastSync.current = sync
-    setBusy(true)
-    setError('')
-    try {
-      const overview = await unwrap(sync ? getBridge().weekly.sync() : getBridge().weekly.list())
-      if (alive.current) {
-        failed.current = false
-        setData(overview)
+  const load = useCallback(
+    async (sync: boolean) => {
+      if (pending.current) return
+      pending.current = true
+      lastSync.current = sync
+      setBusy(true)
+      setError('')
+      const task = sync ? tasks.begin('주간 콘텐츠 API 확인') : undefined
+      try {
+        const overview = await unwrap(sync ? getBridge().weekly.sync() : getBridge().weekly.list())
+        const connected = overview.characters.filter((row) => row.connected)
+        const incomplete = connected.filter((row) => row.error || !row.fetchedAt).length
+        const succeeded = connected.length - incomplete
+        task?.finish(
+          batchTaskStatus(succeeded, incomplete),
+          `확인 ${succeeded}명 · 실패·미처리 ${incomplete}명. 캐릭터별 참여 현황을 확인해 주세요.`
+        )
+        if (alive.current) {
+          failed.current = false
+          setData(overview)
+        }
+      } catch (caught) {
+        task?.finish('error', '주간 콘텐츠를 확인하지 못했습니다. 다시 시도해 주세요.')
+        if (alive.current) {
+          failed.current = true
+          setData(undefined)
+          setError(caught instanceof Error ? caught.message : '주간 콘텐츠를 조회하지 못했습니다.')
+        }
+      } finally {
+        pending.current = false
+        if (alive.current) setBusy(false)
       }
-    } catch (caught) {
-      if (alive.current) {
-        failed.current = true
-        setData(undefined)
-        setError(caught instanceof Error ? caught.message : '주간 콘텐츠를 조회하지 못했습니다.')
-      }
-    } finally {
-      pending.current = false
-      if (alive.current) setBusy(false)
-    }
-  }, [])
+    },
+    [tasks]
+  )
   useEffect(() => {
     alive.current = true
     void load(false)

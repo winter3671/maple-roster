@@ -6,6 +6,7 @@ import './styles/index.css'
 import { PageContent } from './components/PageContent'
 import { applyTheme, readTheme } from './lib/theme'
 import { InputProtectionProvider } from './components/InputProtection'
+import { TaskNotificationProvider } from './components/TaskNotifications'
 
 applyTheme(readTheme())
 
@@ -17,16 +18,18 @@ const UpdateRecovery = lazy(() =>
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <InputProtectionProvider>
-      {window.location.hash === '#update-recovery' ? (
-        <PageContent>
-          <UpdateRecovery />
-        </PageContent>
-      ) : (
-        <CrystalPriceProvider>
-          <App />
-        </CrystalPriceProvider>
-      )}
-    </InputProtectionProvider>
+    <TaskNotificationProvider>
+      <InputProtectionProvider>
+        {window.location.hash === '#update-recovery' ? (
+          <PageContent>
+            <UpdateRecovery />
+          </PageContent>
+        ) : (
+          <CrystalPriceProvider>
+            <App />
+          </CrystalPriceProvider>
+        )}
+      </InputProtectionProvider>
+    </TaskNotificationProvider>
   </StrictMode>
 )

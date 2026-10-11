@@ -173,6 +173,7 @@ API 키 없이도 수동 장부를 사용할 수 있습니다. 설정에 저장�
 - [캐릭터 이미지](docs/character-images.md): 이미지 갱신, 표시와 백업·이전 장부 호환
 - [입력 보호](docs/input-protection.md): 저장 전 확인, 메뉴 이동 후 임시 입력 복원과 적용 범위
 - [조회 상태 안내](docs/query-states.md): 조회 실패·빈 기록 구분과 재시도 규칙
+- [작업 알림](docs/task-notifications.md): API·백업·CSV 작업의 진행 및 결과 안내와 이동 보호
 
 ## 참고 자료
 
