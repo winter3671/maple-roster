@@ -166,7 +166,8 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
       </div>
       <div className="rounded-xl border border-dashed border-line px-5 py-4 text-xs leading-5 text-muted">
         <span className="font-semibold text-ink">정산 기준</span>
-        <span className="mx-2">·</span>실제 받은 메소와 미판매 아이템의 예상 가치는 따로 기록합니다.
+        <span className="mx-2">·</span>판매한 아이템은 수수료와 분배를 반영한 실제 수익으로
+        기록합니다.
       </div>
     </div>
   )

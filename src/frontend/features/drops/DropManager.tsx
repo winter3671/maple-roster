@@ -197,8 +197,7 @@ export function DropManager({
           />
         )}
         <p className="text-xs leading-5 text-muted">
-          예상 금액은 미판매 재고의 참고값입니다. 판매를 기록하면 수수료와 분배를 반영한 내 몫만
-          거래 장부에 수입으로 등록됩니다.
+          판매를 기록하면 수수료와 분배를 반영한 내 몫만 거래 장부에 수입으로 등록됩니다.
         </p>
         {source.kind === 'boss' && (
           <p className="text-[11px] text-muted">
@@ -217,8 +216,7 @@ export function DropManager({
         )}
         {data && (
           <div className="rounded-xl bg-canvas p-4 text-xs leading-6">
-            미판매 {formatMeso(data.summary.remainingQuantity)}개 · 예상{' '}
-            {formatMeso(data.summary.estimatedValue)} 메소
+            미판매 {formatMeso(data.summary.remainingQuantity)}개
             <br />
             누적 판매 수익 {formatMeso(data.summary.saleIncome)} 메소
           </div>
@@ -327,9 +325,7 @@ export function DropManager({
             <h3 className="break-words text-sm font-semibold">{lot.itemName}</h3>
             <p className="mt-2 text-xs leading-6 text-muted">
               획득 {formatMeso(lot.quantity)}개 · 판매 {formatMeso(lot.soldQuantity)}개 · 남은{' '}
-              {formatMeso(lot.remaining)}개<br />
-              예상 단가 {formatMeso(lot.estimatedUnitPrice)} 메소 · 미판매 예상{' '}
-              {formatMeso(lot.estimatedValue)} 메소
+              {formatMeso(lot.remaining)}개
             </p>
             {lot.notes && (
               <p className="mt-2 whitespace-pre-wrap break-words text-xs text-muted">{lot.notes}</p>

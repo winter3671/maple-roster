@@ -246,6 +246,41 @@ describe('획득 묶음과 드랍 부분 판매', () => {
       }))
     }
   }
+  it('보스 판매 비율 계산·재시도·수정과 받은 금액 그대로 기록을 반영한다', () => {
+    const batch = bossBatch(),
+      bossLot = drops.createBossLots(batch)[0]
+    const baseline = ledger.list(month).summary.income
+    const input = {
+      requestId: randomUUID(),
+      lotId: bossLot.id,
+      date: '2026-10-15',
+      quantity: 1,
+      grossAmount: 600000001,
+      feeAmount: 999,
+      feeRate: 3,
+      partySize: 3,
+      shareMode: 'equal',
+      manualShare: null
+    }
+    const first = drops.createSale(input)
+    expect(first).toMatchObject({ feeAmount: 18000000, netShare: 194000000 })
+    expect(drops.createSale(input).id).toBe(first.id)
+    expect(drops.updateSale({ ...input, id: first.id, feeRate: 5 })).toMatchObject({
+      feeAmount: 30000000,
+      netShare: 190000000
+    })
+    expect(ledger.list(month).summary.income).toBe(baseline + 190000000)
+    for (const feeRate of [4, -1, '3', null]) {
+      expect(() => drops.updateSale({ ...input, id: first.id, feeRate })).toThrow('수수료')
+    }
+    expect(
+      drops.updateSale({ ...input, id: first.id, grossAmount: 200000000, feeRate: 0, partySize: 1 })
+    ).toMatchObject({ feeAmount: 0, netShare: 200000000 })
+    expect(ledger.list(month).summary.income).toBe(baseline + 200000000)
+    expect(drops.list(batch.source).sales).toHaveLength(1)
+    drops.cancelSale(first.id)
+    expect(ledger.list(month).summary.income).toBe(baseline)
+  })
   it('보스 드랍 여러 종류를 수량과 함께 저장하고 판매 후에만 분배 수익을 반영한다', () => {
     const batch = bossBatch(),
       income = ledger.list(month).summary.income

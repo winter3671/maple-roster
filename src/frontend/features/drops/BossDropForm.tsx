@@ -3,7 +3,6 @@ import { bossDropChoices } from '../../../shared/boss-drop-catalog'
 import { parseDropLot, type BossDropBatchCreate } from '../../../shared/contracts/drop.contract'
 import { AppError } from '../../../shared/errors'
 import { Button } from '../../components/ui/Button'
-import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { parseDigits } from '../../lib/format'
 import { useFormProtection } from '../../components/InputProtection'
 
@@ -14,7 +13,6 @@ const newRow = () => ({
   choice: '',
   itemName: '',
   quantity: '1',
-  estimatedUnitPrice: '0',
   notes: ''
 })
 type Row = ReturnType<typeof newRow>
@@ -52,7 +50,7 @@ export function BossDropForm({
           source,
           itemName: row.choice === 'custom' ? row.itemName : row.choice,
           quantity: parseDigits(row.quantity),
-          estimatedUnitPrice: parseDigits(row.estimatedUnitPrice),
+          estimatedUnitPrice: 0,
           notes: row.notes
         })
         return item
@@ -143,18 +141,6 @@ export function BossDropForm({
           {details && (
             <>
               <label className="block text-xs">
-                예상 단가 (메소)
-                <input
-                  aria-label={`아이템 ${index + 1} 예상 단가`}
-                  inputMode="numeric"
-                  value={row.estimatedUnitPrice}
-                  required
-                  className={field}
-                  onChange={(event) => change(row.key, 'estimatedUnitPrice', event.target.value)}
-                />
-                <MesoAmountHint value={row.estimatedUnitPrice} />
-              </label>
-              <label className="block text-xs">
                 메모
                 <textarea
                   aria-label={`아이템 ${index + 1} 메모`}
@@ -192,7 +178,7 @@ export function BossDropForm({
           disabled={busy}
           onChange={(event) => setDetails(event.target.checked)}
         />
-        예상 단가·메모 추가
+        메모 추가
       </label>
       <p className="text-[11px] leading-5 text-muted">
         같은 아이템이 여러 개면 수량을 늘리세요. 획득만 기록하면 수익은 늘지 않으며, 저장 후 판매

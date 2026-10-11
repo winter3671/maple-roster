@@ -172,7 +172,7 @@ export class DropService {
       if (existing) {
         if (
           Object.entries(input).every(
-            ([key, field]) => existing[key as keyof typeof input] === field
+            ([key, field]) => key === 'feeRate' || existing[key as keyof typeof input] === field
           )
         )
           return existing

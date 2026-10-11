@@ -1,6 +1,7 @@
 import { AppError } from '../errors'
 import { getKstDate, readDate } from '../dates'
 import { readId, readInteger, readObject, readText } from '../validation'
+import { auctionFee, readAuctionFeeRate } from '../auction-fee'
 
 export interface DropSource {
   kind: 'hunting' | 'boss'
@@ -47,6 +48,7 @@ export interface DropSaleInput {
   quantity: number
   grossAmount: number
   feeAmount: number
+  feeRate?: 0 | 3 | 5
   partySize: number
   shareMode: 'equal' | 'manual'
   manualShare: number | null
@@ -110,12 +112,25 @@ export function parseDropSale(value: unknown, today = getKstDate()): DropSaleInp
   const date = readDate(input.date)
   if (date > today)
     throw new AppError('VALIDATION_ERROR', '판매일은 오늘 이후로 입력할 수 없습니다.')
+  const grossAmount = readInteger(input.grossAmount, '전체 판매대금')
+  const feeRate =
+    input.feeRate === undefined
+      ? undefined
+      : input.feeRate === 0
+        ? 0
+        : readAuctionFeeRate(input.feeRate)
   return {
     lotId: readId(input.lotId),
     date,
     quantity: positiveQuantity(input.quantity),
-    grossAmount: readInteger(input.grossAmount, '전체 판매대금'),
-    feeAmount: readInteger(input.feeAmount, '전체 수수료'),
+    grossAmount,
+    feeAmount:
+      feeRate === undefined
+        ? readInteger(input.feeAmount, '전체 수수료')
+        : feeRate === 0
+          ? 0
+          : auctionFee(grossAmount, feeRate),
+    ...(feeRate === undefined ? {} : { feeRate }),
     partySize,
     shareMode: input.shareMode,
     manualShare:
