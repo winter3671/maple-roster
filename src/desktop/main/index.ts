@@ -17,6 +17,13 @@ import { backupForRecovery } from './recovery-backup'
 import { registerRoutes } from './ipc/register-routes'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 import { seedDevelopmentData } from './development-data'
+import {
+  DiagnosticLog,
+  diagnosticCode,
+  recordDiagnostic,
+  setDiagnosticRecorder
+} from './diagnostics'
+import { registerDiagnosticHandlers } from './ipc/diagnostics.handlers'
 
 let services: Services | undefined
 let updates: UpdateService | undefined
@@ -30,6 +37,20 @@ app.setPath(
 )
 
 const singleInstance = app.requestSingleInstanceLock()
+const diagnostics = singleInstance
+  ? new DiagnosticLog(join(app.getPath('userData'), 'logs'), {
+      appVersion: app.getVersion(),
+      electronVersion: process.versions.electron,
+      nodeVersion: process.versions.node,
+      platform: process.platform
+    })
+  : undefined
+setDiagnosticRecorder(diagnostics ? (entry) => diagnostics.record(entry) : undefined)
+function checkAutomaticBackup(force = false) {
+  const result = services?.automaticBackup.check(force)
+  if (result?.error) recordDiagnostic({ event: 'backup.failed', operation: 'automatic-backup' })
+  return result
+}
 if (!singleInstance) app.quit()
 app.on('second-instance', () => {
   const window = BrowserWindow.getAllWindows()[0]
@@ -41,7 +62,7 @@ app.on('second-instance', () => {
 async function openApp(): Promise<void> {
   if (!services || !updates || !avatars) throw new Error('저장소를 준비하지 못했습니다.')
   const window = createWindow()
-  registerHandlers(window, services, updates, avatars)
+  registerHandlers(window, services, updates, avatars, diagnostics!)
   await loadWindow(window)
 }
 
@@ -49,6 +70,7 @@ app
   .whenReady()
   .then(async () => {
     if (!singleInstance) return
+    recordDiagnostic({ event: 'app.started', operation: 'startup' })
     if (!app.isPackaged && !process.env.MAPLE_ROSTER_DATA_DIR) {
       await seedDevelopmentData(
         join(app.getPath('appData'), 'maple-roster'),
@@ -75,6 +97,7 @@ app
       services = createServices(app.getVersion(), databasePath, developmentKey, keyStore)
     } catch (error) {
       if (!(error instanceof NewerDatabaseError)) throw error
+      recordDiagnostic({ event: 'app.failed', operation: 'startup', code: 'NEWER_DATABASE' })
       updates = new UpdateService(
         app.getVersion(),
         app.isPackaged && process.platform === 'win32' ? electronUpdater.autoUpdater : undefined,
@@ -91,6 +114,8 @@ app
         }
       )
       const window = createWindow()
+      const disposeDiagnostics = registerDiagnosticHandlers(window, diagnostics!)
+      window.once('closed', disposeDiagnostics)
       const dispose = registerRoutes(window, [
         [IPC_CHANNELS.updatesStatus, () => updates!.status()],
         [IPC_CHANNELS.updatesCheck, () => updates!.check()],
@@ -101,7 +126,7 @@ app
       await loadWindow(window, true)
       return
     }
-    services.automaticBackup.check()
+    checkAutomaticBackup()
     avatars = new CharacterAvatarService(
       (id) => services!.characters.list().find((row) => row.id === id),
       (data) => nativeImage.createFromBuffer(data)
@@ -111,7 +136,7 @@ app
       app.isPackaged && process.platform === 'win32' ? electronUpdater.autoUpdater : undefined,
       () => {
         requireIdleUpdate()
-        const backup = services!.automaticBackup.check(true)
+        const backup = checkAutomaticBackup(true)!
         if (backup.error)
           throw new AppError(
             'DATABASE_ERROR',
@@ -119,17 +144,23 @@ app
           )
       }
     )
-    backupTimer = setInterval(() => services?.automaticBackup.check(), AUTOMATIC_BACKUP_INTERVAL)
+    backupTimer = setInterval(() => checkAutomaticBackup(), AUTOMATIC_BACKUP_INTERVAL)
     backupTimer.unref()
     await openApp()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        void openApp().catch((error: unknown) => console.error('앱 실행에 실패했습니다.', error))
+        void openApp().catch((error: unknown) =>
+          recordDiagnostic({
+            event: 'app.failed',
+            operation: 'startup',
+            code: diagnosticCode(error)
+          })
+        )
       }
     })
   })
   .catch((error: unknown) => {
-    console.error('앱 실행에 실패했습니다.', error)
+    recordDiagnostic({ event: 'app.failed', operation: 'startup', code: diagnosticCode(error) })
     dialog.showErrorBox(
       'Maple Roster 실행 오류',
       '앱 또는 로컬 저장소를 열지 못했습니다. 실행 중인 앱을 닫고 다시 시도해 주세요.'
@@ -141,8 +172,23 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('will-quit', () => {
-  if (backupTimer) clearInterval(backupTimer)
-  services?.automaticBackup.check()
-  services?.close()
+let logsFlushed = false
+let servicesClosed = false
+app.on('will-quit', (event) => {
+  if (!servicesClosed) {
+    servicesClosed = true
+    if (backupTimer) clearInterval(backupTimer)
+    checkAutomaticBackup()
+    services?.close()
+  }
+  if (!diagnostics || logsFlushed) return
+  event.preventDefault()
+  logsFlushed = true
+  recordDiagnostic({ event: 'app.stopped', operation: 'shutdown' })
+  // Bound shutdown waiting in case the disk is unavailable.
+  const timer = setTimeout(() => app.quit(), 1500)
+  void diagnostics.flush().then(() => {
+    clearTimeout(timer)
+    app.quit()
+  })
 })

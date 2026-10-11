@@ -1,11 +1,15 @@
 import { Component, Suspense, type ReactNode } from 'react'
 import { PageLoading } from './PageLoading'
+import { reportRendererIssue } from '../lib/diagnostics'
 
 // Keep navigation available if a local page chunk cannot be loaded.
 export class PageContent extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
   static getDerivedStateFromError() {
     return { failed: true }
+  }
+  componentDidCatch() {
+    reportRendererIssue('page')
   }
   render() {
     if (this.state.failed)

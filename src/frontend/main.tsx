@@ -8,8 +8,11 @@ import { applyTheme, readTheme } from './lib/theme'
 import { InputProtectionProvider } from './components/InputProtection'
 import { TaskNotificationProvider } from './components/TaskNotifications'
 import { ViewStateProvider } from './components/ViewState'
+import { reportRendererIssue } from './lib/diagnostics'
 
 applyTheme(readTheme())
+window.addEventListener('error', () => reportRendererIssue('error'))
+window.addEventListener('unhandledrejection', () => reportRendererIssue('unhandled-rejection'))
 
 const UpdateRecovery = lazy(() =>
   import('./features/settings/UpdateRecovery').then((module) => ({

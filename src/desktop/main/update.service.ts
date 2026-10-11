@@ -1,5 +1,6 @@
 import type { UpdateStatus } from '../../shared/contracts/update.contract'
 import { AppError } from '../../shared/errors'
+import { recordDiagnostic } from './diagnostics'
 
 export interface UpdateEngine {
   autoDownload: boolean
@@ -134,6 +135,16 @@ export class UpdateService {
     return this.status()
   }
   private fail(): void {
+    if (this.state.phase !== 'error')
+      recordDiagnostic({
+        event: 'update.failed',
+        operation:
+          this.state.phase === 'checking'
+            ? 'check'
+            : this.state.phase === 'installing'
+              ? 'install'
+              : 'download'
+      })
     this.state = {
       ...this.state,
       phase: 'error',

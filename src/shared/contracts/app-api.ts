@@ -53,6 +53,7 @@ import type {
 import type { Expense, ExpenseCreate, ExpenseUpdate } from './expense.contract'
 import type { Income, IncomeCreate, IncomeUpdate } from './income.contract'
 import type { UpdateStatus } from './update.contract'
+import type { DiagnosticStatus, DiagnosticSaved, RendererIssue } from './diagnostics.contract'
 
 export interface AppInfo {
   name: string
@@ -61,6 +62,11 @@ export interface AppInfo {
 }
 
 export interface AppApi {
+  diagnostics: {
+    status: () => Promise<ApiResult<DiagnosticStatus>>
+    exportFile: () => Promise<ApiResult<DiagnosticSaved | null>>
+    report: (kind: RendererIssue) => Promise<ApiResult<null>>
+  }
   // Only close-control events are exposed; no arbitrary IPC access.
   updates: {
     status: () => Promise<ApiResult<UpdateStatus>>

@@ -8,6 +8,7 @@ import { CrystalPriceInfo } from './CrystalPriceInfo'
 import { UpdateManager } from './UpdateManager'
 import { ReleaseNotes } from './ReleaseNotes'
 import { ThemeSettings } from './ThemeSettings'
+import { DiagnosticsManager } from './DiagnosticsManager'
 
 export function SettingsPage() {
   const [info, setInfo] = useState<AppInfo | null>(null)
@@ -50,6 +51,7 @@ export function SettingsPage() {
       <CrystalPriceInfo />
       <AutomaticBackupManager />
       <BackupManager />
+      <DiagnosticsManager />
     </div>
   )
 }

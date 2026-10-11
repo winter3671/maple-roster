@@ -3,6 +3,11 @@ import type { AppApi } from '../../shared/contracts/app-api'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 
 const api: AppApi = {
+  diagnostics: {
+    status: () => ipcRenderer.invoke(IPC_CHANNELS.diagnosticsStatus),
+    exportFile: () => ipcRenderer.invoke(IPC_CHANNELS.diagnosticsExport),
+    report: (kind) => ipcRenderer.invoke(IPC_CHANNELS.diagnosticsReport, kind)
+  },
   updates: {
     status: () => ipcRenderer.invoke(IPC_CHANNELS.updatesStatus),
     check: () => ipcRenderer.invoke(IPC_CHANNELS.updatesCheck),

@@ -175,6 +175,7 @@ API 키 없이도 수동 장부를 사용할 수 있습니다. 설정에 저장�
 - [조회 상태 안내](docs/query-states.md): 조회 실패·빈 기록 구분과 재시도 규칙
 - [작업 알림](docs/task-notifications.md): API·백업·CSV 작업의 진행 및 결과 안내와 이동 보호
 - [조회 조건 기억](docs/view-state.md): 메뉴 이동 후 기간·캐릭터·페이지·화면 선택 유지
+- [문제 진단](docs/diagnostics.md): 개인정보를 제외한 진단 로그와 공유 파일 저장
 
 ## 참고 자료
 

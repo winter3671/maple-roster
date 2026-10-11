@@ -1,4 +1,7 @@
 export const IPC_CHANNELS = {
+  diagnosticsStatus: 'diagnostics:status',
+  diagnosticsExport: 'diagnostics:export',
+  diagnosticsReport: 'diagnostics:report',
   inputProtectionReady: 'system:input-protection-ready',
   closeRequested: 'system:close-requested',
   allowClose: 'system:allow-close',

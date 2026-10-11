@@ -11,13 +11,17 @@ import { registerBackupHandlers } from './backup.handlers'
 import { registerLedgerHandlers } from './ledger.handlers'
 import type { UpdateService } from '../update.service'
 import type { CharacterAvatarService } from '../character-avatar.service'
+import type { DiagnosticLog } from '../diagnostics'
+import { registerDiagnosticHandlers } from './diagnostics.handlers'
 
 export function registerHandlers(
   window: BrowserWindow,
   services: Services,
   updates: UpdateService,
-  avatars: CharacterAvatarService
+  avatars: CharacterAvatarService,
+  diagnostics: DiagnosticLog
 ): void {
+  const disposeDiagnostics = registerDiagnosticHandlers(window, diagnostics)
   const disposeUpdates = registerRoutes(window, [
     [
       IPC_CHANNELS.inputProtectionReady,
@@ -76,6 +80,7 @@ export function registerHandlers(
     return services.system.getInfo()
   })
   window.once('closed', () => {
+    disposeDiagnostics()
     disposeUpdates()
     ipcMain.removeHandler(IPC_CHANNELS.systemGetInfo)
     disposeCharacters()

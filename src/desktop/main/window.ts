@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
 import { hasActiveRequests } from './ipc/register-routes'
+import { recordDiagnostic } from './diagnostics'
 
 interface WindowProtection {
   ready: boolean
@@ -62,9 +63,13 @@ export function createWindow(): BrowserWindow {
     event.preventDefault()
     window.webContents.send(IPC_CHANNELS.closeRequested)
   })
-  window.webContents.on('render-process-gone', () => {
+  window.webContents.on('render-process-gone', (_event, details) => {
+    recordDiagnostic({ event: 'renderer.gone', operation: 'renderer', reason: details.reason })
     protection.ready = false
   })
+  window.on('unresponsive', () =>
+    recordDiagnostic({ event: 'renderer.unresponsive', operation: 'renderer' })
+  )
   window.once('ready-to-show', () => window.show())
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())

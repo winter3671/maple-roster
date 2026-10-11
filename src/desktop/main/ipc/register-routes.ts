@@ -1,5 +1,6 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import { AppError, type ApiResult } from '../../../shared/errors'
+import { diagnosticCode, recordDiagnostic, recordRequestResult } from '../diagnostics'
 
 type Route = readonly [channel: string, handle: (input: unknown) => unknown]
 let activeRequests = 0
@@ -42,18 +43,31 @@ export function registerRoutes(window: BrowserWindow, routes: readonly Route[]):
         event.sender !== window.webContents ||
         event.senderFrame !== window.webContents.mainFrame
       ) {
+        recordDiagnostic({ event: 'request.failed', operation: channel, code: 'PERMISSION_DENIED' })
         return {
           ok: false,
           error: { code: 'PERMISSION_DENIED', message: '허용되지 않은 요청입니다.' }
         }
       }
       activeRequests++
+      const started = performance.now()
       try {
-        return { ok: true, data: await handle(input) }
+        const data = await handle(input)
+        try {
+          recordRequestResult(channel, data, performance.now() - started)
+        } catch {
+          /* Best effort. */
+        }
+        return { ok: true, data }
       } catch (error) {
+        recordDiagnostic({
+          event: 'request.failed',
+          operation: channel,
+          code: diagnosticCode(error),
+          durationMs: performance.now() - started
+        })
         if (error instanceof AppError)
           return { ok: false, error: { code: error.code, message: error.message } }
-        console.error('장부 요청에 실패했습니다.', error)
         return {
           ok: false,
           error: {
