@@ -9,6 +9,8 @@ import type {
 } from '../../../shared/contracts/boss.contract'
 
 export const bossesApi = {
+  syncPeriods: (periods: { date: string; cycle: 'weekly' | 'monthly' }[]) =>
+    unwrap(getBridge().bosses.syncPeriods({ periods })),
   syncClears: (date: string, cycle?: 'weekly' | 'monthly', characterId?: string) =>
     unwrap(getBridge().bosses.syncClears({ date, cycle, characterId })),
   replaceClears: (

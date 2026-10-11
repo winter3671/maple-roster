@@ -14,7 +14,8 @@ import type {
   BossSyncPreview,
   BossSyncApply,
   BossSyncApplyResult,
-  BossBatchSyncResult
+  BossBatchSyncResult,
+  BossPeriodsSyncResult
 } from './boss-sync.contract'
 import type {
   BossDropBatchCreate,
@@ -94,6 +95,9 @@ export interface AppApi {
     cancelSale: (id: string) => Promise<ApiResult<null>>
   }
   bosses: {
+    syncPeriods: (input: {
+      periods: { date: string; cycle: 'weekly' | 'monthly' }[]
+    }) => Promise<ApiResult<BossPeriodsSyncResult>>
     syncClears: (input: {
       date: string
       cycle?: 'weekly' | 'monthly'

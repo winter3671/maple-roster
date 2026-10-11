@@ -1,4 +1,5 @@
 export const IPC_CHANNELS = {
+  bossesSyncPeriods: 'bosses:sync-periods',
   nexonOpenKeyGuide: 'nexon:open-key-guide',
   nexonActivateKey: 'nexon:activate-key',
   nexonRenameKey: 'nexon:rename-key',

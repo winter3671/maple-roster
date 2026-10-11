@@ -85,12 +85,11 @@ export class NexonClient {
       fetchedAt: new Date().toISOString()
     }
   }
-  async scheduler(
+  async schedulerState(
     value: unknown,
     date: string,
-    today = getKstDate(),
-    cycleType: 'weekly' | 'monthly' = 'weekly'
-  ): Promise<{ date: string; bosses: SchedulerBoss[] }> {
+    today = getKstDate()
+  ): Promise<{ date: string; contents: unknown[] }> {
     const ocid = readOcid(value)
     readDate(date)
     if (date > today || date < shiftDate(today, -14))
@@ -106,6 +105,12 @@ export class NexonClient {
       !Array.isArray(row.boss_contents)
     )
       return invalid()
+    return { date, contents: row.boss_contents as unknown[] }
+  }
+  schedulerFromState(
+    state: { date: string; contents: unknown[] },
+    cycleType: 'weekly' | 'monthly' = 'weekly'
+  ): { date: string; bosses: SchedulerBoss[] } {
     const difficulties: Record<string, string> = {
       easy: '이지',
       normal: '노멀',
@@ -115,7 +120,7 @@ export class NexonClient {
     }
     const bosses: SchedulerBoss[] = []
     const seen = new Set<string>()
-    for (const entry of row.boss_contents) {
+    for (const entry of state.contents) {
       const boss = object(entry)
       const cycle = text(boss.cycle, 40)
       if (
@@ -142,7 +147,15 @@ export class NexonClient {
       seen.add(key)
       bosses.push({ bossName, difficulty, isCleared: flag === 'true' })
     }
-    return { date, bosses }
+    return { date: state.date, bosses }
+  }
+  async scheduler(
+    value: unknown,
+    date: string,
+    today = getKstDate(),
+    cycleType: 'weekly' | 'monthly' = 'weekly'
+  ): Promise<{ date: string; bosses: SchedulerBoss[] }> {
+    return this.schedulerFromState(await this.schedulerState(value, date, today), cycleType)
   }
 
   async weeklyContents(value: unknown, today = getKstDate()): Promise<WeeklyContent[]> {

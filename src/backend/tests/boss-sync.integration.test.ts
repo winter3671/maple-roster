@@ -26,6 +26,159 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     transport: ReturnType<typeof vi.fn<typeof fetch>>
   const query = { date: '2026-10-15' }
   const month = { from: '2026-10-01', to: '2026-10-31' }
+  const combined = {
+    periods: [
+      { date: '2026-10-15', cycle: 'weekly' },
+      { date: '2026-10-01', cycle: 'monthly' }
+    ]
+  }
+  it('캐릭터마다 응답을 분리해 API 연결 캐릭터 두 명은 네 번 대신 두 번 조회한다', async () => {
+    const second = new CharacterService(characters).create({
+      name: '두번째검증캐릭터',
+      world: '루나'
+    })
+    characters.saveProfile(second.id, {
+      ocid: 'fake-second-ocid',
+      name: second.name,
+      world: second.world,
+      level: 280,
+      job: '아크',
+      guild: '',
+      fetchedAt: now.toISOString()
+    })
+    contents.push({
+      content_name: '검은 마법사',
+      difficulty: 'hard',
+      cycle: 'bossMonthly',
+      complete_flag: 'true'
+    })
+    const result = await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(2)
+    expect(
+      new Set(transport.mock.calls.map((call) => new URL(String(call[0])).searchParams.get('ocid')))
+        .size
+    ).toBe(2)
+    expect(
+      result.map((item) => item.result?.items.filter((row) => row.status === 'synced').length)
+    ).toEqual([2, 2])
+    expect(bosses.list(query).runs).toHaveLength(2)
+    expect(bosses.list({ date: '2026-10-01', cycle: 'monthly' }).runs).toHaveLength(2)
+  })
+  it('주간·월간을 한 번 조회하고 새 요청은 다시 조회하며 정산을 중복하지 않는다', async () => {
+    contents.push({
+      content_name: '검은 마법사',
+      difficulty: 'hard',
+      cycle: 'bossMonthly',
+      complete_flag: 'true'
+    })
+    const first = await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(1)
+    expect(first.map((item) => item.result?.items[0].status)).toEqual(['synced', 'synced'])
+    const run = bosses.list({ date: '2026-10-01', cycle: 'monthly' }).runs[0]
+    bosses.updateRun({ id: run.id, difficulty: '하드', partySize: 3, notes: '파티 인원 유지' })
+    const before = ledger.list(month).entries
+    await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(2)
+    expect(ledger.list(month).entries).toEqual(before)
+    expect(bosses.list({ date: '2026-10-01', cycle: 'monthly' }).runs[0].partySize).toBe(3)
+  })
+  it('월간 응답만 잘못된 경우 주간 기록을 보존하며 추가 호출하지 않는다', async () => {
+    contents.push({
+      content_name: '검은 마법사',
+      difficulty: 'hard',
+      cycle: 'bossMonthly',
+      complete_flag: true
+    })
+    const result = await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(1)
+    expect(result[0].result?.items[0].status).toBe('synced')
+    expect(result[1].result?.items[0].status).toBe('failed')
+    expect(bosses.list(query).runs[0].isCleared).toBe(true)
+    expect(bosses.list({ date: '2026-10-01', cycle: 'monthly' }).runs).toEqual([])
+  })
+  it('네트워크 실패 응답도 같은 조회 안에서는 재요청하지 않고 다음 조회에서 재시도한다', async () => {
+    transport.mockRejectedValue(new Error('Test network failure'))
+    const result = await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(1)
+    expect(result.map((item) => item.result?.items[0].error?.code)).toEqual([
+      'API_NETWORK_ERROR',
+      'API_NETWORK_ERROR'
+    ])
+    await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(2)
+    expect(ledger.list(month).entries).toEqual([])
+  })
+  it('실제 조회일이 다른 주간·월간 요청은 별도로 조회한다', async () => {
+    contents.push({
+      content_name: '검은 마법사',
+      difficulty: 'hard',
+      cycle: 'bossMonthly',
+      complete_flag: 'true'
+    })
+    transport.mockImplementation(async (url) => {
+      const requested = new URL(String(url)).searchParams.get('date') ?? '2026-10-15'
+      return new Response(JSON.stringify({ date: requested, boss_contents: contents }))
+    })
+    const result = await sync.syncPeriods({
+      periods: [
+        { date: '2026-10-01', cycle: 'weekly' },
+        { date: '2026-10-01', cycle: 'monthly' }
+      ]
+    })
+    expect(transport).toHaveBeenCalledTimes(2)
+    expect(result.map((item) => item.result?.queriedDate)).toEqual(['2026-10-07', '2026-10-15'])
+  })
+  it('같은 과거 조회일의 주간·월간도 응답 한 번으로 반영한다', async () => {
+    now = new Date('2026-10-10T00:00:00Z')
+    responseDate = '2026-09-30'
+    contents.push({
+      content_name: '검은 마법사',
+      difficulty: 'hard',
+      cycle: 'bossMonthly',
+      complete_flag: 'true'
+    })
+    const result = await sync.syncPeriods({
+      periods: [
+        { date: '2026-09-24', cycle: 'weekly' },
+        { date: '2026-09-01', cycle: 'monthly' }
+      ]
+    })
+    expect(transport).toHaveBeenCalledTimes(1)
+    expect(result.map((item) => item.result?.queriedDate)).toEqual(['2026-09-30', '2026-09-30'])
+    expect(result.map((item) => item.result?.items[0].status)).toEqual(['synced', 'synced'])
+  })
+  it('통합 조회 전체가 끝나기 전에 다른 일괄 요청을 실행하지 않는다', async () => {
+    let release!: (response: Response) => void
+    transport.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve
+        })
+    )
+    const request = sync.syncPeriods(combined)
+    await vi.waitFor(() => expect(transport).toHaveBeenCalledTimes(1))
+    await expect(sync.syncAll(query)).rejects.toMatchObject({ code: 'REQUEST_CONFLICT' })
+    await expect(sync.syncPeriods(combined)).rejects.toMatchObject({ code: 'REQUEST_CONFLICT' })
+    release(new Response(JSON.stringify({ date: responseDate, boss_contents: contents })))
+    await request
+    await sync.syncPeriods(combined)
+    expect(transport).toHaveBeenCalledTimes(2)
+  })
+  it('잘못된 조회 구성은 네트워크 호출 전에 거부하고 범위 밖 기간만 실패 처리한다', async () => {
+    await expect(sync.syncPeriods({ periods: [] })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR'
+    })
+    await expect(
+      sync.syncPeriods({ periods: [combined.periods[0], combined.periods[0]] })
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+    expect(transport).not.toHaveBeenCalled()
+    const result = await sync.syncPeriods({
+      periods: [combined.periods[0], { date: '2026-08-01', cycle: 'monthly' }]
+    })
+    expect(result[0].result?.items[0].status).toBe('synced')
+    expect(result[1].error?.code).toBe('VALIDATION_ERROR')
+    expect(transport).toHaveBeenCalledTimes(1)
+  })
   beforeEach(() => {
     now = new Date('2026-10-15T00:00:00Z')
     database = openDatabase(':memory:')

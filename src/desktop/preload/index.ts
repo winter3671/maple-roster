@@ -37,6 +37,7 @@ const api: AppApi = {
     cancelSale: (id) => ipcRenderer.invoke(IPC_CHANNELS.dropsCancelSale, id)
   },
   bosses: {
+    syncPeriods: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSyncPeriods, input),
     syncClears: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesSyncClears, input),
     previewClears: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesPreviewClears, input),
     applyClears: (input) => ipcRenderer.invoke(IPC_CHANNELS.bossesApplyClears, input),

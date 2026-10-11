@@ -39,10 +39,11 @@ export function BossSyncControl({
     const results: Outcome[] = []
     const today = getKstDate()
     try {
-      for (const target of [
+      const targets = [
         { label: '주간', cycle: 'weekly' as const, date },
         { label: '월간', cycle: 'monthly' as const, date: month + '-01' }
-      ]) {
+      ]
+      const valid = targets.filter((target) => {
         const start = target.cycle === 'weekly' ? bossWeek(target.date) : bossMonth(target.date)
         const current = target.cycle === 'weekly' ? bossWeek(today) : bossMonth(today)
         if (start > current || bossPeriodEnd(start, target.cycle) < shiftDate(today, -14)) {
@@ -51,20 +52,38 @@ export function BossSyncControl({
             error:
               '선택한 기간은 API 조회 범위 밖입니다. 이번 주·이번 달을 선택해 주세요. 저장된 기록은 유지됩니다.'
           })
-          continue
+          return false
         }
+        return true
+      })
+      if (valid.length) {
         try {
-          results.push({
-            label: target.label,
-            result: await bossesApi.syncClears(target.date, target.cycle)
-          })
+          const response = await bossesApi.syncPeriods(
+            valid.map(({ date, cycle }) => ({ date, cycle }))
+          )
+          for (const target of valid) {
+            const outcome = response.find((item) => item.cycle === target.cycle)
+            results.push({
+              label: target.label,
+              result: outcome?.result,
+              error:
+                outcome?.error?.message ??
+                (outcome ? undefined : '조회 결과를 확인하지 못했습니다.')
+            })
+          }
         } catch (error) {
-          results.push({
-            label: target.label,
-            error: error instanceof Error ? error.message : 'API 기록 확인에 실패했습니다.'
-          })
+          for (const target of valid)
+            results.push({
+              label: target.label,
+              error: error instanceof Error ? error.message : 'API 기록 확인에 실패했습니다.'
+            })
         }
       }
+      results.sort(
+        (a, b) =>
+          targets.findIndex((target) => target.label === a.label) -
+          targets.findIndex((target) => target.label === b.label)
+      )
       if (mounted.current) {
         await onChanged()
         if (mounted.current) setOutcomes(results)

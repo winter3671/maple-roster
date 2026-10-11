@@ -3,7 +3,8 @@ import type { BossRun } from '../../../shared/contracts/boss.contract'
 import { parseBossQuery } from '../../../shared/contracts/boss.contract'
 import type {
   BossSyncPreview,
-  BossBatchSyncResult
+  BossBatchSyncResult,
+  BossPeriodsSyncResult
 } from '../../../shared/contracts/boss-sync.contract'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { compareBossProgression } from '../../../shared/boss-order'
@@ -39,12 +40,56 @@ export class BossSyncService {
   invalidatePreviews(): void {
     this.previews.clear()
   }
-  async syncAll(value: unknown): Promise<BossBatchSyncResult> {
+  private async withBatch<T>(operation: () => Promise<T>): Promise<T> {
     if (this.batchRunning)
       throw new AppError(
         'REQUEST_CONFLICT',
         'API 일괄 확인이 진행 중입니다. 완료 후 다시 시도해 주세요.'
       )
+    this.batchRunning = true
+    try {
+      return await operation()
+    } finally {
+      this.batchRunning = false
+    }
+  }
+  async syncAll(value: unknown): Promise<BossBatchSyncResult> {
+    return this.withBatch(() => this.syncBatch(value))
+  }
+  async syncPeriods(value: unknown): Promise<BossPeriodsSyncResult> {
+    const input = readObject(value)
+    if (!Array.isArray(input.periods) || input.periods.length < 1 || input.periods.length > 2)
+      throw new AppError('VALIDATION_ERROR', '주간·월간 조회 기간을 확인해 주세요.')
+    const periods = input.periods.map((value) => {
+      const row = readObject(value)
+      return { date: readDate(row.date), cycle: readBossCycle(row.cycle) }
+    })
+    if (new Set(periods.map((period) => period.cycle)).size !== periods.length)
+      throw new AppError('VALIDATION_ERROR', '같은 주기의 조회는 한 번만 요청해 주세요.')
+    return this.withBatch(async () => {
+      const cache = new Map<string, Promise<Awaited<ReturnType<NexonClient['schedulerState']>>>>()
+      const results: BossPeriodsSyncResult = []
+      for (const period of periods) {
+        try {
+          results.push({ cycle: period.cycle, result: await this.syncBatch(period, cache) })
+        } catch (error) {
+          results.push({
+            cycle: period.cycle,
+            error: {
+              code: error instanceof AppError ? error.code : 'DATABASE_ERROR',
+              message:
+                error instanceof AppError ? error.message : '보스 기록을 확인하지 못했습니다.'
+            }
+          })
+        }
+      }
+      return results
+    })
+  }
+  private async syncBatch(
+    value: unknown,
+    cache?: Map<string, Promise<Awaited<ReturnType<NexonClient['schedulerState']>>>>
+  ): Promise<BossBatchSyncResult> {
     const input = readObject(value)
     const cycle = readBossCycle(input.cycle)
     const today = getKstDate(this.now()),
@@ -65,8 +110,7 @@ export class BossSyncService {
     if (selectedId && !characters.length)
       throw new AppError('CHARACTER_NOT_FOUND', '캐릭터를 찾을 수 없습니다.')
     let interruption: { code: AppError['code']; message: string } | undefined
-    this.batchRunning = true
-    try {
+    {
       for (const character of characters) {
         const identity = {
           characterId: character.id,
@@ -83,7 +127,17 @@ export class BossSyncService {
         }
         try {
           const snapshots = this.bosses.list({ date: week, cycle, characterId: character.id }).runs
-          const state = await this.client.scheduler(character.nexon.ocid, queriedDate, today, cycle)
+          let state
+          if (cache) {
+            const key = JSON.stringify([character.nexon.ocid, queriedDate, today])
+            let request = cache.get(key)
+            if (!request) {
+              request = this.client.schedulerState(character.nexon.ocid, queriedDate, today)
+              cache.set(key, request)
+            }
+            state = this.client.schedulerFromState(await request, cycle)
+          } else
+            state = await this.client.scheduler(character.nexon.ocid, queriedDate, today, cycle)
           if (this.characters.find(character.id)?.nexon?.ocid !== character.nexon.ocid)
             throw new AppError(
               'REQUEST_CONFLICT',
@@ -129,8 +183,6 @@ export class BossSyncService {
         }
       }
       return result
-    } finally {
-      this.batchRunning = false
     }
   }
   async preview(value: unknown): Promise<BossSyncPreview> {

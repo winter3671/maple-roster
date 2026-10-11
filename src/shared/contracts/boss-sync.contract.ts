@@ -45,6 +45,12 @@ export interface BossSyncPreview {
 }
 import type { ErrorCode } from '../errors'
 
+export type BossPeriodsSyncResult = {
+  cycle: 'weekly' | 'monthly'
+  result?: BossBatchSyncResult
+  error?: { code: ErrorCode; message: string }
+}[]
+
 export interface BossBatchSyncResult {
   week: string
   queriedDate: string
