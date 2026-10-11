@@ -1,7 +1,8 @@
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync, rmSync, unlinkSync } from 'node:fs'
+import { DatabaseSync } from 'node:sqlite'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname, basename } from 'node:path'
-import { beforeEach, afterEach, describe, it, expect } from 'vitest'
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import { createServices, type Services } from '../../desktop/main/bootstrap'
 import { AutomaticBackupService } from '../modules/backup/automatic-backup.service'
 
@@ -97,5 +98,54 @@ describe('자동 장부 백업', () => {
     expect(failing.check().error).toContain('실패')
     expect(failing.status().lastFilePath).toBeNull()
     expect(readdirSync(directory)).toEqual([])
+  })
+  it('변경 없는 확인은 전체 내보내기를 생략하고 DB 변경·강제 백업은 반영한다', () => {
+    const exportSpy = vi.spyOn(services.backup, 'export')
+    const service = services.automaticBackup
+    expect(service.check().error).toBeNull()
+    exportSpy.mockClear()
+    expect(service.check().error).toBeNull()
+    expect(service.check().error).toBeNull()
+    expect(exportSpy).not.toHaveBeenCalled()
+    services.characters.create({ name: '변경검증', world: '루나' })
+    const changed = service.check()
+    expect(exportSpy).toHaveBeenCalledTimes(1)
+    expect(readFileSync(changed.lastFilePath!, 'utf8')).toContain('변경검증')
+    expect(service.check(true).count).toBe(3)
+    expect(exportSpy).toHaveBeenCalledTimes(2)
+  })
+  it('최신 백업 삭제·변조는 변경 없는 DB에서도 재검증해 복원 가능한 백업을 생성한다', () => {
+    services.characters.create({ name: '원본캐릭터', world: '루나' })
+    const service = services.automaticBackup
+    const first = service.check()
+    service.check() // warm file metadata cache
+    const altered = JSON.parse(readFileSync(first.lastFilePath!, 'utf8'))
+    altered.tables.characters[0].name = '변조캐릭터'
+    writeFileSync(first.lastFilePath!, JSON.stringify(altered))
+    const repaired = service.check()
+    expect(repaired.error).toBeNull()
+    expect(repaired.lastFilePath).not.toBe(first.lastFilePath)
+    expect(readFileSync(repaired.lastFilePath!, 'utf8')).toContain('원본캐릭터')
+    unlinkSync(repaired.lastFilePath!)
+    const recreated = service.check()
+    expect(recreated.error).toBeNull()
+    expect(readFileSync(recreated.lastFilePath!, 'utf8')).toContain('원본캐릭터')
+  })
+  it('다른 DB 연결의 쓰기도 변경으로 감지한다', () => {
+    const character = services.characters.create({ name: '외부변경검증', world: '루나' })
+    const service = services.automaticBackup
+    service.check()
+    service.check()
+    const external = new DatabaseSync(join(root, 'data', 'test.sqlite'))
+    try {
+      external
+        .prepare('UPDATE characters SET notes=? WHERE id=?')
+        .run('외부 수정 반영', character.id)
+    } finally {
+      external.close()
+    }
+    const changed = service.check()
+    expect(changed.error).toBeNull()
+    expect(readFileSync(changed.lastFilePath!, 'utf8')).toContain('외부 수정 반영')
   })
 })

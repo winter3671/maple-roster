@@ -49,7 +49,11 @@ export function createServices(
   return {
     automaticBackup: new AutomaticBackupService(
       join(dirname(databasePath), '..', 'backups', 'automatic'),
-      () => backup.export()
+      () => backup.export(),
+      undefined,
+      undefined,
+      () =>
+        `${database.prepare('SELECT total_changes() AS count').get()!.count}:${database.prepare('PRAGMA data_version').get()!.data_version}`
     ),
     prices: { list: () => [...BUILTIN_CRYSTAL_HISTORY] },
     weekly: new WeeklyService(nexonClient, characters, undefined, new WeeklyRepository(database)),

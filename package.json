@@ -1,6 +1,6 @@
 {
   "name": "maple-roster",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "메이플스토리 캐릭터별 수익·지출을 관리하는 데스크톱 가계부",
   "main": "./out/main/index.js",
@@ -15,7 +15,8 @@
     "package:win": "npm run build && electron-builder --config electron-builder.yml --win --x64 --dir --publish never",
     "dist:win": "npm run build && electron-builder --config electron-builder.yml --win nsis --x64 --publish never",
     "format": "prettier --write src electron.vite.config.ts electron-builder.yml vitest.config.ts tsconfig*.json package.json .prettierrc.json README.md",
-    "format:check": "prettier --check src electron.vite.config.ts electron-builder.yml vitest.config.ts tsconfig*.json package.json .prettierrc.json README.md"
+    "format:check": "prettier --check src electron.vite.config.ts electron-builder.yml vitest.config.ts tsconfig*.json package.json .prettierrc.json README.md",
+    "perf:backup": "node scripts/performance-backup.mjs"
   },
   "engines": {
     "node": ">=24.0.0"
