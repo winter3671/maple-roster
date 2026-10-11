@@ -4,6 +4,7 @@ import { parseHuntingInput, type HuntingInput } from '../../../shared/contracts/
 import { getKstDate } from '../../../shared/dates'
 import { parseDigits } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
+import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { useProtectedDraft, DraftRestoredNotice } from '../../components/InputProtection'
 
 type Draft = { [Key in keyof HuntingInput]: string }
@@ -53,6 +54,8 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
   }, [characters, initial])
 
   function change(key: keyof Draft, value: string) {
+    if (key === 'mesos' || key === 'solFragments' || key === 'nodestones')
+      value = value.replace(/^0+(?=\d)/, '')
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
@@ -153,6 +156,9 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
           id={`${id}-mesos`}
           inputMode="numeric"
           value={draft.mesos}
+          onFocus={(event) => {
+            if (event.currentTarget.value === '0') event.currentTarget.select()
+          }}
           onChange={(event) => change('mesos', event.target.value)}
           onBlur={() => {
             const value = parseDigits(draft.mesos)
@@ -162,6 +168,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
           disabled={busy}
           className={fieldClass}
         />
+        <MesoAmountHint value={draft.mesos} />
         <p className="mt-1 text-[11px] text-muted">사냥으로 직접 얻은 메소만 입력하세요.</p>
       </div>
       {initial && initial.cost > 0 && (
@@ -181,6 +188,9 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
             max={1000000}
             step={1}
             value={draft.solFragments}
+            onFocus={(event) => {
+              if (event.currentTarget.value === '0') event.currentTarget.select()
+            }}
             onChange={(event) => change('solFragments', event.target.value)}
             required
             disabled={busy}
@@ -208,6 +218,9 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
               max={1000000}
               step={1}
               value={draft.nodestones}
+              onFocus={(event) => {
+                if (event.currentTarget.value === '0') event.currentTarget.select()
+              }}
               onChange={(event) => change('nodestones', event.target.value)}
               required
               disabled={busy}

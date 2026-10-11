@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { BossRun } from '../../../shared/contracts/boss.contract'
 import type { Character } from '../../../shared/contracts/character.contract'
 import { compareBossProgression } from '../../../shared/boss-order'
@@ -13,6 +14,8 @@ export function BossRunGroups({
   busy,
   canAdd,
   canQueryApi,
+  expanded,
+  onExpandedChange,
   onQueryApi,
   onAdd,
   onEdit,
@@ -28,6 +31,8 @@ export function BossRunGroups({
   busy: boolean
   canAdd: boolean
   canQueryApi: boolean
+  expanded: ReadonlySet<string>
+  onExpandedChange: (key: string, value: boolean) => void
   onQueryApi: (character: Character) => void
   onAdd: (character: Character) => void
   onEdit: (run: BossRun) => void
@@ -36,6 +41,10 @@ export function BossRunGroups({
   onClear: (run: BossRun, value: boolean) => void
   onDrops: (run: BossRun) => void
 }) {
+  const id = useId()
+  function toggle(key: string) {
+    onExpandedChange(key, !expanded.has(key))
+  }
   const groups = new Map<string, { character: Character; world: string; runs: BossRun[] }>()
   for (const run of runs) {
     const key = JSON.stringify([run.characterWorld, run.characterId])
@@ -72,6 +81,9 @@ export function BossRunGroups({
                 0
               )
               const count = runs.filter((run) => run.characterId === group.character.id).length
+              const isExpanded = cycle === 'monthly' || expanded.has(key)
+              const detailId = `${id}-${encodeURIComponent(key)}`
+              const Summary = cycle === 'weekly' ? 'button' : 'div'
               return (
                 <article
                   key={key}
@@ -79,15 +91,31 @@ export function BossRunGroups({
                   className="overflow-hidden rounded-xl border border-line"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-canvas px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h4 className="text-sm font-semibold">{group.character.name}</h4>
+                    <Summary
+                      type={cycle === 'weekly' ? 'button' : undefined}
+                      aria-expanded={cycle === 'weekly' ? isExpanded : undefined}
+                      aria-controls={cycle === 'weekly' ? detailId : undefined}
+                      aria-label={
+                        cycle === 'weekly'
+                          ? `${group.character.name} 보스 상세 ${isExpanded ? '접기' : '펼치기'}`
+                          : undefined
+                      }
+                      onClick={cycle === 'weekly' ? () => toggle(key) : undefined}
+                      className="flex flex-1 flex-wrap items-center gap-3 rounded-lg py-2 text-left focus-visible:outline-brand"
+                    >
+                      {cycle === 'weekly' && (
+                        <span aria-hidden="true" className="text-xs text-muted">
+                          {isExpanded ? '▼' : '▶'}
+                        </span>
+                      )}
+                      <span className="text-sm font-semibold">{group.character.name}</span>
                       <span className="text-xs text-muted">
                         {cleared}/{group.runs.length} 완료
                       </span>
                       <span className="text-xs font-semibold text-brand">
                         {formatMeso(income)} 메소
                       </span>
-                    </div>
+                    </Summary>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="secondary"
@@ -111,123 +139,140 @@ export function BossRunGroups({
                       <Button
                         variant="secondary"
                         disabled={busy || !canAdd || count >= (cycle === 'monthly' ? 1 : 12)}
-                        onClick={() => onAdd(group.character)}
+                        onClick={() => {
+                          onExpandedChange(key, true)
+                          onAdd(group.character)
+                        }}
                       >
                         + 보스 추가
                       </Button>
                     </div>
                   </div>
-                  {group.runs.length ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[670px] text-left text-xs">
-                        <thead className="text-muted">
-                          <tr>
-                            {['보스 · 난이도 · 인원', '결정 내 몫', '클리어', '반영 수익', ''].map(
-                              (title, index) => (
-                                <th key={index} className="px-4 py-3 font-medium" scope="col">
-                                  {title}
-                                </th>
-                              )
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.runs.map((run) => (
-                            <tr key={run.id} className="border-t border-line">
-                              <td className="px-4 py-3">
-                                <button
-                                  type="button"
-                                  aria-label={`${run.characterName} ${run.bossName} 보스 정보 수정`}
-                                  disabled={busy}
-                                  onClick={() => onEdit(run)}
-                                  className="rounded-lg px-2 py-2 text-left transition hover:bg-brand-soft focus-visible:outline-brand disabled:opacity-50"
-                                >
-                                  <span className="flex items-center gap-3">
-                                    <BossIcon bossName={run.bossName} difficulty={run.difficulty} />
-                                    <span>
-                                      <span className="font-semibold">{run.bossName}</span>
-                                      <span className="ml-2 text-muted">
-                                        {run.difficulty} · {run.partySize}명
+                  <div id={detailId} hidden={!isExpanded}>
+                    {isExpanded &&
+                      (group.runs.length ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[670px] text-left text-xs">
+                            <thead className="text-muted">
+                              <tr>
+                                {[
+                                  '보스 · 난이도 · 인원',
+                                  '결정 내 몫',
+                                  '클리어',
+                                  '반영 수익',
+                                  ''
+                                ].map((title, index) => (
+                                  <th key={index} className="px-4 py-3 font-medium" scope="col">
+                                    {title}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.runs.map((run) => (
+                                <tr key={run.id} className="border-t border-line">
+                                  <td className="px-4 py-3">
+                                    <button
+                                      type="button"
+                                      aria-label={`${run.characterName} ${run.bossName} 보스 정보 수정`}
+                                      disabled={busy}
+                                      onClick={() => onEdit(run)}
+                                      className="rounded-lg px-2 py-2 text-left transition hover:bg-brand-soft focus-visible:outline-brand disabled:opacity-50"
+                                    >
+                                      <span className="flex items-center gap-3">
+                                        <BossIcon
+                                          bossName={run.bossName}
+                                          difficulty={run.difficulty}
+                                        />
+                                        <span>
+                                          <span className="font-semibold">{run.bossName}</span>
+                                          <span className="ml-2 text-muted">
+                                            {run.difficulty} · {run.partySize}명
+                                          </span>
+                                        </span>
                                       </span>
-                                    </span>
-                                  </span>
-                                </button>
-                                {run.notes && (
-                                  <p className="mt-1 max-w-64 whitespace-pre-wrap break-words px-2 text-muted">
-                                    {run.notes}
-                                  </p>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 tabular-nums">
-                                {formatMeso(run.expectedShare)} 메소
-                              </td>
-                              <td className="px-4 py-3">
-                                <label className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    aria-label={`${run.characterName} ${run.bossName} 클리어`}
-                                    checked={run.isCleared}
-                                    disabled={busy}
-                                    onChange={(event) => onClear(run, event.target.checked)}
-                                    className="accent-brand"
-                                  />
-                                  {run.isCleared ? '완료' : '미완료'}
-                                </label>
-                              </td>
-                              <td
-                                className="px-4 py-3 font-semibold tabular-nums text-brand"
-                                title={
-                                  run.settlement ? `수익 반영일 ${run.settlement.date}` : undefined
-                                }
-                              >
-                                {formatMeso(
-                                  run.isCleared ? (run.settlement?.amount ?? run.expectedShare) : 0
-                                )}{' '}
-                                메소
-                                {run.isCleared && run.settlement && (
-                                  <button
-                                    type="button"
-                                    aria-label={`${run.characterName} ${run.bossName} 수익 반영일 수정`}
-                                    disabled={busy}
-                                    onClick={() => onEditIncomeDate(run)}
-                                    className="mt-1 block rounded px-1 py-1 text-[11px] font-normal text-muted underline decoration-line underline-offset-4 hover:bg-brand-soft hover:text-brand focus-visible:outline-brand disabled:opacity-50"
+                                    </button>
+                                    {run.notes && (
+                                      <p className="mt-1 max-w-64 whitespace-pre-wrap break-words px-2 text-muted">
+                                        {run.notes}
+                                      </p>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 tabular-nums">
+                                    {formatMeso(run.expectedShare)} 메소
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <label className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        aria-label={`${run.characterName} ${run.bossName} 클리어`}
+                                        checked={run.isCleared}
+                                        disabled={busy}
+                                        onChange={(event) => onClear(run, event.target.checked)}
+                                        className="accent-brand"
+                                      />
+                                      {run.isCleared ? '완료' : '미완료'}
+                                    </label>
+                                  </td>
+                                  <td
+                                    className="px-4 py-3 font-semibold tabular-nums text-brand"
+                                    title={
+                                      run.settlement
+                                        ? `수익 반영일 ${run.settlement.date}`
+                                        : undefined
+                                    }
                                   >
-                                    반영일 {run.settlement.date}
-                                  </button>
-                                )}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-end gap-2">
-                                  <Button
-                                    variant="secondary"
-                                    disabled={busy || !run.isCleared}
-                                    onClick={() => onDrops(run)}
-                                  >
-                                    드랍 관리
-                                  </Button>
-                                  <button
-                                    type="button"
-                                    aria-label={`${run.characterName} ${run.bossName} 기록 삭제`}
-                                    title="보스 기록 삭제"
-                                    disabled={busy}
-                                    onClick={() => onDelete(run)}
-                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-semibold text-expense transition hover:bg-expense/10 focus-visible:outline-expense disabled:opacity-50"
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="p-5 text-xs text-muted">
-                      {cycle === 'monthly' ? '이달' : '이번 주차'}의 보스 기록이 없습니다. API
-                      클리어를 일괄 확인하거나 보스를 직접 추가하세요.
-                    </p>
-                  )}
+                                    {formatMeso(
+                                      run.isCleared
+                                        ? (run.settlement?.amount ?? run.expectedShare)
+                                        : 0
+                                    )}{' '}
+                                    메소
+                                    {run.isCleared && run.settlement && (
+                                      <button
+                                        type="button"
+                                        aria-label={`${run.characterName} ${run.bossName} 수익 반영일 수정`}
+                                        disabled={busy}
+                                        onClick={() => onEditIncomeDate(run)}
+                                        className="mt-1 block rounded px-1 py-1 text-[11px] font-normal text-muted underline decoration-line underline-offset-4 hover:bg-brand-soft hover:text-brand focus-visible:outline-brand disabled:opacity-50"
+                                      >
+                                        반영일 {run.settlement.date}
+                                      </button>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Button
+                                        variant="secondary"
+                                        disabled={busy || !run.isCleared}
+                                        onClick={() => onDrops(run)}
+                                      >
+                                        드랍 관리
+                                      </Button>
+                                      <button
+                                        type="button"
+                                        aria-label={`${run.characterName} ${run.bossName} 기록 삭제`}
+                                        title="보스 기록 삭제"
+                                        disabled={busy}
+                                        onClick={() => onDelete(run)}
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-semibold text-expense transition hover:bg-expense/10 focus-visible:outline-expense disabled:opacity-50"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="p-5 text-xs text-muted">
+                          {cycle === 'monthly' ? '이달' : '이번 주차'}의 보스 기록이 없습니다. API
+                          클리어를 일괄 확인하거나 보스를 직접 추가하세요.
+                        </p>
+                      ))}
+                  </div>
                 </article>
               )
             })}

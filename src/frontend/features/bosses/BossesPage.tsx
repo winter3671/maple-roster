@@ -48,6 +48,7 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
     () => setQuery(({ characterId: _, ...period }) => period)
   )
   const [periodError, setPeriodError] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set())
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
   const [editingIncomeDate, setEditingIncomeDate] = useState<BossRun | null>(null)
   const [addingCharacter, setAddingCharacter] = useState<Character | null>(null)
@@ -291,6 +292,15 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
         ) : state.characters.length ? (
           <BossRunGroups
             cycle={cycle}
+            expanded={expandedGroups}
+            onExpandedChange={(key, value) => {
+              setExpandedGroups((current) => {
+                const next = new Set(current)
+                if (value) next.add(key)
+                else next.delete(key)
+                return next
+              })
+            }}
             runs={state.data?.runs ?? []}
             characters={state.characters}
             characterId={query.characterId}

@@ -39,8 +39,10 @@ export function HuntingQuickForm({
       ...current,
       characterId: typeof update === 'function' ? update(current.characterId) : update
     }))
-  const setMesos = (value: string) => setDraft((current) => ({ ...current, mesos: value }))
-  const setFragments = (value: string) => setDraft((current) => ({ ...current, fragments: value }))
+  const setMesos = (value: string) =>
+    setDraft((current) => ({ ...current, mesos: value.replace(/^0+(?=\d)/, '') }))
+  const setFragments = (value: string) =>
+    setDraft((current) => ({ ...current, fragments: value.replace(/^0+(?=\d)/, '') }))
   const [error, setError] = useState('')
   const [focusAfterSave, setFocusAfterSave] = useState(false)
   const pending = useRef(false)
