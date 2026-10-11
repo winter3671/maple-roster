@@ -81,9 +81,8 @@ export function BossRunGroups({
                 0
               )
               const count = runs.filter((run) => run.characterId === group.character.id).length
-              const isExpanded = cycle === 'monthly' || expanded.has(key)
+              const isExpanded = expanded.has(key)
               const detailId = `${id}-${encodeURIComponent(key)}`
-              const Summary = cycle === 'weekly' ? 'button' : 'div'
               return (
                 <article
                   key={key}
@@ -91,23 +90,17 @@ export function BossRunGroups({
                   className="overflow-hidden rounded-xl border border-line"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3 bg-canvas px-4 py-3">
-                    <Summary
-                      type={cycle === 'weekly' ? 'button' : undefined}
-                      aria-expanded={cycle === 'weekly' ? isExpanded : undefined}
-                      aria-controls={cycle === 'weekly' ? detailId : undefined}
-                      aria-label={
-                        cycle === 'weekly'
-                          ? `${group.character.name} 보스 상세 ${isExpanded ? '접기' : '펼치기'}`
-                          : undefined
-                      }
-                      onClick={cycle === 'weekly' ? () => toggle(key) : undefined}
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-controls={detailId}
+                      aria-label={`${group.character.name} 보스 상세 ${isExpanded ? '접기' : '펼치기'}`}
+                      onClick={() => toggle(key)}
                       className="flex flex-1 flex-wrap items-center gap-3 rounded-lg py-2 text-left focus-visible:outline-brand"
                     >
-                      {cycle === 'weekly' && (
-                        <span aria-hidden="true" className="text-xs text-muted">
-                          {isExpanded ? '▼' : '▶'}
-                        </span>
-                      )}
+                      <span aria-hidden="true" className="text-xs text-muted">
+                        {isExpanded ? '▼' : '▶'}
+                      </span>
                       <span className="text-sm font-semibold">{group.character.name}</span>
                       <span className="text-xs text-muted">
                         {cleared}/{group.runs.length} 완료
@@ -115,7 +108,7 @@ export function BossRunGroups({
                       <span className="text-xs font-semibold text-brand">
                         {formatMeso(income)} 메소
                       </span>
-                    </Summary>
+                    </button>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="secondary"
