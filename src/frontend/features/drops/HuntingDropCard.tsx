@@ -9,6 +9,9 @@ import { formatMeso, parseDigits } from '../../lib/format'
 import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { Button } from '../../components/ui/Button'
 import { useFormProtection } from '../../components/InputProtection'
+import { auctionFee, type AuctionFeeRate } from '../../../shared/auction-fee'
+import { readHuntingSaleFee, rememberHuntingSaleFee } from '../../lib/hunting-sale-fee'
+import { HuntingSaleFeeField } from './HuntingSaleFeeField'
 
 export function HuntingDropCard({
   lot,
@@ -22,14 +25,19 @@ export function HuntingDropCard({
   onSave: (input: HuntingDropSaleState) => Promise<boolean>
 }) {
   const [sold, setSold] = useState(lot.remaining === 0 && sales.length > 0)
-  const [amount, setAmount] = useState(String(lot.saleIncome || ''))
+  const savedGross = sales.reduce((sum, sale) => sum + sale.grossAmount, 0)
+  const [amount, setAmount] = useState(String(savedGross || ''))
   const [unitPrice, setUnitPrice] = useState(
-    lot.saleIncome && lot.saleIncome % lot.quantity === 0
-      ? String(lot.saleIncome / lot.quantity)
-      : ''
+    savedGross && savedGross % lot.quantity === 0 ? String(savedGross / lot.quantity) : ''
   )
+  const [feeRate, setFeeRate] = useState<AuctionFeeRate>(() => {
+    if (sales.length === 1 && sales[0].feeAmount > 0)
+      for (const rate of [3, 5] as const)
+        if (auctionFee(sales[0].grossAmount, rate) === sales[0].feeAmount) return rate
+    return readHuntingSaleFee()
+  })
   const [error, setError] = useState('')
-  const protection = useFormProtection({ sold, amount, unitPrice }, busy)
+  const protection = useFormProtection({ sold, amount, unitPrice, feeRate }, busy)
   const [requestId] = useState(() => crypto.randomUUID())
   const field =
     'mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-50'
@@ -47,7 +55,9 @@ export function HuntingDropCard({
         .sort()
         .at(-1) ?? getKstDate()
     try {
-      await protection.save(() => onSave({ lotId: lot.id, sold, date, grossAmount, requestId }))
+      await protection.save(() =>
+        onSave({ lotId: lot.id, sold, date, grossAmount, feeRate, requestId })
+      )
     } catch {
       setError('판매 상태를 저장하지 못했습니다. 다시 시도해 주세요.')
     }
@@ -105,7 +115,7 @@ export function HuntingDropCard({
           </div>
           <div>
             <label className="block text-xs">
-              총 가격 (메소)
+              총 가격 (수수료 차감 전 메소)
               <input
                 inputMode="numeric"
                 required
@@ -120,10 +130,25 @@ export function HuntingDropCard({
             </label>
             <MesoAmountHint value={amount} />
           </div>
+          <HuntingSaleFeeField
+            rate={feeRate}
+            grossAmount={parseDigits(amount)}
+            busy={busy}
+            onChange={(rate) => {
+              setFeeRate(rate)
+              rememberHuntingSaleFee(rate)
+            }}
+          />
           <p className="text-[11px] leading-5 text-muted sm:col-span-2">
-            획득 수량 전체를 판매완료로 기록합니다. 개당 가격을 입력하면 총 가격이 계산되며, 실제
-            받은 금액으로 총 가격을 수정할 수 있습니다.
+            획득 수량 전체를 판매완료로 기록합니다. 개당 가격 또는 총 가격은 수수료 차감 전 판매
+            금액을 입력하세요. 선택한 수수료를 뺀 금액이 수익에 반영됩니다.
           </p>
+          {sales.some((sale) => sale.feeAmount === 0 && sale.grossAmount > 0) && (
+            <p className="text-[11px] leading-5 text-muted sm:col-span-2">
+              기존 판매에 수수료 미적용 기록이 있습니다. 저장하면 선택한 비율로 재계산하므로, 입력한
+              총 가격이 수수료 차감 전 금액인지 확인해 주세요.
+            </p>
+          )}
         </div>
       )}
       {sales.length > 0 && (

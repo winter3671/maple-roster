@@ -90,6 +90,47 @@ describe('획득 묶음과 드랍 부분 판매', () => {
     expect(hunting.list(month).sessions.find((row) => row.id === session.id)?.saleIncome).toBe(0)
     expect(ledger.list(month).entries.filter((row) => row.dropSaleId)).toHaveLength(0)
   })
+  it('사냥 판매 수수료를 차감하고 비율 변경·재저장·취소를 중복 없이 반영한다', () => {
+    const input = {
+      lotId: lot.id,
+      sold: true,
+      date: '2026-10-15',
+      grossAmount: 1000001,
+      feeRate: 3,
+      requestId: randomUUID()
+    }
+    const first = drops.setHuntingSale(input)!
+    expect(first).toMatchObject({ grossAmount: 1000001, feeAmount: 30000, netShare: 970001 })
+    expect(drops.setHuntingSale(input)!.id).toBe(first.id)
+    const changed = drops.setHuntingSale({ ...input, feeRate: 5 })!
+    expect(changed).toMatchObject({ id: first.id, feeAmount: 50000, netShare: 950001 })
+    expect(hunting.list(month).summary.solFragmentsSaleIncome).toBe(950001)
+    expect(ledger.list(month).entries.filter((row) => row.dropSaleId)).toHaveLength(1)
+    expect(ledger.list(month).entries.find((row) => row.dropSaleId)?.amount).toBe(950001)
+    drops.setHuntingSale({ ...input, sold: false })
+    expect(hunting.list(month).summary.solFragmentsSaleIncome).toBe(0)
+    expect(ledger.list(month).entries.filter((row) => row.dropSaleId)).toHaveLength(0)
+  })
+  it('허용하지 않은 수수료와 잘못된 금액은 기존 판매·거래를 유지한다', () => {
+    const input = {
+      lotId: lot.id,
+      sold: true,
+      date: '2026-10-15',
+      grossAmount: 100000,
+      feeRate: 3,
+      requestId: randomUUID()
+    }
+    drops.setHuntingSale(input)
+    const original = drops.list(lot.source)
+    const originalLedger = ledger.list(month)
+    for (const feeRate of [0, 4, 100, '3', null]) {
+      expect(() => drops.setHuntingSale({ ...input, feeRate })).toThrow('3% 또는 5%')
+      expect(drops.list(lot.source)).toEqual(original)
+      expect(ledger.list(month)).toEqual(originalLedger)
+    }
+    expect(() => drops.setHuntingSale({ ...input, grossAmount: -1 })).toThrow()
+    expect(drops.list(lot.source)).toEqual(original)
+  })
   it('기존 부분 판매를 전체 판매로 정리하고 실패하면 기존 장부를 유지한다', () => {
     sale({ quantity: 2, grossAmount: 200 })
     sale({ quantity: 3, grossAmount: 300 })

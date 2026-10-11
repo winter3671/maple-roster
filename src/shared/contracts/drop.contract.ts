@@ -62,6 +62,7 @@ export interface HuntingDropSaleState {
   sold: boolean
   date: string
   grossAmount: number
+  feeRate?: 3 | 5
   requestId: string
 }
 export interface DropSale extends DropSaleInput {

@@ -9,6 +9,7 @@ import {
   type DropSale,
   type DropSource
 } from '../../../shared/contracts/drop.contract'
+import { auctionFee, readAuctionFeeRate } from '../../../shared/auction-fee'
 import { readId, readInteger, readObject, readText } from '../../../shared/validation'
 import { getKstDate } from '../../../shared/dates'
 import { AppError } from '../../../shared/errors'
@@ -239,7 +240,13 @@ export class DropService {
           date: raw.date,
           quantity: lot.quantity,
           grossAmount: raw.grossAmount,
-          feeAmount: 0,
+          feeAmount:
+            raw.feeRate === undefined
+              ? 0
+              : auctionFee(
+                  readInteger(raw.grossAmount, '전체 판매대금'),
+                  readAuctionFeeRate(raw.feeRate)
+                ),
           partySize: 1,
           shareMode: 'equal',
           manualShare: null
