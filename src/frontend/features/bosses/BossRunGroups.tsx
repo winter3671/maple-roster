@@ -89,27 +89,34 @@ export function BossRunGroups({
                   aria-label={`${group.character.name} ${cycle === 'monthly' ? '월간' : '주간'} 보스`}
                   className="overflow-hidden rounded-xl border border-line"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-canvas px-4 py-3">
+                  <div className="grid grid-cols-1 items-center gap-3 bg-canvas px-4 py-3 xl:grid-cols-[minmax(0,1fr)_auto]">
                     <button
                       type="button"
                       aria-expanded={isExpanded}
                       aria-controls={detailId}
                       aria-label={`${group.character.name} 보스 상세 ${isExpanded ? '접기' : '펼치기'}`}
                       onClick={() => toggle(key)}
-                      className="flex flex-1 flex-wrap items-center gap-3 rounded-lg py-2 text-left focus-visible:outline-brand"
+                      className="grid min-w-0 grid-cols-2 items-center gap-3 rounded-lg py-2 text-left focus-visible:outline-brand sm:grid-cols-[8rem_5.5rem_minmax(0,1fr)]"
                     >
-                      <span aria-hidden="true" className="text-xs text-muted">
-                        {isExpanded ? '▼' : '▶'}
+                      <span className="col-span-2 flex min-w-0 items-center gap-3 sm:col-span-1">
+                        <span aria-hidden="true" className="shrink-0 text-xs text-muted">
+                          {isExpanded ? '▼' : '▶'}
+                        </span>
+                        <span
+                          className="truncate text-sm font-semibold"
+                          title={group.character.name}
+                        >
+                          {group.character.name}
+                        </span>
                       </span>
-                      <span className="text-sm font-semibold">{group.character.name}</span>
-                      <span className="text-xs text-muted">
+                      <span className="whitespace-nowrap text-xs tabular-nums text-muted">
                         {cleared}/{group.runs.length} 완료
                       </span>
-                      <span className="text-xs font-semibold text-brand">
+                      <span className="whitespace-nowrap text-right text-xs font-semibold tabular-nums text-brand">
                         {formatMeso(income)} 메소
                       </span>
                     </button>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <Button
                         variant="secondary"
                         disabled={
