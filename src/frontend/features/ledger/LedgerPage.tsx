@@ -15,6 +15,7 @@ import { ExpenseForm } from './ExpenseForm'
 import { IncomeForm } from './IncomeForm'
 import type { IncomeInput } from '../../../shared/contracts/income.contract'
 import { useInputProtection } from '../../components/InputProtection'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 export function LedgerPage() {
   const { request } = useInputProtection()
@@ -162,6 +163,7 @@ export function LedgerPage() {
                 characters.loading ||
                 exporting ||
                 saving ||
+                !characters.loaded ||
                 !characters.characters.length
               }
               onClick={() =>
@@ -182,6 +184,7 @@ export function LedgerPage() {
                 characters.loading ||
                 exporting ||
                 saving ||
+                !characters.loaded ||
                 !characters.characters.length
               }
               onClick={() =>
@@ -205,7 +208,7 @@ export function LedgerPage() {
               characters={characters.characters}
               initial={typeof editor === 'object' ? editor : undefined}
               preferredCharacterId={query.characterId}
-              busy={saving || exporting}
+              busy={saving || exporting || characters.loading}
               onSave={saveEntry}
               onCancel={() => {
                 setEditor(null)
@@ -218,7 +221,7 @@ export function LedgerPage() {
               characters={characters.characters}
               initial={typeof editor === 'object' ? editor : undefined}
               preferredCharacterId={query.characterId}
-              busy={saving || exporting}
+              busy={saving || exporting || characters.loading}
               onSave={saveEntry}
               onCancel={() => {
                 setEditor(null)
@@ -240,10 +243,13 @@ export function LedgerPage() {
           {exportError}
         </p>
       )}
-      {(state.error || characters.error) && (
-        <p role="alert" className="text-xs text-expense">
-          {state.error || characters.error}
-        </p>
+      {characters.loadError && (
+        <QueryFailure
+          label="캐릭터 목록"
+          message={characters.loadError}
+          onRetry={() => void characters.reload()}
+          busy={characters.loading || saving}
+        />
       )}
       {saveError && (
         <p role="alert" className="text-xs text-expense">
@@ -297,12 +303,16 @@ export function LedgerPage() {
                     : '직접 수익'}
               </h3>
               <p className="mt-3 text-lg font-semibold tabular-nums text-brand">
-                {state.loading ? '—' : formatMeso(group.amount)}{' '}
+                {state.loading || !state.data ? '—' : formatMeso(group.amount)}{' '}
                 <span className="text-xs font-normal">메소</span>
               </p>
-              {!state.loading && <MesoAmountHint value={group.amount} />}
+              {!state.loading && state.data && <MesoAmountHint value={group.amount} />}
               <p className="mt-2 text-[11px] text-muted">
-                {state.loading ? '조회 중…' : `원본 수입 ${group.count}건 합산`}
+                {state.loading
+                  ? '조회 중…'
+                  : !state.data
+                    ? '수익 확인 불가'
+                    : `원본 수입 ${group.count}건 합산`}
               </p>
             </article>
           ))}
@@ -346,6 +356,13 @@ export function LedgerPage() {
           <p role="status" className="p-10 text-center text-sm text-muted">
             거래 내역을 불러오는 중…
           </p>
+        ) : !state.data ? (
+          <QueryFailure
+            label="거래 내역"
+            message={state.error}
+            onRetry={state.reload}
+            busy={saving || exporting}
+          />
         ) : detailEntries.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] text-left text-xs">

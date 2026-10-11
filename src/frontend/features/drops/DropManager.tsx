@@ -14,6 +14,7 @@ import { formatMeso } from '../../lib/format'
 import { DropEditor, type Editor } from './DropEditor'
 import { BossDropForm } from './BossDropForm'
 import { HuntingDropCard } from './HuntingDropCard'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 export function DropManager({
   source,
@@ -28,6 +29,7 @@ export function DropManager({
 }) {
   const [data, setData] = useState<DropList>()
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -51,14 +53,20 @@ export function DropManager({
   async function load() {
     const version = ++loadVersion.current
     setLoading(true)
+    setLoadError('')
     try {
       const result = await window.maple.drops.list(source)
       if (!alive.current || version !== loadVersion.current) return
       if (result.ok) setData(result.data)
-      else setError(result.error.message)
+      else {
+        setData(undefined)
+        setLoadError(result.error.message)
+      }
     } catch {
-      if (alive.current && version === loadVersion.current)
-        setError('드랍 목록을 불러오지 못했습니다. 다시 조회해 주세요.')
+      if (alive.current && version === loadVersion.current) {
+        setData(undefined)
+        setLoadError('드랍 목록을 불러오지 못했습니다. 다시 조회해 주세요.')
+      }
     } finally {
       if (alive.current && version === loadVersion.current) setLoading(false)
     }
@@ -144,6 +152,14 @@ export function DropManager({
               드랍 목록을 불러오는 중…
             </p>
           )}
+          {!loading && loadError && (
+            <QueryFailure
+              label="드랍 목록"
+              message={loadError}
+              onRetry={() => void load()}
+              busy={busy}
+            />
+          )}
           {data?.lots.map((lot) => (
             <HuntingDropCard
               key={`${lot.id}-${JSON.stringify(data.sales.filter((sale) => sale.lotId === lot.id))}`}
@@ -172,6 +188,14 @@ export function DropManager({
   return (
     <Dialog title={`드랍 관리 · ${title}`} busy={busy} onClose={onClose}>
       <div className="space-y-4">
+        {loadError && (
+          <QueryFailure
+            label="드랍 목록"
+            message={loadError}
+            onRetry={() => void load()}
+            busy={busy || loading}
+          />
+        )}
         <p className="text-xs leading-5 text-muted">
           예상 금액은 미판매 재고의 참고값입니다. 판매를 기록하면 수수료와 분배를 반영한 내 몫만
           거래 장부에 수입으로 등록됩니다.

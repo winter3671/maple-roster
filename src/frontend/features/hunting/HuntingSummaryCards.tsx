@@ -20,7 +20,9 @@ export function HuntingSummaryCards({
       label: '솔 에르다 조각 획득량',
       value: summary?.solFragments,
       unit: '개',
-      detail: `판매 ${formatMeso(summary?.solFragmentsSold ?? 0)}개 · 미판매 ${formatMeso((summary?.solFragments ?? 0) - (summary?.solFragmentsSold ?? 0))}개`
+      detail: summary
+        ? `판매 ${formatMeso(summary.solFragmentsSold)}개 · 미판매 ${formatMeso(summary.solFragments - summary.solFragmentsSold)}개`
+        : '판매·미판매 수량 확인 불가'
     },
     {
       label: '솔 에르다 조각 판매 수익',

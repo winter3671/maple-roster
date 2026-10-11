@@ -11,6 +11,7 @@ import { RecordFilters } from '../../components/RecordFilters'
 import { useCharacters } from '../characters/useCharacters'
 import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import { getKstDate } from '../../../shared/dates'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }[] = [
   {
@@ -75,21 +76,13 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
         onApply={setQuery}
         showMonthShortcut={false}
       />
-      {characters.error && (
-        <p role="alert" className="text-xs text-expense">
-          {characters.error}
-        </p>
-      )}
-      {state.error && (
-        <div
-          role="alert"
-          className="flex items-center justify-between rounded-xl border border-expense/20 p-4 text-xs text-expense"
-        >
-          <span>{state.error}</span>
-          <Button variant="secondary" disabled={state.loading} onClick={state.reload}>
-            다시 시도
-          </Button>
-        </div>
+      {characters.loadError && (
+        <QueryFailure
+          label="캐릭터 목록"
+          message={characters.loadError}
+          onRetry={() => void characters.reload()}
+          busy={characters.loading}
+        />
       )}
       <FinancialSummary summary={state.data?.summary} loading={state.loading} prefix="조회 기간" />
       {state.data && (
@@ -111,7 +104,9 @@ export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => vo
             <p role="status" className="p-10 text-center text-sm text-muted">
               수익을 불러오는 중…
             </p>
-          ) : state.data?.recent.length ? (
+          ) : !state.data ? (
+            <QueryFailure label="최근 거래" message={state.error} onRetry={state.reload} />
+          ) : state.data.recent.length ? (
             <div className="divide-y divide-line px-6">
               {state.data.recent.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between gap-4 py-5">

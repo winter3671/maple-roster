@@ -6,8 +6,10 @@ import { unwrap } from '../../lib/api'
 import { formatMeso } from '../../lib/format'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag' }) {
+  if (row.error) return <span className="font-semibold text-expense">확인 불가</span>
   if (!row.contents)
     return (
       <span className="text-muted">
@@ -32,22 +34,31 @@ function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag
 
 export function WeeklyPage() {
   const [data, setData] = useState<WeeklyOverview>()
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
   const [showPrevious, setShowPrevious] = useState(false)
   const alive = useRef(false),
     pending = useRef(false)
+  const failed = useRef(false)
+  const lastSync = useRef(false)
   const load = useCallback(async (sync: boolean) => {
     if (pending.current) return
     pending.current = true
+    lastSync.current = sync
     setBusy(true)
     setError('')
     try {
       const overview = await unwrap(sync ? getBridge().weekly.sync() : getBridge().weekly.list())
-      if (alive.current) setData(overview)
+      if (alive.current) {
+        failed.current = false
+        setData(overview)
+      }
     } catch (caught) {
-      if (alive.current)
+      if (alive.current) {
+        failed.current = true
+        setData(undefined)
         setError(caught instanceof Error ? caught.message : '주간 콘텐츠를 조회하지 못했습니다.')
+      }
     } finally {
       pending.current = false
       if (alive.current) setBusy(false)
@@ -57,14 +68,18 @@ export function WeeklyPage() {
     alive.current = true
     void load(false)
     // Read cached state to notice Thursday's reset while this screen stays open.
-    const timer = setInterval(() => void load(false), 60000)
+    const timer = setInterval(() => {
+      if (!failed.current) void load(false)
+    }, 60000)
     return () => {
       alive.current = false
       clearInterval(timer)
     }
   }, [load])
   const selected = showPrevious ? data?.previous : data
-  const rows = selected?.characters ?? []
+  const rows = (selected?.characters ?? []).filter(
+    (row) => !showPrevious || row.fetchedAt || row.contents !== undefined
+  )
   return (
     <div className="space-y-5">
       <section className="rounded-2xl border border-line bg-surface p-6">
@@ -72,8 +87,12 @@ export function WeeklyPage() {
           <div>
             <h2 className="text-sm font-semibold">{showPrevious ? '지난주' : '이번 주'} 콘텐츠</h2>
             <p className="mt-2 text-xs text-muted">
-              {selected ? `${selected.week} (목) ~ ${selected.end} (수)` : '주차 확인 중…'} · 한국
-              시간 목요일 00시 초기화
+              {selected
+                ? `${selected.week} (목) ~ ${selected.end} (수)`
+                : busy
+                  ? '주차 확인 중…'
+                  : '주차 확인 불가'}{' '}
+              · 한국 시간 목요일 00시 초기화
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -106,17 +125,18 @@ export function WeeklyPage() {
             ? ' 지난주는 저장된 기록만 표시합니다.'
             : ' 최신 점수는 전체 새로고침으로 확인하세요.'}
         </p>
-        {error && (
-          <p role="alert" className="mt-3 text-xs text-expense">
-            {error}
-          </p>
-        )}
       </section>
       <section className="overflow-hidden rounded-2xl border border-line bg-surface">
         <h2 className="border-b border-line px-6 py-5 text-sm font-semibold">
           캐릭터별 주간 수행 현황
         </h2>
-        {rows.length ? (
+        {!busy && !data ? (
+          <QueryFailure
+            label="주간 콘텐츠"
+            message={error}
+            onRetry={() => void load(lastSync.current)}
+          />
+        ) : rows.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-left text-xs">
               <thead className="bg-canvas text-muted">
@@ -163,8 +183,12 @@ export function WeeklyPage() {
         ) : (
           <EmptyState
             icon="weekly"
-            title="표시할 캐릭터가 없어요"
-            description="캐릭터 관리에서 캐릭터를 등록해 주세요."
+            title={showPrevious ? '지난주 저장된 기록이 없어요' : '표시할 캐릭터가 없어요'}
+            description={
+              showPrevious
+                ? '지난주는 저장된 참여 기록만 확인할 수 있습니다.'
+                : '캐릭터 관리에서 캐릭터를 등록해 주세요.'
+            }
           />
         )}
       </section>

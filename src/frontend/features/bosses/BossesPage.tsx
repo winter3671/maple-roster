@@ -14,6 +14,7 @@ import {
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 import { BossRunForm } from './BossRunForm'
 import { BossRunGroups } from './BossRunGroups'
 import { BossIncomeDateForm } from './BossIncomeDateForm'
@@ -170,7 +171,7 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
           {state.notice}
         </p>
       )}
-      {state.error && !modal && (
+      {state.error && !state.loadError && !modal && (
         <p role="alert" className="rounded-xl bg-expense/5 p-4 text-xs text-expense">
           {state.error}
         </p>
@@ -274,6 +275,13 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
           <p role="status" className="p-10 text-center text-xs text-muted">
             보스 기록을 불러오는 중…
           </p>
+        ) : !state.data ? (
+          <QueryFailure
+            label="보스 기록"
+            message={state.loadError}
+            onRetry={() => void state.reload()}
+            busy={state.busy}
+          />
         ) : state.characters.length ? (
           <BossRunGroups
             cycle={cycle}

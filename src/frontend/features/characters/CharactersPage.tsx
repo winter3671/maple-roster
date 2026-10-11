@@ -7,6 +7,7 @@ import { CharacterCard } from './CharacterCard'
 import { CharacterForm } from './CharacterForm'
 import { useCharacters } from './useCharacters'
 import { NexonCharacterImport } from '../nexon/NexonCharacterImport'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 export function CharactersPage() {
   const state = useCharacters()
@@ -15,11 +16,17 @@ export function CharactersPage() {
   const [unlinking, setUnlinking] = useState<Character | null>(null)
   const automaticStarted = useRef(false)
   useEffect(() => {
-    if (!state.loading && !state.busy && !state.error && !automaticStarted.current) {
+    if (
+      state.loaded &&
+      !state.loading &&
+      !state.busy &&
+      !state.error &&
+      !automaticStarted.current
+    ) {
       automaticStarted.current = true
       void state.syncProfiles(false)
     }
-  }, [state.loading, state.busy, state.error, state.syncProfiles])
+  }, [state.loaded, state.loading, state.busy, state.error, state.syncProfiles])
   const visible = state.characters
 
   return (
@@ -37,7 +44,7 @@ export function CharactersPage() {
           {state.notice}
         </p>
       )}
-      {state.error && !editing && !deleting && !unlinking && (
+      {state.error && !state.loadError && !editing && !deleting && !unlinking && (
         <p
           role="alert"
           className="rounded-xl border border-expense/20 bg-expense/5 px-5 py-3 text-xs text-expense"
@@ -80,12 +87,15 @@ export function CharactersPage() {
         <section aria-busy={state.loading} className="rounded-2xl border border-line bg-surface">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-5">
             <h2 className="text-sm font-semibold">
-              나의 캐릭터 <span className="ml-2 text-brand">{visible.length}</span>
+              나의 캐릭터{' '}
+              <span className="ml-2 text-brand">{state.loaded ? visible.length : '—'}</span>
             </h2>
             <div className="flex items-center gap-4">
               <Button
                 variant="secondary"
-                disabled={state.loading || state.busy || !visible.some((row) => row.nexon)}
+                disabled={
+                  state.loading || state.busy || !state.loaded || !visible.some((row) => row.nexon)
+                }
                 onClick={() =>
                   void state.syncProfiles(
                     true,
@@ -108,6 +118,13 @@ export function CharactersPage() {
             <p role="status" className="p-10 text-center text-sm text-muted">
               캐릭터 목록을 불러오는 중…
             </p>
+          ) : !state.loaded ? (
+            <QueryFailure
+              label="캐릭터 목록"
+              message={state.loadError}
+              onRetry={() => void state.reload()}
+              busy={state.busy}
+            />
           ) : visible.length > 0 ? (
             <div className="grid gap-4 p-5 2xl:grid-cols-2">
               {visible.map((character) => (

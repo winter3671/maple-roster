@@ -41,7 +41,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
   const id = useId()
   const options = characters
   useEffect(() => {
-    if (!initial)
+    if (!initial && characters.length)
       setDraft((current) =>
         characters.some((character) => character.id === current.characterId)
           ? current

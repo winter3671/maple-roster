@@ -12,6 +12,7 @@ export function useHunting(query: RecordQuery) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const mounted = useRef(false)
   const pending = useRef(false)
@@ -23,6 +24,7 @@ export function useHunting(query: RecordQuery) {
     setLoading(true)
     setData(undefined)
     setError(null)
+    setLoadError(null)
     try {
       const [list, characterList] = await Promise.all([
         huntingApi.list(query),
@@ -33,8 +35,12 @@ export function useHunting(query: RecordQuery) {
         setCharacters(characterList)
       }
     } catch (caught) {
-      if (mounted.current && request === sequence.current)
-        setError(caught instanceof AppError ? caught.message : '사냥 기록을 불러오지 못했습니다.')
+      if (mounted.current && request === sequence.current) {
+        const message =
+          caught instanceof AppError ? caught.message : '사냥 기록을 불러오지 못했습니다.'
+        setError(message)
+        setLoadError(message)
+      }
     } finally {
       if (mounted.current && request === sequence.current) setLoading(false)
     }
@@ -62,10 +68,15 @@ export function useHunting(query: RecordQuery) {
       const list = await huntingApi.list(query)
       if (mounted.current) {
         setData(list)
+        setLoadError(null)
         setNotice(message)
       }
       return true
     } catch (caught) {
+      if (saved && mounted.current) {
+        setData(undefined)
+        setLoadError('변경은 저장했지만 목록을 불러오지 못했습니다. 다시 조회해 주세요.')
+      }
       if (mounted.current)
         setError(
           saved
@@ -87,6 +98,7 @@ export function useHunting(query: RecordQuery) {
     loading,
     busy,
     error,
+    loadError,
     notice,
     reload,
     clearFeedback: () => {

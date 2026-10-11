@@ -10,6 +10,8 @@ export function useCharacters() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<NexonSyncResult | null>(null)
   const mounted = useRef(false)
@@ -20,16 +22,23 @@ export function useCharacters() {
     const request = ++sequence.current
     setLoading(true)
     setError(null)
+    setLoadError(null)
+    setLoaded(false)
     try {
       const list = await charactersApi.list()
-      if (mounted.current && request === sequence.current) setCharacters(list)
+      if (mounted.current && request === sequence.current) {
+        setCharacters(list)
+        setLoaded(true)
+      }
     } catch (caught) {
-      if (mounted.current && request === sequence.current)
-        setError(
+      if (mounted.current && request === sequence.current) {
+        const message =
           caught instanceof AppError
             ? caught.message
             : '목록을 불러오지 못했습니다. 다시 시도해 주세요.'
-        )
+        setError(message)
+        setLoadError(message)
+      }
     } finally {
       if (mounted.current && request === sequence.current) setLoading(false)
     }
@@ -58,10 +67,16 @@ export function useCharacters() {
       const list = await charactersApi.list()
       if (mounted.current) {
         setCharacters(list)
+        setLoaded(true)
+        setLoadError(null)
         setNotice(message)
       }
       return true
     } catch (caught) {
+      if (saved && mounted.current) {
+        setLoaded(false)
+        setLoadError('변경은 저장했지만 캐릭터 목록을 불러오지 못했습니다. 다시 조회해 주세요.')
+      }
       if (mounted.current)
         setError(
           saved
@@ -82,6 +97,8 @@ export function useCharacters() {
     loading,
     busy,
     error,
+    loadError,
+    loaded,
     notice,
     syncResult,
     reload,

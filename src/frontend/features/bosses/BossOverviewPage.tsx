@@ -6,6 +6,7 @@ import { MesoAmountHint } from '../../components/MesoAmountHint'
 import { formatMeso } from '../../lib/format'
 import { useBosses } from './useBosses'
 import { BossSyncControl } from './BossSyncControl'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 export function BossOverviewPage({
   onSyncBusyChange
@@ -108,10 +109,21 @@ export function BossOverviewPage({
           캐릭터를 확인합니다.
         </p>
       </section>
-      {(weekly.error || monthly.error) && (
-        <p role="alert" className="text-xs text-expense">
-          {weekly.error || monthly.error}
-        </p>
+      {weekly.loadError && (
+        <QueryFailure
+          label="주간 보스"
+          message={weekly.loadError}
+          onRetry={() => void weekly.reload()}
+          busy={syncBusy || weekly.loading}
+        />
+      )}
+      {monthly.loadError && (
+        <QueryFailure
+          label="월간 보스"
+          message={monthly.loadError}
+          onRetry={() => void monthly.reload()}
+          busy={syncBusy || monthly.loading}
+        />
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <article className="rounded-2xl border border-line bg-surface p-5">

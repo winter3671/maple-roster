@@ -11,6 +11,7 @@ import { HuntingQuickForm } from './HuntingQuickForm'
 import { HuntingSessionList } from './HuntingSessionList'
 import { useHunting } from './useHunting'
 import { DropManager } from '../drops/DropManager'
+import { QueryFailure } from '../../components/ui/QueryFailure'
 
 export function HuntingPage() {
   const [query, setQuery] = useState(thisMonthQuery)
@@ -30,7 +31,7 @@ export function HuntingPage() {
           {state.notice}
         </p>
       )}
-      {state.error && !editing && !deleting && (
+      {state.error && !state.loadError && !editing && !deleting && (
         <p
           role="alert"
           className="rounded-xl border border-expense/20 bg-expense/5 px-5 py-3 text-xs text-expense"
@@ -74,7 +75,7 @@ export function HuntingPage() {
               </Button>
             ))}
           </div>
-          {!state.loading && !state.characters.length && (
+          {!state.loading && !state.loadError && !state.characters.length && (
             <p className="mb-4 rounded-lg bg-brand-soft p-3 text-xs leading-5 text-brand">
               캐릭터 관리에서 캐릭터를 등록해 주세요.
             </p>
@@ -101,13 +102,15 @@ export function HuntingPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-5">
             <div>
               <h2 className="text-sm font-semibold">
-                사냥 회차 <span className="ml-1 text-brand">{summary?.count ?? 0}</span>
+                사냥 회차 <span className="ml-1 text-brand">{summary?.count ?? '—'}</span>
               </h2>
               <p className="mt-2 text-[11px] leading-5 text-muted">
                 총 {summary ? formatMinutes(summary.minutes) : '—'} · 시간당 획득 메소{' '}
                 {summary?.hourlyMesos != null
                   ? `${formatMeso(summary.hourlyMesos)} 메소`
-                  : '시간 기록 없음'}
+                  : summary
+                    ? '시간 기록 없음'
+                    : '—'}
               </p>
             </div>
             <Button
@@ -122,7 +125,14 @@ export function HuntingPage() {
             <p role="status" className="p-10 text-center text-sm text-muted">
               사냥 기록을 불러오는 중…
             </p>
-          ) : state.data?.sessions.length ? (
+          ) : !state.data ? (
+            <QueryFailure
+              label="사냥 기록"
+              message={state.loadError}
+              onRetry={() => void state.reload()}
+              busy={state.busy}
+            />
+          ) : state.data.sessions.length ? (
             <HuntingSessionList
               sessions={state.data.sessions}
               busy={state.busy}

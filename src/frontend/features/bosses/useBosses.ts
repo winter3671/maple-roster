@@ -10,6 +10,7 @@ export function useBosses(query: BossQuery) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState('')
   const active = useRef(false)
   const lock = useRef(false)
@@ -26,6 +27,7 @@ export function useBosses(query: BossQuery) {
     const request = ++sequence.current
     setLoading(true)
     setError('')
+    setLoadError('')
     setData(undefined)
     try {
       const result = await load()
@@ -34,8 +36,12 @@ export function useBosses(query: BossQuery) {
         setCharacters(result[1])
       }
     } catch (caught) {
-      if (active.current && request === sequence.current)
-        setError(caught instanceof Error ? caught.message : '보스 기록을 불러오지 못했습니다.')
+      if (active.current && request === sequence.current) {
+        const message =
+          caught instanceof Error ? caught.message : '보스 기록을 불러오지 못했습니다.'
+        setError(message)
+        setLoadError(message)
+      }
     } finally {
       if (active.current && request === sequence.current) setLoading(false)
     }
@@ -61,10 +67,15 @@ export function useBosses(query: BossQuery) {
       const result = await load()
       if (active.current) {
         apply(result)
+        setLoadError('')
         setNotice(message)
       }
       return true
     } catch (caught) {
+      if (saved && active.current) {
+        setData(undefined)
+        setLoadError('변경은 저장했지만 목록을 불러오지 못했습니다. 다시 조회해 주세요.')
+      }
       if (active.current)
         setError(
           saved
@@ -85,6 +96,7 @@ export function useBosses(query: BossQuery) {
     loading,
     busy,
     error,
+    loadError,
     notice,
     reload,
     mutate,
