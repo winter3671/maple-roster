@@ -7,6 +7,7 @@ import { PageContent } from './components/PageContent'
 import { applyTheme, readTheme } from './lib/theme'
 import { InputProtectionProvider } from './components/InputProtection'
 import { TaskNotificationProvider } from './components/TaskNotifications'
+import { ViewStateProvider } from './components/ViewState'
 
 applyTheme(readTheme())
 
@@ -25,9 +26,11 @@ createRoot(document.getElementById('root')!).render(
             <UpdateRecovery />
           </PageContent>
         ) : (
-          <CrystalPriceProvider>
-            <App />
-          </CrystalPriceProvider>
+          <ViewStateProvider>
+            <CrystalPriceProvider>
+              <App />
+            </CrystalPriceProvider>
+          </ViewStateProvider>
         )}
       </InputProtectionProvider>
     </TaskNotificationProvider>

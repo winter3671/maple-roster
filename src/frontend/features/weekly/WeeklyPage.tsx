@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { QueryFailure } from '../../components/ui/QueryFailure'
 import { useTaskNotifications } from '../../components/TaskNotifications'
 import { batchTaskStatus } from '../../../shared/task-notifications'
+import { useViewState } from '../../components/ViewState'
 
 function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag' }) {
   if (row.error) return <span className="font-semibold text-expense">확인 불가</span>
@@ -39,7 +40,7 @@ export function WeeklyPage() {
   const [data, setData] = useState<WeeklyOverview>()
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState('')
-  const [showPrevious, setShowPrevious] = useState(false)
+  const [showPrevious, setShowPrevious] = useViewState('weeklyPrevious', () => false)
   const alive = useRef(false),
     pending = useRef(false)
   const failed = useRef(false)

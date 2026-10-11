@@ -7,6 +7,7 @@ import { formatMeso } from '../../lib/format'
 import { useBosses } from './useBosses'
 import { BossSyncControl } from './BossSyncControl'
 import { QueryFailure } from '../../components/ui/QueryFailure'
+import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
 
 export function BossOverviewPage({
   onSyncBusyChange
@@ -14,9 +15,16 @@ export function BossOverviewPage({
   onSyncBusyChange: (busy: boolean) => void
 }) {
   const [syncBusy, setSyncBusy] = useState(false)
-  const [date, setDate] = useState(getKstDate)
-  const [month, setMonth] = useState(() => getKstDate().slice(0, 7))
-  const [characterId, setCharacterId] = useState('')
+  const [view, setView] = useViewState('bossOverview', () => ({
+    date: getKstDate(),
+    month: getKstDate().slice(0, 7),
+    characterId: ''
+  }))
+  const { date, month, characterId } = view
+  const setDate = (date: string) => setView((current) => ({ ...current, date }))
+  const setMonth = (month: string) => setView((current) => ({ ...current, month }))
+  const setCharacterId = (characterId: string) =>
+    setView((current) => ({ ...current, characterId }))
   const weeklyQuery = useMemo(
     () => ({ date, characterId, cycle: 'weekly' as const }),
     [date, characterId]
@@ -27,6 +35,12 @@ export function BossOverviewPage({
   )
   const weekly = useBosses(weeklyQuery),
     monthly = useBosses(monthlyQuery)
+  useMissingCharacterReset(
+    characterId,
+    weekly.characters,
+    !weekly.loading && Boolean(weekly.data) && !weekly.loadError,
+    () => setCharacterId('')
+  )
   const w = weekly.data?.summary,
     m = monthly.data?.summary
   const ready = Boolean(w && m)

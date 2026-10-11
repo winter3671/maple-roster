@@ -1,7 +1,6 @@
 import type { PageId } from '../../app/navigation'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Icon, type IconName } from '../../components/ui/Icon'
-import { useState } from 'react'
 import { FinancialSummary } from '../../components/FinancialSummary'
 import { Button } from '../../components/ui/Button'
 import { formatMeso, thisMonthQuery, ledgerLabel } from '../../lib/format'
@@ -12,6 +11,7 @@ import { useCharacters } from '../characters/useCharacters'
 import { bossWeek, shiftDate } from '../../../shared/boss-period'
 import { getKstDate } from '../../../shared/dates'
 import { QueryFailure } from '../../components/ui/QueryFailure'
+import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
 
 const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }[] = [
   {
@@ -25,9 +25,15 @@ const shortcuts: { page: PageId; icon: IconName; title: string; detail: string }
 ]
 
 export function DashboardPage({ onNavigate }: { onNavigate: (page: PageId) => void }) {
-  const [query, setQuery] = useState(thisMonthQuery)
+  const [query, setQuery] = useViewState('dashboardQuery', thisMonthQuery)
   const state = useDashboard(query)
   const characters = useCharacters()
+  useMissingCharacterReset(
+    query.characterId,
+    characters.characters,
+    characters.loaded && !characters.loading,
+    () => setQuery(({ characterId: _, ...dates }) => dates)
+  )
   function quickPeriod(period: 'week' | 'lastWeek' | 'month' | 'lastMonth') {
     const today = getKstDate(),
       week = bossWeek(today)

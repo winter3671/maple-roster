@@ -17,6 +17,8 @@ import type { IncomeInput } from '../../../shared/contracts/income.contract'
 import { useInputProtection } from '../../components/InputProtection'
 import { QueryFailure } from '../../components/ui/QueryFailure'
 import { useTaskNotifications } from '../../components/TaskNotifications'
+import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
+import { resolveLedgerPage } from '../../../shared/view-state'
 
 export function LedgerPage() {
   const tasks = useTaskNotifications()
@@ -27,9 +29,13 @@ export function LedgerPage() {
   const [saveError, setSaveError] = useState('')
   const [notice, setNotice] = useState('')
   const mutationLock = useRef(false)
-  const [query, setQuery] = useState(thisMonthQuery)
-  const [page, setPage] = useState(1)
-  const state = useLedger(query, page)
+  const [view, setView] = useViewState('ledger', () => ({ query: thisMonthQuery(), page: 1 }))
+  const { query, page } = view
+  const setQuery = (query: typeof view.query) => setView({ query, page: 1 })
+  const setPage = (page: number) => setView((current) => ({ ...current, page }))
+  const state = useLedger(query, page, (resolvedPage, requestedQuery, requestedPage) =>
+    setView((current) => resolveLedgerPage(current, requestedQuery, requestedPage, resolvedPage))
+  )
   const incomeGroups =
     state.data?.incomeGroups ??
     (['boss', 'hunting', 'income'] as const).map((activity) => ({ activity, amount: 0, count: 0 }))
@@ -49,6 +55,13 @@ export function LedgerPage() {
     setPage(next)
   }
   const characters = useCharacters()
+  useMissingCharacterReset(
+    query.characterId,
+    characters.characters,
+    characters.loaded && !characters.loading,
+    () =>
+      setView((current) => ({ query: { from: current.query.from, to: current.query.to }, page: 1 }))
+  )
   const [exporting, setExporting] = useState(false),
     [exportError, setExportError] = useState(''),
     [exportNotice, setExportNotice] = useState('')
@@ -141,6 +154,7 @@ export function LedgerPage() {
   return (
     <div className="space-y-5">
       <RecordFilters
+        key={`${query.from}:${query.to}:${query.characterId ?? ''}`}
         initial={query}
         characters={characters.characters}
         busy={state.loading || characters.loading || exporting || saving}
@@ -149,7 +163,6 @@ export function LedgerPage() {
           setExportNotice('')
           setExportError('')
           setQuery(next)
-          setPage(1)
           scrollAfterPage.current = false
         }}
       />

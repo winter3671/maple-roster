@@ -3,12 +3,13 @@ import { Button } from '../../components/ui/Button'
 import { BossOverviewPage } from './BossOverviewPage'
 import { PageContent } from '../../components/PageContent'
 import { useInputProtection } from '../../components/InputProtection'
+import { useViewState } from '../../components/ViewState'
+import type { BossView } from '../../../shared/view-state'
 
 const BossesPage = lazy(() =>
   import('./BossesPage').then((module) => ({ default: module.BossesPage }))
 )
 
-type BossView = 'overview' | 'weekly' | 'monthly'
 const views: { id: BossView; label: string }[] = [
   { id: 'overview', label: '보스 진행도 및 정산' },
   { id: 'weekly', label: '주간 보스 기록' },
@@ -16,7 +17,7 @@ const views: { id: BossView; label: string }[] = [
 ]
 
 export function BossLedgerPage() {
-  const [view, setView] = useState<BossView>('overview')
+  const [view, setView] = useViewState('bossView', () => 'overview')
   const { request } = useInputProtection()
   const [syncBusy, setSyncBusy] = useState(false)
   return (

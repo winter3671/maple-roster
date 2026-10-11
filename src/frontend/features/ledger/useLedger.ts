@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LedgerPage, RecordQuery } from '../../../shared/contracts/ledger.contract'
 import { AppError } from '../../../shared/errors'
 import { ledgerApi } from './ledger.api'
 
-export function useLedger(query: RecordQuery, page: number) {
+export function useLedger(
+  query: RecordQuery,
+  page: number,
+  onPageResolved?: (page: number, query: RecordQuery, requestedPage: number) => void
+) {
+  const resolved = useRef(onPageResolved)
+  resolved.current = onPageResolved
   const [data, setData] = useState<LedgerPage>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +22,10 @@ export function useLedger(query: RecordQuery, page: number) {
     Promise.resolve()
       .then(() => ledgerApi.page({ ...query, page }))
       .then((list) => {
-        if (active) setData(list)
+        if (active) {
+          setData(list)
+          resolved.current?.(list.pagination.page, query, page)
+        }
       })
       .catch((caught) => {
         if (active)

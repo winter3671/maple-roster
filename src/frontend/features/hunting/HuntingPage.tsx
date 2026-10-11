@@ -12,11 +12,18 @@ import { HuntingSessionList } from './HuntingSessionList'
 import { useHunting } from './useHunting'
 import { DropManager } from '../drops/DropManager'
 import { QueryFailure } from '../../components/ui/QueryFailure'
+import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
 
 export function HuntingPage() {
-  const [query, setQuery] = useState(thisMonthQuery)
-  const [recordMode, setRecordMode] = useState<'quick' | 'detail'>('quick')
+  const [query, setQuery] = useViewState('huntingQuery', thisMonthQuery)
+  const [recordMode, setRecordMode] = useViewState('huntingMode', () => 'quick')
   const state = useHunting(query)
+  useMissingCharacterReset(
+    query.characterId,
+    state.characters,
+    !state.loading && Boolean(state.data) && !state.loadError,
+    () => setQuery(({ characterId: _, ...dates }) => dates)
+  )
   const [editing, setEditing] = useState<HuntingSession | null>(null)
   const [deleting, setDeleting] = useState<HuntingSession | null>(null)
   const [drops, setDrops] = useState<HuntingSession | null>(null)
@@ -40,6 +47,7 @@ export function HuntingPage() {
         </p>
       )}
       <RecordFilters
+        key={`${query.from}:${query.to}:${query.characterId ?? ''}`}
         initial={query}
         characters={state.characters}
         busy={state.loading || state.busy}

@@ -6,11 +6,7 @@ import {
   shiftMonth,
   type BossCycle
 } from '../../../shared/boss-period'
-import {
-  parseBossQuery,
-  type BossRun,
-  type BossQuery
-} from '../../../shared/contracts/boss.contract'
+import { parseBossQuery, type BossRun } from '../../../shared/contracts/boss.contract'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -28,6 +24,7 @@ import type { Character } from '../../../shared/contracts/character.contract'
 import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
 import { DropManager } from '../drops/DropManager'
+import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
 
 type Confirmation = {
   title: string
@@ -39,8 +36,17 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
   const monthly = cycle === 'monthly'
   const periodLabel = monthly ? '월간' : '주간'
   const currentPeriod = () => bossPeriod(getKstDate(), cycle)
-  const [query, setQuery] = useState<BossQuery>(() => ({ date: currentPeriod(), cycle }))
+  const [query, setQuery] = useViewState(monthly ? 'monthlyBossQuery' : 'weeklyBossQuery', () => ({
+    date: currentPeriod(),
+    cycle
+  }))
   const state = useBosses(query)
+  useMissingCharacterReset(
+    query.characterId,
+    state.characters,
+    !state.loading && Boolean(state.data) && !state.loadError,
+    () => setQuery(({ characterId: _, ...period }) => period)
+  )
   const [periodError, setPeriodError] = useState('')
   const [editingRun, setEditingRun] = useState<BossRun | null>(null)
   const [editingIncomeDate, setEditingIncomeDate] = useState<BossRun | null>(null)
