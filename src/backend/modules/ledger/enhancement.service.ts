@@ -21,6 +21,28 @@ type Preview = {
   hashes: Map<string, string[]>
   connections: Map<string, string>
 }
+
+function enhancementNotes(row: EnhancementPreview['rows'][number]): string {
+  const kind =
+    row.source === 'cube'
+      ? cubeFamily(row.kind)!.replace('에디셔널', ' 에디셔널').replace('큐브', ' 큐브').trim()
+      : row.kind
+  const counts = new Map<string, number>()
+  for (const detail of row.details ?? [])
+    counts.set(detail.itemName, (counts.get(detail.itemName) ?? 0) + detail.count)
+  const entries = [...counts].map(([name, count]) => `${name} 재설정(${kind}, ${count}회)`)
+  // Expense notes are limited to 500 characters; keep complete item descriptions.
+  let notes = ''
+  for (let i = 0; i < entries.length; i++) {
+    const next = notes ? `${notes} · ${entries[i]}` : entries[i]
+    const remaining = entries.length - i - 1
+    if ((next + (remaining ? ` · 외 ${remaining}종` : '')).length > 500)
+      return `${notes} · 외 ${entries.length - i}종`
+    notes = next
+  }
+  return notes
+}
+
 export class EnhancementService {
   private pending?: Preview
   private running = false
@@ -266,7 +288,7 @@ export class EnhancementService {
           date: preview.view.date,
           category: '강화',
           amount,
-          notes: `API 강화 가져오기 · ${row.kind} ${row.count}회 · ${row.source === 'cube' ? '사용 수수료만 반영(큐브 구매비 제외)' : '사용자 확인 금액'}`
+          notes: enhancementNotes(row)
         })
         for (const hash of hashes) link.run(hash, expense.id)
         records += hashes.length

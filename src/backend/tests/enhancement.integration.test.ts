@@ -75,6 +75,9 @@ describe('강화 지출 이력 가져오기', () => {
     expect(JSON.stringify(p)).not.toContain('history-secret-id')
     expect(apply(p, 40000000)).toEqual({ expenses: 1, records: 2, amount: 40000000 })
     expect(db.prepare('SELECT amount FROM ledger_entries').get()!.amount).toBe(40000000)
+    expect(db.prepare('SELECT notes FROM manual_expenses').get()!.notes).toBe(
+      '아케인셰이드 모자 재설정(잠재능력, 2회)'
+    )
     expect(db.prepare('SELECT * FROM enhancement_imports').all()).toHaveLength(2)
     expect(() => apply(p)).toThrow('만료')
     const again = await preview()
@@ -258,9 +261,41 @@ describe('강화 지출 이력 가져오기', () => {
     })
     expect(result).toEqual({ expenses: 3, records: 5, amount: 3812000 })
     expect(db.prepare('SELECT SUM(amount) AS total FROM ledger_entries').get()!.total).toBe(3812000)
-    expect(String(db.prepare('SELECT notes FROM manual_expenses LIMIT 1').get()!.notes)).toContain(
-      '큐브 구매비 제외'
+    expect(db.prepare('SELECT notes FROM manual_expenses LIMIT 1').get()!.notes).toBe(
+      '아케인셰이드 모자 재설정(브론즈 에디셔널 큐브, 2회) · 앱솔랩스 모자 재설정(브론즈 에디셔널 큐브, 1회)'
     )
+  })
+  it('카르마 큐브의 장비별 횟수를 간결하게 저장한다', async () => {
+    client.potentialHistory.mockResolvedValue({ records: [], nextCursor: null })
+    client.cubeHistory.mockResolvedValue({
+      records: Array.from({ length: 46 }, (_, i) =>
+        record({
+          id: `silver-${i}`,
+          kind: '카르마 실버 큐브',
+          itemName: '매커네이터 팬던트'
+        })
+      ),
+      nextCursor: null
+    })
+    apply(await preview())
+    expect(db.prepare('SELECT notes FROM manual_expenses').get()!.notes).toBe(
+      '매커네이터 팬던트 재설정(실버 큐브, 46회)'
+    )
+  })
+  it('장비 종류가 많아도 메모 길이 제한 내에서 저장한다', async () => {
+    client.potentialHistory.mockResolvedValue({
+      records: Array.from({ length: 30 }, (_, i) =>
+        record({
+          id: `item-${i}`,
+          itemName: `아케인셰이드 장비 ${i}`
+        })
+      ),
+      nextCursor: null
+    })
+    apply(await preview())
+    const notes = String(db.prepare('SELECT notes FROM manual_expenses').get()!.notes)
+    expect(notes.length).toBeLessThanOrEqual(500)
+    expect(notes).toMatch(/ · 외 \d+종$/)
   })
   it('기존 메소 재설정과 큐브 API의 같은 원본 ID가 충돌하지 않으며 기존 중복 방지 해시는 유지한다', async () => {
     const first = await preview()
