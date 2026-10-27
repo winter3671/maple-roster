@@ -134,9 +134,9 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
           <input
             id={`${id}-minutes`}
             type="number"
-            min={0}
-            max={1440}
-            step={1}
+            min={30}
+            max={360}
+            step={30}
             value={draft.minutes}
             onChange={(event) => change('minutes', event.target.value)}
             required
@@ -146,7 +146,7 @@ export function HuntingSessionForm({ characters, initial, busy, onSave, onCancel
         </div>
       </div>
       <p className="text-[11px] leading-5 text-muted">
-        시간을 모르면 0분으로 기록하세요. 시간당 수익 계산에서 제외됩니다.
+        사냥 시간은 30분부터 360분까지 30분 단위로 입력하세요.
       </p>
       <div>
         <label htmlFor={`${id}-mesos`} className="text-xs font-semibold">
