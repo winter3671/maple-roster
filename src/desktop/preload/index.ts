@@ -93,6 +93,9 @@ const api: AppApi = {
     remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.huntingRemove, id)
   },
   ledger: {
+    previewEnhancements: (input) =>
+      ipcRenderer.invoke(IPC_CHANNELS.ledgerPreviewEnhancements, input),
+    applyEnhancements: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerApplyEnhancements, input),
     page: (query) => ipcRenderer.invoke(IPC_CHANNELS.ledgerPage, query),
     createIncome: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerCreateIncome, input),
     updateIncome: (input) => ipcRenderer.invoke(IPC_CHANNELS.ledgerUpdateIncome, input),

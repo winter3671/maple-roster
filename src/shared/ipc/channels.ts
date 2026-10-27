@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  ledgerPreviewEnhancements: 'ledger:preview-enhancements',
+  ledgerApplyEnhancements: 'ledger:apply-enhancements',
   diagnosticsStatus: 'diagnostics:status',
   diagnosticsExport: 'diagnostics:export',
   diagnosticsReport: 'diagnostics:report',

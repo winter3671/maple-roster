@@ -19,8 +19,10 @@ import { QueryFailure } from '../../components/ui/QueryFailure'
 import { useTaskNotifications } from '../../components/TaskNotifications'
 import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
 import { resolveLedgerPage } from '../../../shared/view-state'
+import { EnhancementImport } from './EnhancementImport'
 
 export function LedgerPage() {
+  const [enhancementsOpen, setEnhancementsOpen] = useState(false)
   const tasks = useTaskNotifications()
   const { request } = useInputProtection()
   const [editor, setEditor] = useState<LedgerEntry | 'new-expense' | 'new-income' | null>(null)
@@ -175,7 +177,20 @@ export function LedgerPage() {
             <h2 className="text-sm font-semibold">거래 기록</h2>
             <p className="mt-2 text-xs text-muted">보스·사냥 외 수익과 지출을 직접 기록하세요.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              disabled={saving || exporting || characters.loading || !characters.characters.length}
+              onClick={() =>
+                request(() => {
+                  setEditor(null)
+                  setDeleting(null)
+                  setEnhancementsOpen(true)
+                })
+              }
+            >
+              강화 지출 가져오기
+            </Button>
             <Button
               disabled={
                 state.loading ||
@@ -219,6 +234,7 @@ export function LedgerPage() {
             </Button>
           </div>
         </div>
+        {enhancementsOpen && <EnhancementImport onClose={() => setEnhancementsOpen(false)} />}
         {editor &&
           (editor === 'new-income' ||
           (typeof editor === 'object' && editor.source === 'manualIncome') ? (

@@ -42,6 +42,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     bosses.removeRun(row.id)
     const legacy = JSON.parse(backup.export())
     legacy.schemaVersion = 15
+    delete legacy.tables.enhancement_imports
     delete legacy.tables.boss_week_carryovers
     for (const boss of legacy.tables.boss_runs) delete boss.cycle
     backup.restore({ previewId: backup.prepare(JSON.stringify(legacy), '이전.json').id })
@@ -127,6 +128,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     expect(characters.list()[0].nexon?.profile?.imageUrl).toContain('/backup-avatar')
     const legacy = JSON.parse(content)
     legacy.schemaVersion = 10
+    delete legacy.tables.enhancement_imports
     delete legacy.tables.boss_week_carryovers
     for (const row of legacy.tables.boss_runs) delete row.cycle
     delete legacy.tables.manual_incomes
@@ -157,6 +159,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
   it('이전 백업의 숨김 캐릭터도 표시하며 복원할 때 단기 주간 캐시는 비운다', () => {
     const file = JSON.parse(backup.export())
     file.schemaVersion = 13
+    delete file.tables.enhancement_imports
     delete file.tables.boss_week_carryovers
     for (const row of file.tables.boss_runs) delete row.cycle
     delete file.tables.manual_incomes
@@ -182,6 +185,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     backup.restore({ previewId: refreshed.id })
     expect(bosses.list({ date: '2026-10-15' }).runs[0].partySizeNeedsReview).toBe(true)
     file.schemaVersion = 7
+    delete file.tables.enhancement_imports
     delete file.tables.boss_week_carryovers
     for (const row of file.tables.boss_runs) delete row.cycle
     delete file.tables.manual_incomes
@@ -202,6 +206,7 @@ describe('JSON 장부 백업과 전체 복원', () => {
     file.tables.boss_runs[0].party_size_needs_review = 2
     expect(() => backup.prepare(JSON.stringify(file), '잘못된.json')).toThrow('올바르지')
     file.schemaVersion = 7
+    delete file.tables.enhancement_imports
     delete file.tables.boss_week_carryovers
     for (const row of file.tables.boss_runs) delete row.cycle
     delete file.tables.manual_incomes

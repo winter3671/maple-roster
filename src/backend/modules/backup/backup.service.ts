@@ -32,6 +32,7 @@ const TABLES = [
   'drop_lots',
   'drop_sales',
   'manual_expenses',
+  'enhancement_imports',
   'manual_incomes',
   'ledger_entries'
 ] as const
@@ -321,7 +322,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, 10, 11, 12, 13, 14, 15, 16, schemaVersion(this.database)].includes(
+        ![7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, schemaVersion(this.database)].includes(
           raw.schemaVersion as number
         )
       )
@@ -345,13 +346,15 @@ export class BackupService {
           !(older && table === 'crystal_price_history') &&
           !(legacyExpense && table === 'manual_expenses') &&
           !(legacyIncome && table === 'manual_incomes') &&
-          !(Number(raw.schemaVersion) < 17 && table === 'boss_week_carryovers')
+          !(Number(raw.schemaVersion) < 17 && table === 'boss_week_carryovers') &&
+          !(Number(raw.schemaVersion) < 18 && table === 'enhancement_imports')
       )
       if (Object.keys(tables).sort().join(',') !== [...expectedTables].sort().join(',')) invalid()
       if (older) tables.crystal_price_history = []
       if (legacyExpense) tables.manual_expenses = []
       if (legacyIncome) tables.manual_incomes = []
       if (Number(raw.schemaVersion) < 17) tables.boss_week_carryovers = []
+      if (Number(raw.schemaVersion) < 18) tables.enhancement_imports = []
       staging = openDatabase(':memory:')
       let total = 0
       for (const table of TABLES) {
@@ -421,7 +424,9 @@ export class BackupService {
                     : 1000)
             )
               invalid()
-            if (name === 'id' || name.endsWith('_id')) readId(value)
+            if (table === 'enhancement_imports' && name === 'id') {
+              if (!/^[0-9a-f]{64}$/.test(value)) invalid()
+            } else if (name === 'id' || name.endsWith('_id')) readId(value)
             if (
               ['activity_date', 'period_start', 'sold_on', 'acquired_on', 'occurred_on'].includes(
                 name

@@ -3,6 +3,7 @@ import { characterImageUrl } from '../../../shared/character-image'
 import type { WeeklyContent } from '../../../shared/contracts/weekly.contract'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { shiftDate } from '../../../shared/boss-period'
+import type { PotentialRecord } from '../../../shared/contracts/enhancement.contract'
 import type { SchedulerBoss } from '../../../shared/contracts/boss-sync.contract'
 import {
   readOcid,
@@ -84,6 +85,46 @@ export class NexonClient {
       guild: row.character_guild_name === null ? '' : text(row.character_guild_name, 100, true),
       fetchedAt: new Date().toISOString()
     }
+  }
+  async potentialHistory(
+    date: string,
+    cursor?: string
+  ): Promise<{ records: PotentialRecord[]; nextCursor: string | null }> {
+    readDate(date)
+    const body = object(
+      await this.request('history/potential', {
+        count: '1000',
+        ...(cursor ? { cursor } : { date })
+      })
+    )
+    if (body.potential_history === null && body.count === 0) body.potential_history = []
+    if (!Array.isArray(body.potential_history) || body.potential_history.length > 1000)
+      return invalid()
+    const records = body.potential_history.map((entry): PotentialRecord => {
+      const row = object(entry)
+      const created = text(row.date_create, 64)
+      const timestamp = new Date(created)
+      if (!Number.isFinite(timestamp.getTime()) || !/(?:Z|[+-]\d{2}:\d{2})$/.test(created))
+        return invalid()
+      const kind = text(row.potential_type, 80)
+      const options =
+        kind === '에디셔널 잠재능력'
+          ? row.before_additional_potential_option
+          : row.before_potential_option
+      const first = Array.isArray(options) && options.length ? object(options[0]) : null
+      return {
+        id: text(row.id, 512),
+        characterName: text(row.character_name, 40),
+        date: getKstDate(timestamp),
+        kind,
+        itemName: text(row.target_item, 150),
+        itemLevel: Number.isInteger(row.item_level) ? Number(row.item_level) : null,
+        beforeGrade: typeof first?.grade === 'string' ? first.grade : null
+      }
+    })
+    const nextCursor =
+      body.next_cursor == null || body.next_cursor === '' ? null : text(body.next_cursor, 8192)
+    return { records, nextCursor }
   }
   async schedulerState(
     value: unknown,
@@ -184,7 +225,8 @@ export class NexonClient {
     })
   }
   private request(
-    endpoint: 'character/list' | 'character/basic' | 'scheduler/character-state',
+    endpoint:
+      'character/list' | 'character/basic' | 'scheduler/character-state' | 'history/potential',
     params: Record<string, string> = {}
   ): Promise<unknown> {
     const task = this.queue.then(async () => {
@@ -231,7 +273,7 @@ export class NexonClient {
         if (code === 'OPENAPI00002' || response.status === 403)
           throw new AppError(
             'API_PERMISSION_DENIED',
-            '조회 권한이 없습니다. 본인 계정용 키와 캐릭터 목록 정보 활용 동의를 확인해 주세요.'
+            '조회 권한이 없습니다. 본인 계정용 키와 조회하려는 정보의 활용 동의를 확인해 주세요.'
           )
         if (code === 'OPENAPI00007' || response.status === 429) {
           this.nextRequestAt = Date.now() + 5000

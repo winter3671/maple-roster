@@ -126,6 +126,7 @@ describe('직접 지출 장부', () => {
     const saved = expenses.create(input())
     const legacy = JSON.parse(backup.export())
     legacy.schemaVersion = 12
+    delete legacy.tables.enhancement_imports
     delete legacy.tables.boss_week_carryovers
     delete legacy.tables.manual_incomes
     for (const row of legacy.tables.ledger_entries) delete row.manual_income_id
@@ -296,6 +297,7 @@ describe('직접 지출 장부', () => {
   it.each([7, 8, 9])('이전 %i번 백업은 빈 직접 지출로 복원한다', (version) => {
     const file = JSON.parse(backup.export())
     file.schemaVersion = version
+    delete file.tables.enhancement_imports
     delete file.tables.boss_week_carryovers
     delete file.tables.manual_incomes
     for (const row of file.tables.ledger_entries) delete row.manual_income_id

@@ -141,6 +141,7 @@ describe('목요일 주간 보스 목록 이어받기', () => {
     expect(service().list({ date: '2026-10-15' }).runs).toHaveLength(0)
     const legacy = JSON.parse(content)
     legacy.schemaVersion = 16
+    delete legacy.tables.enhancement_imports
     delete legacy.tables.boss_week_carryovers
     backup.restore({ previewId: backup.prepare(JSON.stringify(legacy), '이전버전.json').id })
     expect(service().list({ date: '2026-10-15' }).runs).toHaveLength(1)

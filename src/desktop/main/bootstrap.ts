@@ -26,6 +26,9 @@ import { ExpenseService } from '../../backend/modules/ledger/expense.service'
 import { IncomeService } from '../../backend/modules/ledger/income.service'
 import { WeeklyService } from '../../backend/modules/weekly/weekly.service'
 import { WeeklyRepository } from '../../backend/modules/weekly/weekly.repository'
+import { EnhancementService } from '../../backend/modules/ledger/enhancement.service'
+import { createHash } from 'node:crypto'
+import { AppError } from '../../shared/errors'
 
 export function createServices(
   version: string,
@@ -43,6 +46,17 @@ export function createServices(
   const characterService = new CharacterService(characters)
   const nexonClient = new NexonClient(() => (keyStore ? keyStore.getKey() : nexonKey.key))
   const bossService = new BossService(bosses, characters, ledger, transactions, drops, undefined)
+  const expenses = new ExpenseService(database, characters, ledger, transactions)
+  const enhancements = new EnhancementService(database, nexonClient, characters, expenses, () => {
+    const key = keyStore ? keyStore.getKey() : nexonKey.key
+    if (!key) throw new AppError('API_KEY_MISSING', '설정에서 넥슨 API 키를 등록해 주세요.')
+    const status = keyStore?.status()
+    return {
+      fingerprint: createHash('sha256').update(key).digest('hex'),
+      label:
+        status?.accounts?.find((row) => row.id === status.activeAccountId)?.label ?? '현재 API 계정'
+    }
+  })
   const backup = new BackupService(database, (content) =>
     saveRecoveryBackup(join(dirname(databasePath), '..', 'backups'), content)
   )
@@ -72,7 +86,8 @@ export function createServices(
     ),
     hunting: new HuntingService(hunting, characters, ledger, transactions, drops),
     drops: new DropService(drops, hunting, bosses, ledger, transactions),
-    expenses: new ExpenseService(database, characters, ledger, transactions),
+    expenses,
+    enhancements,
     incomes: new IncomeService(database, characters, ledger, transactions),
     ledger: new LedgerService(ledger),
     close: () => database.close()

@@ -53,11 +53,16 @@ export class ExpenseService {
   update(value: unknown): Expense {
     return this.save(value, true)
   }
-  private save(value: unknown, updating: boolean): Expense {
+  // Internal batch imports own the surrounding transaction, including their source links.
+  createInTransaction(value: unknown): Expense {
+    if (!this.database.isTransaction) throw new Error('지출 가져오기 트랜잭션이 필요합니다.')
+    return this.save(value, false, false)
+  }
+  private save(value: unknown, updating: boolean, transactional = true): Expense {
     const raw = readObject(value),
       input = parseExpenseInput(raw, getKstDate(this.now()))
     const id = readId(updating ? raw.id : raw.requestId)
-    return this.transactions.run(() => {
+    const operation = () => {
       const current = updating ? this.require(id) : this.find(id)
       if (!updating && current) {
         if (
@@ -105,7 +110,8 @@ export class ExpenseService {
         )
       this.ledger.syncExpense(expense)
       return expense
-    })
+    }
+    return transactional ? this.transactions.run(operation) : operation()
   }
   remove(value: unknown): null {
     const id = readId(value)

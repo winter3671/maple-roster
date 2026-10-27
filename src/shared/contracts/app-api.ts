@@ -1,5 +1,10 @@
 import type { Character, CharacterInput, CharacterUpdate } from './character.contract'
 import type { ApiResult } from '../errors'
+import type {
+  EnhancementPreview,
+  EnhancementApply,
+  EnhancementApplied
+} from './enhancement.contract'
 import type { WeeklyOverview } from './weekly.contract'
 import type { DashboardStats } from './dashboard.contract'
 import type { CrystalPriceEntry } from './crystal-price.contract'
@@ -161,6 +166,8 @@ export interface AppApi {
     remove: (id: string) => Promise<ApiResult<null>>
   }
   ledger: {
+    previewEnhancements: (input: { date: string }) => Promise<ApiResult<EnhancementPreview>>
+    applyEnhancements: (input: EnhancementApply) => Promise<ApiResult<EnhancementApplied>>
     page: (query: LedgerPageQuery) => Promise<ApiResult<LedgerPage>>
     createIncome: (input: IncomeCreate) => Promise<ApiResult<Income>>
     updateIncome: (input: IncomeUpdate) => Promise<ApiResult<Income>>

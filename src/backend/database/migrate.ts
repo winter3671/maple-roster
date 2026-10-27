@@ -17,6 +17,7 @@ import weeklySnapshotsSql from './migrations/014_weekly_snapshots.sql?raw'
 import incomeSql from './migrations/015_manual_incomes.sql?raw'
 import monthlyBossesSql from './migrations/016_monthly_bosses.sql?raw'
 import carryoversSql from './migrations/017_boss_week_carryovers.sql?raw'
+import enhancementsSql from './migrations/018_enhancement_imports.sql?raw'
 
 const migrations = [
   { version: 1, name: 'characters', sql: charactersSql },
@@ -35,7 +36,8 @@ const migrations = [
   { version: 14, name: 'weekly_snapshots', sql: weeklySnapshotsSql },
   { version: 15, name: 'manual_incomes', sql: incomeSql },
   { version: 16, name: 'monthly_bosses', sql: monthlyBossesSql },
-  { version: 17, name: 'boss_week_carryovers', sql: carryoversSql }
+  { version: 17, name: 'boss_week_carryovers', sql: carryoversSql },
+  { version: 18, name: 'enhancement_imports', sql: enhancementsSql }
 ]
 
 export class NewerDatabaseError extends Error {

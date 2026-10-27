@@ -150,6 +150,7 @@ describe('직접 수익 기록과 장부 연동', () => {
     expenses.create({ ...input(), category: '기타', amount: 100 })
     const old = JSON.parse(backup.export())
     old.schemaVersion = 14
+    delete old.tables.enhancement_imports
     delete old.tables.boss_week_carryovers
     delete old.tables.manual_incomes
     for (const row of old.tables.ledger_entries) delete row.manual_income_id
