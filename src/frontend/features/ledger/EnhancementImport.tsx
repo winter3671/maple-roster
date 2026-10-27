@@ -184,7 +184,8 @@ function Results({
       <p className="rounded-lg border border-line bg-brand-soft p-3">
         메소 재설정은 기본 비용표, 큐브는 장비 레벨 기준의 사용 수수료 추정액입니다. 큐브 구매
         가격은 포함하지 않습니다. 할인·이벤트 등으로 실제 비용이 다르면 총액을 수정하세요. 기존 수동
-        지출과 중복되는 항목은 선택을 해제해 주세요.
+        지출과 중복되는 항목은 선택을 해제해 주세요. 120레벨 이하 장비의 큐브 수수료는 기본 0메소로
+        계산합니다. 실제 비용이 발생했다면 총액에 더해 입력하세요.
       </p>
       {preview.rows.map((source, index) => {
         const row = rows[index]

@@ -287,15 +287,18 @@ describe('강화 지출 이력 가져오기', () => {
       .mockResolvedValueOnce({
         records: [
           record({ id: 'free', kind: '골드 큐브', itemLevel: 30 }),
+          record({ id: 'unknown', kind: '에디셔널 큐브', itemLevel: null }),
           record({ id: 'special', kind: '펄스 인핸서' })
         ],
         nextCursor: null
       })
     const p = await preview()
     expect(client.cubeHistory).toHaveBeenNthCalledWith(2, '2026-10-27', 'cube-page')
-    expect(p.rows[0].amount).toBeNull()
-    expect(p.rows[0].warning).toContain('무료 감정')
+    expect(p.rows[0].amount).toBe(0)
+    expect(p.rows[0].warning).toBeNull()
+    expect(p.rows[0].details?.[0]).toMatchObject({ itemLevel: 120, unitCost: 0, total: 0 })
     expect(p.rows[1].amount).toBe(0)
+    expect(p.rows[2].amount).toBeNull()
     expect(p.excluded).toBe(1)
     expect(db.prepare('SELECT * FROM manual_expenses').all()).toHaveLength(0)
   })
@@ -303,6 +306,29 @@ describe('강화 지출 이력 가져오기', () => {
     client.cubeHistory.mockRejectedValue(new Error('cube offline'))
     await expect(preview()).rejects.toThrow('cube offline')
     expect(db.prepare('SELECT * FROM manual_expenses').all()).toHaveLength(0)
+  })
+  it('31~120레벨은 0메소로 합산하고 실제 발생 비용은 사용자가 총액에 추가할 수 있다', async () => {
+    client.potentialHistory.mockResolvedValue({ records: [], nextCursor: null })
+    client.cubeHistory.mockResolvedValue({
+      records: [
+        record({ id: 'low31', kind: '골드 큐브', itemLevel: 31 }),
+        record({ id: 'low120', kind: '골드 큐브', itemLevel: 120 }),
+        record({ id: 'high200', kind: '골드 큐브', itemLevel: 200 })
+      ],
+      nextCursor: null
+    })
+    const mixed = await preview()
+    expect(mixed.rows[0]).toMatchObject({ count: 3, amount: 800000, warning: null })
+    expect(mixed.rows[0].details?.map((row) => row.unitCost)).toEqual([0, 0, 800000])
+    expect(apply(mixed, 900000)).toMatchObject({ records: 3, amount: 900000 })
+    client.cubeHistory.mockResolvedValue({
+      records: [record({ id: 'new-low', kind: '실버 큐브', itemLevel: 70 })],
+      nextCursor: null
+    })
+    const low = await preview()
+    expect(low.rows[0].amount).toBe(0)
+    expect(apply(low, 250)).toMatchObject({ records: 1, amount: 250 })
+    expect(db.prepare('SELECT SUM(amount) AS total FROM ledger_entries').get()!.total).toBe(900250)
   })
 })
 describe('큐브 사용 수수료 추정', () => {
@@ -323,8 +349,8 @@ describe('큐브 사용 수수료 추정', () => {
     expect(cubeUsageFee('실버 큐브', 121)).toBe(292820)
     expect(cubeUsageFee('골드 큐브', 250)).toBe(1250000)
     expect(cubeUsageFee('골드 큐브', 30)).toBe(0)
-    for (const level of [null, 0, 31, 70, 120, 301, 150.5])
-      expect(cubeUsageFee('골드 큐브', level)).toBeNull()
+    for (const level of [1, 30, 31, 70, 120]) expect(cubeUsageFee('골드 큐브', level)).toBe(0)
+    for (const level of [null, 0, 301, 150.5]) expect(cubeUsageFee('골드 큐브', level)).toBeNull()
     expect(cubeFamily('알 수 없는 골드 큐브')).toBeNull()
     expect(cubeUsageFee('펄스 인핸서', 200)).toBeNull()
   })
