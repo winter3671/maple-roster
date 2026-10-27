@@ -443,7 +443,14 @@ describe('API 보스 클리어 미리보기와 반영', () => {
     responseDate = '2026-10-15'
     contents = []
     await sync.syncAll(query)
-    expect(bosses.list(query).runs).toEqual([])
+    expect(bosses.list(query).runs).toHaveLength(1)
+    expect(bosses.list(query).runs[0]).toMatchObject({
+      bossName: '스우',
+      isCleared: false,
+      settlement: null,
+      week: '2026-10-15'
+    })
+    expect(ledger.list(month).entries).toEqual(previousIncome)
     contents = [
       { content_name: '스우', difficulty: 'normal', cycle: 'bossWeekly', complete_flag: 'true' }
     ]

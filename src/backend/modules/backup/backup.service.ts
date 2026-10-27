@@ -22,6 +22,7 @@ import type {
 const TABLES = [
   'crystal_price_history',
   'characters',
+  'boss_week_carryovers',
   'boss_templates',
   'boss_presets',
   'boss_roster_assignments',
@@ -83,7 +84,7 @@ function snapshot(database: DatabaseSync): Tables {
       table,
       database
         .prepare(
-          `SELECT * FROM ${table} ORDER BY ${table === 'boss_roster_assignments' ? 'character_id' : 'id'}`
+          `SELECT * FROM ${table} ORDER BY ${table === 'boss_week_carryovers' ? 'character_id, period_start' : table === 'boss_roster_assignments' ? 'character_id' : 'id'}`
         )
         .all()
     ])
@@ -100,6 +101,9 @@ function insert(database: DatabaseSync, tables: Tables): void {
 }
 
 function validateRelations(database: DatabaseSync, tables: Tables): void {
+  for (const row of tables.boss_week_carryovers) {
+    if (bossWeek(String(row.period_start)) !== row.period_start) invalid()
+  }
   if (tables.crystal_price_history.length > 5000) invalid()
   for (const row of tables.crystal_price_history) {
     validateBossSelection(String(row.boss_name), String(row.difficulty))
@@ -317,7 +321,7 @@ export class BackupService {
         Object.keys(raw).sort().join(',') !== 'createdAt,format,schemaVersion,tables,version' ||
         raw.format !== 'maple-roster' ||
         raw.version !== 1 ||
-        ![7, 8, 9, 10, 11, 12, 13, 14, 15, schemaVersion(this.database)].includes(
+        ![7, 8, 9, 10, 11, 12, 13, 14, 15, 16, schemaVersion(this.database)].includes(
           raw.schemaVersion as number
         )
       )
@@ -340,12 +344,14 @@ export class BackupService {
         (table) =>
           !(older && table === 'crystal_price_history') &&
           !(legacyExpense && table === 'manual_expenses') &&
-          !(legacyIncome && table === 'manual_incomes')
+          !(legacyIncome && table === 'manual_incomes') &&
+          !(Number(raw.schemaVersion) < 17 && table === 'boss_week_carryovers')
       )
       if (Object.keys(tables).sort().join(',') !== [...expectedTables].sort().join(',')) invalid()
       if (older) tables.crystal_price_history = []
       if (legacyExpense) tables.manual_expenses = []
       if (legacyIncome) tables.manual_incomes = []
+      if (Number(raw.schemaVersion) < 17) tables.boss_week_carryovers = []
       staging = openDatabase(':memory:')
       let total = 0
       for (const table of TABLES) {

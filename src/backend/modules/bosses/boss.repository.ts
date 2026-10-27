@@ -41,6 +41,21 @@ const runSelect = `SELECT r.*, c.name AS character_name, c.world AS character_wo
 
 export class BossRepository {
   constructor(private readonly database: DatabaseSync) {}
+  carriedCharacters(week: string): Set<string> {
+    return new Set(
+      this.database
+        .prepare('SELECT character_id FROM boss_week_carryovers WHERE period_start = ?')
+        .all(week)
+        .map((row) => String(row.character_id))
+    )
+  }
+  markCarried(characterId: string, week: string): void {
+    this.database
+      .prepare(
+        'INSERT OR IGNORE INTO boss_week_carryovers (character_id, period_start) VALUES (?, ?)'
+      )
+      .run(characterId, week)
+  }
   presets(characterId?: string): BossPreset[] {
     return this.database
       .prepare(

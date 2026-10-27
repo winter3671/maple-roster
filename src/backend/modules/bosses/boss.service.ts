@@ -11,7 +11,13 @@ import {
 import { AppError } from '../../../shared/errors'
 import { readId, readObject, readText } from '../../../shared/validation'
 import { getKstDate, readDate } from '../../../shared/dates'
-import { bossWeek, bossPeriod, readBossCycle, type BossCycle } from '../../../shared/boss-period'
+import {
+  bossWeek,
+  bossPeriod,
+  readBossCycle,
+  shiftDate,
+  type BossCycle
+} from '../../../shared/boss-period'
 import {
   validateBossSelection,
   WEEKLY_BOSSES,
@@ -110,6 +116,8 @@ export class BossService {
   list(value: unknown): BossList {
     const query = parseBossQuery(value)
     const week = bossPeriod(query.date, query.cycle)
+    if (query.cycle !== 'monthly' && week === bossWeek(getKstDate(this.now())))
+      this.carryPreviousWeek(week)
     const runs = this.repository.list(week, query.characterId, query.cycle)
     return { week, runs, summary: summarizeBosses(runs) }
   }
@@ -163,7 +171,8 @@ export class BossService {
           updatedAt: timestamp
         })
       }
-      return this.list(query)
+      const runs = this.repository.list(week, query.characterId)
+      return { week, runs, summary: summarizeBosses(runs) }
     })
   }
   setClear(value: unknown): BossRun {
@@ -645,6 +654,50 @@ export class BossService {
     if (!preset)
       throw new AppError('BOSS_NOT_FOUND', '보스 프리셋을 찾을 수 없습니다. 새로고침해 주세요.')
     return preset
+  }
+  private carryPreviousWeek(week: string): void {
+    const done = this.repository.carriedCharacters(week)
+    const previous = this.repository
+      .list(shiftDate(week, -7))
+      .filter((run) => run.isCleared && !done.has(run.characterId))
+    if (!previous.length) return
+    this.transaction.run(() => {
+      const current = this.repository.list(week)
+      const timestamp = this.now().toISOString()
+      const pending = new Map<string, BossRun[]>()
+      for (const run of previous) {
+        const rows = pending.get(run.characterId) ?? []
+        rows.push(run)
+        pending.set(run.characterId, rows)
+      }
+      for (const [characterId, runs] of pending) {
+        if (this.repository.carriedCharacters(week).has(characterId)) continue
+        const existing = current.filter((run) => run.characterId === characterId)
+        let count = existing.length
+        const character = this.characters.find(characterId)!
+        for (const run of runs) {
+          if (count >= 12) break
+          if (existing.some((row) => row.bossKey === run.bossKey)) continue
+          this.repository.insertRun({
+            ...run,
+            id: randomUUID(),
+            week,
+            characterName: character.name,
+            characterWorld: character.world,
+            crystalPrice: this.priceForRun(run.bossName, run.difficulty, week, run.crystalPrice),
+            isCleared: false,
+            partySizeNeedsReview: false,
+            expectedShare: 0,
+            settlement: null,
+            notes: '',
+            createdAt: timestamp,
+            updatedAt: timestamp
+          })
+          count++
+        }
+        this.repository.markCarried(characterId, week)
+      }
+    })
   }
   private defaultIncomeDate(week: string, cycle: BossCycle = 'weekly'): string {
     const today = getKstDate(this.now())
