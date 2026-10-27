@@ -1,4 +1,5 @@
 export interface PotentialRecord {
+  source?: 'potential' | 'cube'
   id: string
   characterName: string
   date: string
@@ -22,6 +23,15 @@ export interface EnhancementPreview {
     amount: number | null
     items: string[]
     warning: string | null
+    source?: 'potential' | 'cube'
+    details?: {
+      itemName: string
+      itemLevel: number | null
+      grade: string | null
+      count: number
+      unitCost: number | null
+      total: number | null
+    }[]
   }[]
   alreadyImported: number
   excluded: number

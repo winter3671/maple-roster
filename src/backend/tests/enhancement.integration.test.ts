@@ -10,6 +10,7 @@ import { EnhancementService } from '../modules/ledger/enhancement.service'
 import { BackupService } from '../modules/backup/backup.service'
 import { NexonClient } from '../integrations/nexon/nexon.client'
 import { potentialCost } from '../../shared/potential-cost'
+import { cubeFamily, cubeUsageFee } from '../../shared/cube-cost'
 import type {
   PotentialRecord,
   EnhancementPreview
@@ -33,7 +34,7 @@ describe('강화 지출 이력 가져오기', () => {
     service: EnhancementService,
     characterId: string,
     fingerprint: string
-  const client = { list: vi.fn(), potentialHistory: vi.fn() }
+  const client = { list: vi.fn(), potentialHistory: vi.fn(), cubeHistory: vi.fn() }
   beforeEach(() => {
     db = openDatabase(':memory:')
     chars = new CharacterRepository(db)
@@ -45,6 +46,7 @@ describe('강화 지출 이력 가져오기', () => {
       .mockReset()
       .mockResolvedValue([{ ocid: 'fake-ocid', name: '강화캐릭터', world: '레드' }])
     client.potentialHistory.mockReset().mockResolvedValue({ records: [record()], nextCursor: null })
+    client.cubeHistory.mockReset().mockResolvedValue({ records: [], nextCursor: null })
     service = new EnhancementService(
       db,
       client,
@@ -225,6 +227,107 @@ describe('강화 지출 이력 가져오기', () => {
     ).toThrow('만료')
     expect(db.prepare('SELECT * FROM ledger_entries').all()).toHaveLength(0)
   })
+  it('큐브 종류별로 묶고 장비 레벨별 사용 수수료와 횟수를 함께 표시한다', async () => {
+    client.potentialHistory.mockResolvedValue({ records: [], nextCursor: null })
+    client.cubeHistory.mockResolvedValue({
+      records: [
+        record({ id: 'cube-1', kind: '메멘토 브론즈 에디셔널 큐브 (200제)' }),
+        record({ id: 'cube-2', kind: '메멘토 브론즈 에디셔널 큐브 (200제)', beforeGrade: '에픽' }),
+        record({
+          id: 'cube-3',
+          kind: '메멘토 브론즈 에디셔널 큐브 (200제)',
+          itemName: '앱솔랩스 모자',
+          itemLevel: 160
+        }),
+        record({ id: 'silver', kind: '실버 큐브', itemLevel: 150 }),
+        record({ id: 'gold', kind: '골드 큐브', itemLevel: 250 })
+      ],
+      nextCursor: null
+    })
+    const p = await preview()
+    expect(p.rows).toHaveLength(3)
+    expect(p.rows[0]).toMatchObject({ source: 'cube', count: 3, amount: 2112000 })
+    expect(p.rows[0].details).toMatchObject([
+      { itemLevel: 200, count: 2, unitCost: 800000, total: 1600000 },
+      { itemLevel: 160, count: 1, unitCost: 512000, total: 512000 }
+    ])
+    const result = service.apply({
+      previewId: p.id,
+      confirmed: true,
+      rows: p.rows.map((row) => ({ id: row.id, characterId, amount: row.amount! }))
+    })
+    expect(result).toEqual({ expenses: 3, records: 5, amount: 3812000 })
+    expect(db.prepare('SELECT SUM(amount) AS total FROM ledger_entries').get()!.total).toBe(3812000)
+    expect(String(db.prepare('SELECT notes FROM manual_expenses LIMIT 1').get()!.notes)).toContain(
+      '큐브 구매비 제외'
+    )
+  })
+  it('기존 메소 재설정과 큐브 API의 같은 원본 ID가 충돌하지 않으며 기존 중복 방지 해시는 유지한다', async () => {
+    const first = await preview()
+    apply(first)
+    client.cubeHistory.mockResolvedValue({
+      records: [record({ kind: '에디셔널 큐브' })],
+      nextCursor: null
+    })
+    const p = await preview()
+    expect(p.alreadyImported).toBe(1)
+    expect(p.rows).toHaveLength(1)
+    expect(p.rows[0].amount).toBe(800000)
+    apply(p)
+    expect((await preview()).alreadyImported).toBe(2)
+    expect(db.prepare('SELECT * FROM enhancement_imports').all()).toHaveLength(2)
+  })
+  it('큐브 페이지를 끝까지 읽고 비용 미확인·무료 감정·미지원 재화를 구분한다', async () => {
+    client.potentialHistory.mockResolvedValue({ records: [], nextCursor: null })
+    client.cubeHistory
+      .mockResolvedValueOnce({
+        records: [record({ id: 'low', kind: '실버 큐브', itemLevel: 120 })],
+        nextCursor: 'cube-page'
+      })
+      .mockResolvedValueOnce({
+        records: [
+          record({ id: 'free', kind: '골드 큐브', itemLevel: 30 }),
+          record({ id: 'special', kind: '펄스 인핸서' })
+        ],
+        nextCursor: null
+      })
+    const p = await preview()
+    expect(client.cubeHistory).toHaveBeenNthCalledWith(2, '2026-10-27', 'cube-page')
+    expect(p.rows[0].amount).toBeNull()
+    expect(p.rows[0].warning).toContain('무료 감정')
+    expect(p.rows[1].amount).toBe(0)
+    expect(p.excluded).toBe(1)
+    expect(db.prepare('SELECT * FROM manual_expenses').all()).toHaveLength(0)
+  })
+  it('큐브 조회 중 실패하면 메소 재설정의 부분 결과도 저장할 수 없다', async () => {
+    client.cubeHistory.mockRejectedValue(new Error('cube offline'))
+    await expect(preview()).rejects.toThrow('cube offline')
+    expect(db.prepare('SELECT * FROM manual_expenses').all()).toHaveLength(0)
+  })
+})
+describe('큐브 사용 수수료 추정', () => {
+  it.each([
+    '에디셔널 큐브',
+    '실버 큐브',
+    '골드 큐브',
+    '브론즈 에디셔널 큐브',
+    '메멘토 브론즈 에디셔널 큐브 (200제)',
+    '(메멘토) 브론즈 에디셔널 큐브',
+    '카르마 실버 큐브',
+    '이벤트 링 전용 골드 큐브'
+  ])('%s의 200제 사용 수수료는 인게임 예시 80만 메소와 일치한다', (name) =>
+    expect(cubeUsageFee(name, 200)).toBe(800000)
+  )
+  it('장비 기본 레벨을 사용하고 무료 감정 및 확인하지 못한 유형은 별도로 처리한다', () => {
+    expect(cubeUsageFee('메멘토 골드 큐브 (200제)', 150)).toBe(450000)
+    expect(cubeUsageFee('실버 큐브', 121)).toBe(292820)
+    expect(cubeUsageFee('골드 큐브', 250)).toBe(1250000)
+    expect(cubeUsageFee('골드 큐브', 30)).toBe(0)
+    for (const level of [null, 0, 31, 70, 120, 301, 150.5])
+      expect(cubeUsageFee('골드 큐브', level)).toBeNull()
+    expect(cubeFamily('알 수 없는 골드 큐브')).toBeNull()
+    expect(cubeUsageFee('펄스 인핸서', 200)).toBeNull()
+  })
 })
 describe('공식 메소 잠재능력 기본 비용표', () => {
   it.each([
@@ -255,6 +358,39 @@ describe('공식 메소 잠재능력 기본 비용표', () => {
   })
 })
 describe('잠재능력 이력 API 파싱', () => {
+  it('큐브 종류·대상 장비·기본 레벨을 큐브 이력에서 읽고 메소 재설정과 구분한다', async () => {
+    const transport = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          cube_history: [
+            {
+              id: 'cube-raw',
+              cube_type: '메멘토 브론즈 에디셔널 큐브 (200제)',
+              character_name: '강화캐릭터',
+              date_create: '2026-10-27T12:00:00+09:00',
+              target_item: '아케인셰이드 모자',
+              item_level: 200,
+              before_additional_potential_option: [{ grade: '에픽' }],
+              before_potential_option: [{ grade: '레전드리' }]
+            }
+          ],
+          next_cursor: null
+        })
+      )
+    )
+    const client = new NexonClient(() => 'fake-key', transport, 0)
+    const data = await client.cubeHistory('2026-10-27')
+    expect(data.records[0]).toMatchObject({
+      source: 'cube',
+      kind: '메멘토 브론즈 에디셔널 큐브 (200제)',
+      itemName: '아케인셰이드 모자',
+      itemLevel: 200,
+      beforeGrade: '에픽'
+    })
+    const url = new URL(transport.mock.calls[0][0])
+    expect(url.pathname).toBe('/maplestory/v1/history/cube')
+    expect(url.searchParams.get('date')).toBe('2026-10-27')
+  })
   it('건수가 0인 null 이력은 빈 목록으로 처리한다', async () => {
     const client = new NexonClient(
       () => 'fake-key',

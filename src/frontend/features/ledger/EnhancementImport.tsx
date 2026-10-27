@@ -48,8 +48,8 @@ export function EnhancementImport({ onClose }: { onClose: () => void }) {
     <Dialog title="강화 지출 가져오기" wide busy={busy} onClose={onClose}>
       <div className="space-y-4 text-xs leading-6">
         <p className="text-muted">
-          현재 선택한 API 계정의 메소 잠재능력·에디셔널 재설정 이력을 가져옵니다. 스타포스와 큐브
-          사용 내역은 이번 가져오기 대상에 포함하지 않습니다.
+          현재 선택한 API 계정의 메소 잠재능력·에디셔널 재설정과 큐브 사용 이력을 가져옵니다. 큐브는
+          사용 수수료만 계산하며 구매 가격과 스타포스는 포함하지 않습니다.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <label>
@@ -119,7 +119,7 @@ function Results({
   const [rows, setRows] = useState(() =>
     preview.rows.map((row) => ({
       id: row.id,
-      selected: row.amount !== null && !!row.characterId,
+      selected: row.amount !== null && row.amount > 0 && !!row.characterId,
       characterId: row.characterId ?? '',
       amount: row.amount === null ? '' : String(row.amount)
     }))
@@ -182,8 +182,9 @@ function Results({
   return (
     <form {...protection.formProps} onSubmit={(event) => void save(event)} className="space-y-4">
       <p className="rounded-lg border border-line bg-brand-soft p-3">
-        표시 금액은 공식 기본 비용표로 계산한 값입니다. 할인·이벤트 등으로 실제 비용이 다르면 총액을
-        수정하세요. 기존에 수동으로 기록한 지출과 중복되는 항목은 선택을 해제해 주세요.
+        메소 재설정은 기본 비용표, 큐브는 장비 레벨 기준의 사용 수수료 추정액입니다. 큐브 구매
+        가격은 포함하지 않습니다. 할인·이벤트 등으로 실제 비용이 다르면 총액을 수정하세요. 기존 수동
+        지출과 중복되는 항목은 선택을 해제해 주세요.
       </p>
       {preview.rows.map((source, index) => {
         const row = rows[index]
@@ -206,6 +207,40 @@ function Results({
               장비: {source.items.join(', ')}
               {source.items.length === 8 ? ' 외' : ''}
             </p>
+            {source.source === 'cube' && (
+              <p className="text-muted">큐브 사용 수수료 · 구매 가격 제외</p>
+            )}
+            {source.details?.length ? (
+              <details className="rounded-lg bg-canvas p-3">
+                <summary className="cursor-pointer font-semibold">장비 레벨·1회 비용 확인</summary>
+                <ul className="mt-3 space-y-3">
+                  {source.details.slice(0, 50).map((detail, index) => (
+                    <li key={index} className="break-words border-t border-line pt-2">
+                      <p>
+                        {detail.itemName} ·{' '}
+                        {detail.itemLevel === null ? '레벨 미확인' : `Lv. ${detail.itemLevel}`}
+                        {source.source !== 'cube' && detail.grade ? ` · 이전 ${detail.grade}` : ''}
+                      </p>
+                      <p className="text-muted">
+                        {formatMeso(detail.count)}회 · 1회{' '}
+                        {detail.unitCost === null
+                          ? '직접 확인 필요'
+                          : `${formatMeso(detail.unitCost)} 메소`}{' '}
+                        · 합계{' '}
+                        {detail.total === null
+                          ? '직접 확인 필요'
+                          : `${formatMeso(detail.total)} 메소`}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                {source.details.length > 50 && (
+                  <p className="mt-2 text-muted">
+                    외 {formatMeso(source.details.length - 50)}종도 전체 합계에 포함되어 있습니다.
+                  </p>
+                )}
+              </details>
+            ) : null}
             {source.warning && <p className="text-expense">{source.warning}</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               <label>

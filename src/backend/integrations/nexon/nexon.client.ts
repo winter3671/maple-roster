@@ -90,29 +90,43 @@ export class NexonClient {
     date: string,
     cursor?: string
   ): Promise<{ records: PotentialRecord[]; nextCursor: string | null }> {
+    return this.enhancementHistory(date, cursor, 'potential')
+  }
+  async cubeHistory(
+    date: string,
+    cursor?: string
+  ): Promise<{ records: PotentialRecord[]; nextCursor: string | null }> {
+    return this.enhancementHistory(date, cursor, 'cube')
+  }
+  private async enhancementHistory(
+    date: string,
+    cursor: string | undefined,
+    source: 'potential' | 'cube'
+  ): Promise<{ records: PotentialRecord[]; nextCursor: string | null }> {
     readDate(date)
     const body = object(
-      await this.request('history/potential', {
+      await this.request(source === 'cube' ? 'history/cube' : 'history/potential', {
         count: '1000',
         ...(cursor ? { cursor } : { date })
       })
     )
-    if (body.potential_history === null && body.count === 0) body.potential_history = []
-    if (!Array.isArray(body.potential_history) || body.potential_history.length > 1000)
-      return invalid()
-    const records = body.potential_history.map((entry): PotentialRecord => {
+    const key = source === 'cube' ? 'cube_history' : 'potential_history'
+    if (body[key] === null && body.count === 0) body[key] = []
+    const history = body[key]
+    if (!Array.isArray(history) || history.length > 1000) return invalid()
+    const records = history.map((entry): PotentialRecord => {
       const row = object(entry)
       const created = text(row.date_create, 64)
       const timestamp = new Date(created)
       if (!Number.isFinite(timestamp.getTime()) || !/(?:Z|[+-]\d{2}:\d{2})$/.test(created))
         return invalid()
-      const kind = text(row.potential_type, 80)
-      const options =
-        kind === '에디셔널 잠재능력'
-          ? row.before_additional_potential_option
-          : row.before_potential_option
+      const kind = text(source === 'cube' ? row.cube_type : row.potential_type, 150)
+      const options = kind.includes('에디셔널')
+        ? row.before_additional_potential_option
+        : row.before_potential_option
       const first = Array.isArray(options) && options.length ? object(options[0]) : null
       return {
+        source,
         id: text(row.id, 512),
         characterName: text(row.character_name, 40),
         date: getKstDate(timestamp),
@@ -226,7 +240,11 @@ export class NexonClient {
   }
   private request(
     endpoint:
-      'character/list' | 'character/basic' | 'scheduler/character-state' | 'history/potential',
+      | 'character/list'
+      | 'character/basic'
+      | 'scheduler/character-state'
+      | 'history/potential'
+      | 'history/cube',
     params: Record<string, string> = {}
   ): Promise<unknown> {
     const task = this.queue.then(async () => {

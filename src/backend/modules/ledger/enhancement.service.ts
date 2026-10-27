@@ -4,6 +4,7 @@ import { AppError } from '../../../shared/errors'
 import { getKstDate, readDate } from '../../../shared/dates'
 import { readId, readInteger, readObject } from '../../../shared/validation'
 import { potentialCost } from '../../../shared/potential-cost'
+import { cubeFamily, cubeUsageFee } from '../../../shared/cube-cost'
 import type {
   EnhancementApplied,
   EnhancementPreview
@@ -25,7 +26,7 @@ export class EnhancementService {
   private running = false
   constructor(
     private readonly db: DatabaseSync,
-    private readonly client: Pick<NexonClient, 'list' | 'potentialHistory'>,
+    private readonly client: Pick<NexonClient, 'list' | 'potentialHistory' | 'cubeHistory'>,
     private readonly characters: CharacterRepository,
     private readonly expenses: ExpenseService,
     private readonly getContext: () => { fingerprint: string; label: string },
@@ -60,82 +61,130 @@ export class EnhancementService {
           '현재 API 계정에 연결된 캐릭터를 먼저 등록해 주세요.'
         )
       const groups = new Map<string, EnhancementPreview['rows'][number]>()
+      const detailGroups = new Map<
+        string,
+        NonNullable<EnhancementPreview['rows'][number]['details']>[number]
+      >()
       const hashes = new Map<string, string[]>(),
-        seen = new Set<string>(),
-        cursors = new Set<string>()
+        seen = new Set<string>()
       const imported = this.db.prepare('SELECT 1 FROM enhancement_imports WHERE id=?')
-      let cursor: string | undefined,
-        alreadyImported = 0,
+      let alreadyImported = 0,
         excluded = 0
-      for (let page = 0; page < 20; page++) {
-        const response = await this.client.potentialHistory(date, cursor)
-        this.contextMatches(context.fingerprint)
-        for (const record of response.records) {
-          if (record.date !== date)
+      for (const source of ['potential', 'cube'] as const) {
+        let cursor: string | undefined
+        const cursors = new Set<string>()
+        for (let page = 0; page < 20; page++) {
+          const response =
+            source === 'cube'
+              ? await this.client.cubeHistory(date, cursor)
+              : await this.client.potentialHistory(date, cursor)
+          this.contextMatches(context.fingerprint)
+          for (const record of response.records) {
+            if (record.date !== date)
+              throw new AppError(
+                'API_RESPONSE_INVALID',
+                '요청 날짜와 다른 강화 이력이 포함되어 있습니다. 다시 조회해 주세요.'
+              )
+            // Keep existing potential hashes compatible; namespace the new endpoint.
+            const hash = createHash('sha256')
+              .update(source === 'cube' ? `cube:${record.id}` : record.id)
+              .digest('hex')
+            if (seen.has(hash)) continue
+            seen.add(hash)
+            const matching = characters.filter(
+              (row) => row.name.normalize('NFC') === record.characterName.normalize('NFC')
+            )
+            if (!matching.length) {
+              excluded++
+              continue
+            }
+            if (imported.get(hash)) {
+              alreadyImported++
+              continue
+            }
+            if (
+              source === 'cube'
+                ? !cubeFamily(record.kind)
+                : !['잠재능력', '에디셔널 잠재능력'].includes(record.kind)
+            ) {
+              excluded++
+              continue
+            }
+            const key = JSON.stringify([source, record.characterName, record.kind])
+            let row = groups.get(key)
+            if (!row) {
+              row = {
+                id: randomUUID(),
+                characterName: record.characterName,
+                characterId: matching.length === 1 ? matching[0].id : null,
+                kind: record.kind,
+                source,
+                count: 0,
+                amount: 0,
+                items: [],
+                warning: null,
+                details: []
+              }
+              groups.set(key, row)
+              hashes.set(row.id, [])
+            }
+            hashes.get(row.id)!.push(hash)
+            row.count++
+            if (!row.items.includes(record.itemName) && row.items.length < 8)
+              row.items.push(record.itemName)
+            const cost =
+              source === 'cube'
+                ? cubeUsageFee(record.kind, record.itemLevel)
+                : potentialCost(record)
+            const detailGrade = source === 'cube' ? null : record.beforeGrade
+            const detailKey = JSON.stringify([
+              row.id,
+              record.itemName,
+              record.itemLevel,
+              cost,
+              detailGrade
+            ])
+            const detail = detailGroups.get(detailKey)
+            if (detail) {
+              detail.count++
+              detail.total = cost === null ? null : sumIntegers([detail.total!, cost])
+            } else {
+              const entry = {
+                itemName: record.itemName,
+                itemLevel: record.itemLevel,
+                grade: detailGrade,
+                count: 1,
+                unitCost: cost,
+                total: cost
+              }
+              row.details!.push(entry)
+              detailGroups.set(detailKey, entry)
+            }
+            row.amount =
+              cost === null || row.amount === null ? null : sumIntegers([row.amount, cost])
+            row.warning =
+              [
+                row.amount === null
+                  ? source === 'cube'
+                    ? '장비 레벨 미확인 또는 통찰력의 무료 감정 예외(31~120레벨)가 있는 이력입니다. 실제 사용 수수료 총액을 확인해 입력해 주세요.'
+                    : '비용을 계산할 수 없는 이력이 있습니다. 실제 지출 총액을 직접 입력해 주세요.'
+                  : '',
+                !row.characterId
+                  ? '같은 이름의 캐릭터가 여러 월드에 있어 이력을 구분할 수 없습니다. 해당 날짜에 한 캐릭터에서만 강화한 경우에만 선택하세요. 여러 월드에서 강화했다면 수동으로 나누어 기록해 주세요.'
+                  : ''
+              ]
+                .filter(Boolean)
+                .join(' ') || null
+          }
+          if (!response.nextCursor) break
+          if (page === 19 || cursors.has(response.nextCursor))
             throw new AppError(
               'API_RESPONSE_INVALID',
-              '요청 날짜와 다른 강화 이력이 포함되어 있습니다. 다시 조회해 주세요.'
+              '이력이 너무 많거나 페이지 조회가 반복됩니다. 저장하지 않았습니다. 다시 조회해 주세요.'
             )
-          const hash = createHash('sha256').update(record.id).digest('hex')
-          if (seen.has(hash)) continue
-          seen.add(hash)
-          const matching = characters.filter(
-            (row) => row.name.normalize('NFC') === record.characterName.normalize('NFC')
-          )
-          if (!matching.length) {
-            excluded++
-            continue
-          }
-          if (imported.get(hash)) {
-            alreadyImported++
-            continue
-          }
-          if (!['잠재능력', '에디셔널 잠재능력'].includes(record.kind)) {
-            excluded++
-            continue
-          }
-          const key = JSON.stringify([record.characterName, record.kind])
-          let row = groups.get(key)
-          if (!row) {
-            row = {
-              id: randomUUID(),
-              characterName: record.characterName,
-              characterId: matching.length === 1 ? matching[0].id : null,
-              kind: record.kind,
-              count: 0,
-              amount: 0,
-              items: [],
-              warning: null
-            }
-            groups.set(key, row)
-            hashes.set(row.id, [])
-          }
-          hashes.get(row.id)!.push(hash)
-          row.count++
-          if (!row.items.includes(record.itemName) && row.items.length < 8)
-            row.items.push(record.itemName)
-          const cost = potentialCost(record)
-          row.amount = cost === null || row.amount === null ? null : sumIntegers([row.amount, cost])
-          row.warning =
-            [
-              row.amount === null
-                ? '비용을 계산할 수 없는 이력이 있습니다. 실제 지출 총액을 직접 입력해 주세요.'
-                : '',
-              !row.characterId
-                ? '같은 이름의 캐릭터가 여러 월드에 있어 이력을 구분할 수 없습니다. 해당 날짜에 한 캐릭터에서만 강화한 경우에만 선택하세요. 여러 월드에서 강화했다면 수동으로 나누어 기록해 주세요.'
-                : ''
-            ]
-              .filter(Boolean)
-              .join(' ') || null
+          cursors.add(response.nextCursor)
+          cursor = response.nextCursor
         }
-        if (!response.nextCursor) break
-        if (page === 19 || cursors.has(response.nextCursor))
-          throw new AppError(
-            'API_RESPONSE_INVALID',
-            '이력이 너무 많거나 페이지 조회가 반복됩니다. 저장하지 않았습니다. 다시 조회해 주세요.'
-          )
-        cursors.add(response.nextCursor)
-        cursor = response.nextCursor
       }
       const view: EnhancementPreview = {
         id: randomUUID(),
@@ -217,7 +266,7 @@ export class EnhancementService {
           date: preview.view.date,
           category: '강화',
           amount,
-          notes: `API 강화 가져오기 · ${row.kind} ${row.count}회 · 사용자 확인 금액`
+          notes: `API 강화 가져오기 · ${row.kind} ${row.count}회 · ${row.source === 'cube' ? '사용 수수료만 반영(큐브 구매비 제외)' : '사용자 확인 금액'}`
         })
         for (const hash of hashes) link.run(hash, expense.id)
         records += hashes.length
