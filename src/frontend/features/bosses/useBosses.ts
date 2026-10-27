@@ -3,8 +3,10 @@ import type { Character } from '../../../shared/contracts/character.contract'
 import type { BossList, BossQuery } from '../../../shared/contracts/boss.contract'
 import { charactersApi } from '../characters/characters.api'
 import { bossesApi } from './bosses.api'
+import { useDataRevision } from '../../lib/data-sync-state'
 
 export function useBosses(query: BossQuery) {
+  const revision = useDataRevision()
   const [data, setData] = useState<BossList>()
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,7 +19,7 @@ export function useBosses(query: BossQuery) {
   const sequence = useRef(0)
   const load = useCallback(
     () => Promise.all([bossesApi.list(query), charactersApi.list()]),
-    [query]
+    [query, revision]
   )
   const apply = ([list, characterList]: Awaited<ReturnType<typeof load>>) => {
     setData(list)

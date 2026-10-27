@@ -5,6 +5,7 @@ export interface TaskNotification {
   status: TaskStatus
   message: string
   expiresAt?: number
+  background?: boolean
 }
 export interface TaskHandle {
   finish: (status: Exclude<TaskStatus, 'running'>, message: string) => void
@@ -31,15 +32,16 @@ export class TaskNotificationStore {
       this.listeners.delete(listener)
     }
   }
-  isRunning = () => this.rows.some((row) => row.status === 'running')
+  isRunning = (blockingOnly = false) =>
+    this.rows.some((row) => row.status === 'running' && (!blockingOnly || !row.background))
   private publish(rows: readonly TaskNotification[]) {
     const completed = rows.filter((row) => row.status !== 'running').slice(-3)
     this.rows = rows.filter((row) => row.status === 'running' || completed.includes(row))
     for (const listener of this.listeners) listener()
   }
-  begin(title: string): TaskHandle {
+  begin(title: string, options: { background?: boolean } = {}): TaskHandle {
     const id = ++this.sequence
-    this.publish([...this.rows, { id, title, status: 'running', message: '처리 중…' }])
+    this.publish([...this.rows, { id, title, status: 'running', message: '처리 중…', ...options }])
     let settled = false
     return {
       finish: (status, message) => {

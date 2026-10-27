@@ -5,6 +5,7 @@ import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { PageContent } from '../components/PageContent'
 import { useInputProtection } from '../components/InputProtection'
 import { StartupUpdatePrompt } from '../features/settings/StartupUpdatePrompt'
+import { StartupDataSync } from './StartupDataSync'
 
 const BossLedgerPage = lazy(() =>
   import('../features/bosses/BossLedgerPage').then((module) => ({ default: module.BossLedgerPage }))
@@ -47,6 +48,7 @@ export function App() {
     <AppLayout page={page} onNavigate={navigate}>
       <PageContent key={page}>{pages[page]}</PageContent>
       <StartupUpdatePrompt />
+      <StartupDataSync />
     </AppLayout>
   )
 }

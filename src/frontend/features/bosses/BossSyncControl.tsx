@@ -7,6 +7,7 @@ import { Dialog } from '../../components/ui/Dialog'
 import { bossesApi } from './bosses.api'
 import { useTaskNotifications } from '../../components/TaskNotifications'
 import { batchTaskStatus } from '../../../shared/task-notifications'
+import { useStartupSyncRunning } from '../../lib/data-sync-state'
 
 type Outcome = { label: string; result?: BossBatchSyncResult; error?: string }
 export function BossSyncControl({
@@ -23,6 +24,7 @@ export function BossSyncControl({
   onChanged: () => Promise<void>
 }) {
   const tasks = useTaskNotifications()
+  const startupRunning = useStartupSyncRunning()
   const [busy, setBusy] = useState(false)
   const [outcomes, setOutcomes] = useState<Outcome[] | null>(null)
   const lock = useRef(false),
@@ -34,7 +36,7 @@ export function BossSyncControl({
     }
   }, [])
   async function syncAll() {
-    if (lock.current) return
+    if (lock.current || startupRunning) return
     lock.current = true
     setBusy(true)
     onBusyChange(true)
@@ -118,7 +120,7 @@ export function BossSyncControl({
   }
   return (
     <>
-      <Button disabled={disabled || busy} onClick={() => void syncAll()}>
+      <Button disabled={disabled || busy || startupRunning} onClick={() => void syncAll()}>
         {busy ? 'API 기록 확인 중…' : 'API 클리어 일괄 확인'}
       </Button>
       {busy && (

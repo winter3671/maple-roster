@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { batchTaskStatus, TaskNotificationStore } from '../../shared/task-notifications'
 
 describe('작업 알림', () => {
+  it('시작 자동 조회는 메뉴 이동을 허용하고 종료 보호와 일반 작업 잠금은 유지한다', () => {
+    const store = new TaskNotificationStore()
+    const background = store.begin('자동 조회', { background: true })
+    expect(store.isRunning()).toBe(true)
+    expect(store.isRunning(true)).toBe(false)
+    const save = store.begin('저장')
+    expect(store.isRunning(true)).toBe(true)
+    save.finish('success', '저장 완료')
+    expect(store.isRunning(true)).toBe(false)
+    background.finish('success', '조회 완료')
+    expect(store.isRunning()).toBe(false)
+  })
   it('시작 즉시 이동·종료 보호 대상이 되고 완료 시 해제된다', () => {
     const store = new TaskNotificationStore(() => 100)
     const task = store.begin('조회')

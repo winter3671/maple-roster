@@ -25,6 +25,7 @@ import { bossesApi } from './bosses.api'
 import { useBosses } from './useBosses'
 import { DropManager } from '../drops/DropManager'
 import { useViewState, useMissingCharacterReset } from '../../components/ViewState'
+import { useStartupSyncRunning } from '../../lib/data-sync-state'
 
 type Confirmation = {
   title: string
@@ -33,6 +34,7 @@ type Confirmation = {
   message: string
 }
 export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
+  const startupRunning = useStartupSyncRunning()
   const monthly = cycle === 'monthly'
   const periodLabel = monthly ? '월간' : '주간'
   const currentPeriod = () => bossPeriod(getKstDate(), cycle)
@@ -67,7 +69,7 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
       mounted.current = false
     }
   }, [])
-  const disabled = state.loading || state.busy || apiBusy
+  const disabled = state.loading || state.busy || apiBusy || startupRunning
   const week = bossPeriod(query.date, cycle)
   const modal = Boolean(
     editingRun || editingIncomeDate || addingCharacter || confirmation || apiPreview || partyNotice
@@ -75,6 +77,7 @@ export function BossesPage({ cycle = 'weekly' }: { cycle?: BossCycle }) {
   const canSyncApi =
     week <= currentPeriod() && bossPeriodEnd(week, cycle) >= shiftDate(getKstDate(), -14)
   async function queryApi(character: Character) {
+    if (startupRunning) return
     if (monthly) {
       if (apiLock.current) return
       apiLock.current = true

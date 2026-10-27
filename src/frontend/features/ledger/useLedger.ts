@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import type { LedgerPage, RecordQuery } from '../../../shared/contracts/ledger.contract'
 import { AppError } from '../../../shared/errors'
 import { ledgerApi } from './ledger.api'
+import { useDataRevision } from '../../lib/data-sync-state'
 
 export function useLedger(
   query: RecordQuery,
   page: number,
   onPageResolved?: (page: number, query: RecordQuery, requestedPage: number) => void
 ) {
+  const dataRevision = useDataRevision()
   const resolved = useRef(onPageResolved)
   resolved.current = onPageResolved
   const [data, setData] = useState<LedgerPage>()
@@ -37,6 +39,6 @@ export function useLedger(
     return () => {
       active = false
     }
-  }, [query, page, revision])
+  }, [query, page, revision, dataRevision])
   return { data, loading, error, reload: () => setRevision((value) => value + 1) }
 }

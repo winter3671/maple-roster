@@ -10,6 +10,7 @@ import { QueryFailure } from '../../components/ui/QueryFailure'
 import { useTaskNotifications } from '../../components/TaskNotifications'
 import { batchTaskStatus } from '../../../shared/task-notifications'
 import { useViewState } from '../../components/ViewState'
+import { useDataRevision, useStartupSyncRunning } from '../../lib/data-sync-state'
 
 function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag' }) {
   if (row.error) return <span className="font-semibold text-expense">확인 불가</span>
@@ -36,6 +37,8 @@ function GuildStatus({ row, kind }: { row: WeeklyCharacter; kind: 'suro' | 'flag
 }
 
 export function WeeklyPage() {
+  const revision = useDataRevision()
+  const startupRunning = useStartupSyncRunning()
   const tasks = useTaskNotifications()
   const [data, setData] = useState<WeeklyOverview>()
   const [busy, setBusy] = useState(true)
@@ -44,10 +47,14 @@ export function WeeklyPage() {
   const alive = useRef(false),
     pending = useRef(false)
   const failed = useRef(false)
+  const refreshQueued = useRef(false)
   const lastSync = useRef(false)
   const load = useCallback(
-    async (sync: boolean) => {
-      if (pending.current) return
+    async (sync: boolean): Promise<void> => {
+      if (pending.current) {
+        if (!sync) refreshQueued.current = true
+        return
+      }
       pending.current = true
       lastSync.current = sync
       setBusy(true)
@@ -76,6 +83,10 @@ export function WeeklyPage() {
       } finally {
         pending.current = false
         if (alive.current) setBusy(false)
+        if (refreshQueued.current && alive.current) {
+          refreshQueued.current = false
+          void load(false)
+        }
       }
     },
     [tasks]
@@ -91,7 +102,7 @@ export function WeeklyPage() {
       alive.current = false
       clearInterval(timer)
     }
-  }, [load])
+  }, [load, revision])
   const selected = showPrevious ? data?.previous : data
   const rows = (selected?.characters ?? []).filter(
     (row) => !showPrevious || row.fetchedAt || row.contents !== undefined
@@ -123,7 +134,12 @@ export function WeeklyPage() {
               <option value="previous">지난주</option>
             </select>
             <Button
-              disabled={busy || showPrevious || !data?.characters.some((row) => row.connected)}
+              disabled={
+                busy ||
+                startupRunning ||
+                showPrevious ||
+                !data?.characters.some((row) => row.connected)
+              }
               onClick={() => void load(true)}
             >
               {busy ? '조회 중…' : '전체 새로고침'}
@@ -131,8 +147,8 @@ export function WeeklyPage() {
           </div>
         </div>
         <p className="mt-4 text-xs leading-6 text-muted">
-          전체 새로고침으로 등록된 API 캐릭터를 일괄 확인합니다. 지하수로·플래그는 이번 주 참여
-          기록과 점수를 표시합니다.
+          앱 실행 시 한 번 자동 확인하며, 전체 새로고침으로 다시 확인할 수 있습니다.
+          지하수로·플래그는 이번 주 참여 기록과 점수를 표시합니다.
         </p>
         <p className="mt-1 text-[11px] leading-5 text-muted">
           조회 결과는 재실행 후에도 유지됩니다. 이번 주와 지난주만 보관하며, 2주 전 기록은 자동

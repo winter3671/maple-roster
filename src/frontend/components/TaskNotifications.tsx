@@ -58,7 +58,7 @@ export function TaskNotificationProvider({ children }: { children: ReactNode }) 
               )}
               {labels[row.status]}
             </p>
-            <p className="mt-1 text-xs leading-5 text-muted">{row.message}</p>
+            <p className="mt-1 whitespace-pre-line text-xs leading-5 text-muted">{row.message}</p>
           </div>
         ))}
       </aside>

@@ -3,8 +3,10 @@ import type { DashboardStats } from '../../../shared/contracts/dashboard.contrac
 import type { RecordQuery } from '../../../shared/contracts/ledger.contract'
 import { getBridge } from '../../lib/bridge'
 import { unwrap } from '../../lib/api'
+import { useDataRevision } from '../../lib/data-sync-state'
 
 export function useDashboard(query: RecordQuery) {
+  const dataRevision = useDataRevision()
   const [data, setData] = useState<DashboardStats>(),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
@@ -28,6 +30,6 @@ export function useDashboard(query: RecordQuery) {
     return () => {
       active = false
     }
-  }, [query, revision])
+  }, [query, revision, dataRevision])
   return { data, loading, error, reload: () => setRevision((value) => value + 1) }
 }

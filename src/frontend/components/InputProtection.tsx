@@ -39,7 +39,7 @@ export function InputProtectionProvider({ children }: { children: ReactNode }) {
   const request = (action: () => void, scope?: HTMLElement | null, mode: Mode = 'navigate') => {
     if (pendingRef.current) return
     const state = store.snapshot(scope, mode === 'exit')
-    const blocked = state.busy || tasks.isRunning()
+    const blocked = state.busy || tasks.isRunning(mode !== 'exit')
     if (!state.dirty && !blocked) {
       action()
       return
@@ -56,7 +56,7 @@ export function InputProtectionProvider({ children }: { children: ReactNode }) {
     // The user's navigation/exit action is not replayed automatically.
     if (
       pending?.blocked &&
-      !tasks.isRunning() &&
+      !tasks.isRunning(pending.mode !== 'exit') &&
       !store.snapshot(pending.scope, pending.mode === 'exit').busy
     )
       dismiss()
@@ -65,7 +65,10 @@ export function InputProtectionProvider({ children }: { children: ReactNode }) {
     const current = pendingRef.current
     if (!current) return
     // Recheck after confirmation: a save may have started while the dialog was open.
-    if (store.snapshot(current.scope, current.mode === 'exit').busy || tasks.isRunning()) {
+    if (
+      store.snapshot(current.scope, current.mode === 'exit').busy ||
+      tasks.isRunning(current.mode !== 'exit')
+    ) {
       pendingRef.current = { ...current, blocked: true }
       setPending(pendingRef.current)
       return
