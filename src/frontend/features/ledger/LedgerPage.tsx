@@ -27,6 +27,17 @@ export function LedgerPage() {
   const { request } = useInputProtection()
   const [editor, setEditor] = useState<LedgerEntry | 'new-expense' | 'new-income' | null>(null)
   const [deleting, setDeleting] = useState<LedgerEntry | null>(null)
+  const editorSection = useRef<HTMLDivElement>(null)
+  const deleteSection = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!editor && !deleting) return
+    const frame = requestAnimationFrame(() => {
+      const target = deleting ? deleteSection.current : editorSection.current
+      target?.focus({ preventScroll: true })
+      target?.scrollIntoView({ block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [editor, deleting])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [notice, setNotice] = useState('')
@@ -235,35 +246,44 @@ export function LedgerPage() {
           </div>
         </div>
         {enhancementsOpen && <EnhancementImport onClose={() => setEnhancementsOpen(false)} />}
-        {editor &&
-          (editor === 'new-income' ||
-          (typeof editor === 'object' && editor.source === 'manualIncome') ? (
-            <IncomeForm
-              key={typeof editor === 'object' ? editor.id : editor}
-              characters={characters.characters}
-              initial={typeof editor === 'object' ? editor : undefined}
-              preferredCharacterId={query.characterId}
-              busy={saving || exporting || characters.loading}
-              onSave={saveEntry}
-              onCancel={() => {
-                setEditor(null)
-                setSaveError('')
-              }}
-            />
-          ) : (
-            <ExpenseForm
-              key={typeof editor === 'object' ? editor.id : editor}
-              characters={characters.characters}
-              initial={typeof editor === 'object' ? editor : undefined}
-              preferredCharacterId={query.characterId}
-              busy={saving || exporting || characters.loading}
-              onSave={saveEntry}
-              onCancel={() => {
-                setEditor(null)
-                setSaveError('')
-              }}
-            />
-          ))}
+        {editor && (
+          <div
+            ref={editorSection}
+            role="region"
+            aria-label={typeof editor === 'object' ? '거래 수정' : '거래 입력'}
+            tabIndex={-1}
+            className="scroll-mt-6 rounded-xl p-1 focus:outline-none focus:ring-2 focus:ring-brand/50"
+          >
+            {editor === 'new-income' ||
+            (typeof editor === 'object' && editor.source === 'manualIncome') ? (
+              <IncomeForm
+                key={typeof editor === 'object' ? editor.id : editor}
+                characters={characters.characters}
+                initial={typeof editor === 'object' ? editor : undefined}
+                preferredCharacterId={query.characterId}
+                busy={saving || exporting || characters.loading}
+                onSave={saveEntry}
+                onCancel={() => {
+                  setEditor(null)
+                  setSaveError('')
+                }}
+              />
+            ) : (
+              <ExpenseForm
+                key={typeof editor === 'object' ? editor.id : editor}
+                characters={characters.characters}
+                initial={typeof editor === 'object' ? editor : undefined}
+                preferredCharacterId={query.characterId}
+                busy={saving || exporting || characters.loading}
+                onSave={saveEntry}
+                onCancel={() => {
+                  setEditor(null)
+                  setSaveError('')
+                }}
+              />
+            )}
+          </div>
+        )}
       </section>
       {exportNotice && (
         <p
@@ -297,7 +317,12 @@ export function LedgerPage() {
         </p>
       )}
       {deleting && (
-        <section aria-label="거래 삭제 확인" className="rounded-xl border border-expense p-4">
+        <section
+          ref={deleteSection}
+          aria-label="거래 삭제 확인"
+          tabIndex={-1}
+          className="scroll-mt-6 rounded-xl border border-expense p-4 focus:outline-none focus:ring-2 focus:ring-expense/50"
+        >
           <p className="text-xs">
             {deleting.date} · {deleting.characterName} · {ledgerLabel(deleting)} ·{' '}
             {formatMeso(deleting.amount)} 메소 {deleting.direction === 'income' ? '수익' : '지출'}을
