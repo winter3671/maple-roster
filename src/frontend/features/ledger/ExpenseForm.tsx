@@ -40,7 +40,7 @@ export function ExpenseForm({
         options[0]?.id ??
         '',
       date: initial?.date ?? getKstDate(),
-      category: initial?.expenseCategory ?? '기타',
+      category: initial?.expenseCategory ?? '아이템 구매',
       currency: initial?.expenseCurrency ?? 'meso',
       amount: initial
         ? String(initial.expenseCurrency === 'maplePoint' ? initial.pointAmount : initial.amount)
